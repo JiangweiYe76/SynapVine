@@ -1,0 +1,60 @@
+{
+  "app": {
+    "title": "AI Knowledge Graph",
+    "loading": "加载图谱数据..."
+  },
+  "theme": {
+    "switchToLight": "切换到浅色主题",
+    "switchToDark": "切换到深色主题"
+  },
+  "search": {
+    "placeholder": "搜索节点...",
+    "noResults": "未找到匹配的结果"
+  },
+  "statusBar": {
+    "nodes": "节点",
+    "edges": "边",
+    "communities": "社区",
+    "loading": "加载中..."
+  },
+  "nodeDetail": {
+    "title": "节点详情",
+    "influenceScore": "影响力分数",
+    "description": "描述",
+    "relatedNodes": "关联节点"
+  },
+  "communityLegend": {
+    "title": "社区",
+    "all": "全部"
+  },
+  "timeline": {
+    "earliest": "最早 ({year})",
+    "prevYear": "后退一年",
+    "nextYear": "前进一年",
+    "latest": "最新 ({year})",
+    "breakthrough": "突破",
+    "release": "发布",
+    "milestone": "里程碑",
+    "show": "显示时间轴",
+    "hide": "隐藏时间轴"
+  },
+  "settings": {
+    "title": "设置",
+    "appearance": "外观",
+    "theme": "主题",
+    "themeDark": "深色",
+    "themeLight": "浅色",
+    "nodeScale": "节点缩放",
+    "edgeOpacity": "边透明度",
+    "timeline": "时间线",
+    "defaultSpeed": "默认速度",
+    "autoPlayTimeline": "自动播放",
+    "data": "数据",
+    "dataSource": "数据源",
+    "resetDefaults": "重置默认值",
+    "done": "完成"
+  },
+  "error": {
+    "dismiss": "关闭"
+  }
+}

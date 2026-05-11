@@ -1,0 +1,60 @@
+{
+  "app": {
+    "title": "AI Knowledge Graph",
+    "loading": "Loading graph data..."
+  },
+  "theme": {
+    "switchToLight": "Switch to Light Theme",
+    "switchToDark": "Switch to Dark Theme"
+  },
+  "search": {
+    "placeholder": "Search nodes...",
+    "noResults": "No matching results found"
+  },
+  "statusBar": {
+    "nodes": "Nodes",
+    "edges": "Edges",
+    "communities": "Communities",
+    "loading": "Loading..."
+  },
+  "nodeDetail": {
+    "title": "Node Detail",
+    "influenceScore": "Influence Score",
+    "description": "Description",
+    "relatedNodes": "Related Nodes"
+  },
+  "communityLegend": {
+    "title": "Communities",
+    "all": "All"
+  },
+  "timeline": {
+    "earliest": "Earliest ({year})",
+    "prevYear": "Previous Year",
+    "nextYear": "Next Year",
+    "latest": "Latest ({year})",
+    "breakthrough": "Breakthrough",
+    "release": "Release",
+    "milestone": "Milestone",
+    "show": "Show Timeline",
+    "hide": "Hide Timeline"
+  },
+  "settings": {
+    "title": "Settings",
+    "appearance": "Appearance",
+    "theme": "Theme",
+    "themeDark": "Dark",
+    "themeLight": "Light",
+    "nodeScale": "Node Scale",
+    "edgeOpacity": "Edge Opacity",
+    "timeline": "Timeline",
+    "defaultSpeed": "Default Speed",
+    "autoPlayTimeline": "Auto Play",
+    "data": "Data",
+    "dataSource": "Data Source",
+    "resetDefaults": "Reset Defaults",
+    "done": "Done"
+  },
+  "error": {
+    "dismiss": "Dismiss"
+  }
+}

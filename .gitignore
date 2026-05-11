@@ -1,0 +1,38 @@
+# Data
+data/
+
+# Dependencies
+node_modules/
+
+# Build output
+web/dist/
+server/ai-graph-*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+
+# Go
+*.exe
+*.test
+*.out
+
+# Docs
+docs/
+
+# Trae
+.trae/
