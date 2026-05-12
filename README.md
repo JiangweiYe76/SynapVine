@@ -21,7 +21,7 @@ An interactive 3D knowledge graph visualization of AI concepts, built with Vue 3
 ### Search & Navigation
 
 - Search bar with real-time fuzzy matching on node names and descriptions
-- Select a result to fly the camera to the target nodGe
+- Select a result to fly the camera to the target node
 - Highlight the target node and its 1-hop neighbors
 
 ### Node Details
