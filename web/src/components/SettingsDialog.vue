@@ -17,7 +17,6 @@ interface SettingsData {
   edgeOpacity: number
   autoPlayTimeline: boolean
   timelineSpeed: number
-  dataSource: 'mock' | 'api'
 }
 
 const defaults: SettingsData = {
@@ -25,9 +24,7 @@ const defaults: SettingsData = {
   edgeOpacity: 0.6,
   autoPlayTimeline: false,
   timelineSpeed: 1,
-  dataSource: 'mock',
 }
-
 const STORAGE_KEY = 'ai-graph-settings'
 
 function loadSettings(): SettingsData {
@@ -208,33 +205,7 @@ onUnmounted(() => {
           </div>
         </section>
 
-        <section>
-          <h3 class="text-sm font-semibold text-(--color-text-secondary) uppercase tracking-wider mb-4">{{ t('settings.data') }}</h3>
 
-          <div class="flex items-center justify-between">
-            <label class="text-sm text-(--color-text-primary)">{{ t('settings.dataSource') }}</label>
-            <div class="flex bg-(--color-bg-tertiary) rounded-lg p-1 gap-1">
-              <button
-                class="px-4 py-1.5 rounded-md text-sm transition-colors"
-                :class="settings.dataSource === 'mock'
-                  ? 'bg-(--color-bg-primary) text-(--color-text-primary) shadow-sm'
-                  : 'text-(--color-text-secondary) hover:text-(--color-text-primary)'"
-                @click="settings.dataSource = 'mock'"
-              >
-                Mock
-              </button>
-              <button
-                class="px-4 py-1.5 rounded-md text-sm transition-colors"
-                :class="settings.dataSource === 'api'
-                  ? 'bg-(--color-bg-primary) text-(--color-text-primary) shadow-sm'
-                  : 'text-(--color-text-secondary) hover:text-(--color-text-primary)'"
-                @click="settings.dataSource = 'api'"
-              >
-                API
-              </button>
-            </div>
-          </div>
-        </section>
       </div>
 
       <div class="px-6 py-4 border-t border-(--color-border-default) flex justify-between items-center shrink-0">
