@@ -7,37 +7,46 @@ import type {
   SearchResponse,
   ExpandResponse,
 } from '../types/graph'
-import { mockServer } from '../mock/server'
 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
 let token: string | null = null
+let _mockServer: ReturnType<typeof import('../mock/server').createMockServer> | null = null
+
+async function ensureMockServer() {
+  if (!_mockServer) {
+    const { createMockServer } = await import('../mock/server')
+    _mockServer = createMockServer()
+  }
+  return _mockServer
+}
 
 async function mockFetch(path: string, params?: Record<string, string>): Promise<unknown> {
   const cleanPath = path.replace(/^\//, '')
+  const mock = await ensureMockServer()
 
   switch (cleanPath) {
     case 'summary':
-      return mockServer.getSummary()
+      return mock.getSummary()
 
     case 'nodes': {
-      const p: Parameters<typeof mockServer.getNodes>[0] = {}
+      const p: Parameters<typeof mock.getNodes>[0] = {}
       if (params?.offset) p.offset = parseInt(params.offset)
       if (params?.limit) p.limit = parseInt(params.limit)
       if (params?.sort) p.sort = params.sort
       if (params?.community_id) p.community_id = parseInt(params.community_id)
       if (params?.ids) p.ids = params.ids
-      return mockServer.getNodes(p)
+      return mock.getNodes(p)
     }
 
     case 'search':
-      return mockServer.search(params?.q || '', params?.limit ? parseInt(params.limit) : 20)
+      return mock.search(params?.q || '', params?.limit ? parseInt(params.limit) : 20)
 
     case 'expand': {
-      const expandParams: Parameters<typeof mockServer.expand>[0] = { ids: params?.ids || '' }
+      const expandParams: Parameters<typeof mock.expand>[0] = { ids: params?.ids || '' }
       if (params?.include_edges === 'true' || params?.include_edges === true) expandParams.include_edges = true
       if (params?.include_neighbors === 'true' || params?.include_neighbors === true) expandParams.include_neighbors = true
-      return mockServer.expand(expandParams)
+      return mock.expand(expandParams)
     }
 
     default: {
@@ -45,9 +54,9 @@ async function mockFetch(path: string, params?: Record<string, string>): Promise
       if (nodeDetailMatch) {
         const nodeId = nodeDetailMatch[1]
         if (cleanPath.endsWith('/edges')) {
-          return mockServer.getNodeEdges(nodeId.replace('/edges', ''))
+          return mock.getNodeEdges(nodeId.replace('/edges', ''))
         }
-        return mockServer.getNodeDetail(nodeId)
+        return mock.getNodeDetail(nodeId)
       }
       throw new Error(`Unknown endpoint: ${path}`)
     }
@@ -85,7 +94,8 @@ async function fetchAPI<T>(path: string, params?: Record<string, string>): Promi
 
 export async function getToken(): Promise<string> {
   if (USE_MOCK) {
-    token = mockServer.getToken()
+    const mock = await ensureMockServer()
+    token = mock.getToken()
     return token
   }
   const response = await fetch('/api/token')
