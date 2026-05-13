@@ -1,4 +1,4 @@
-import type { GraphNode, GraphEdge, Community, HierarchicalCommunity, HistoricalEvent, TimelineRange } from '../types/graph'
+import type { GraphNode, GraphEdge, Community, HierarchicalCommunity, TimelineRange } from '../types/graph'
 import { LEVEL_PALETTES } from '../types/graph'
 
 export const rawNodes: (Omit<GraphNode, 'community_id' | 'degree'> & { first_appeared: number })[] = [
@@ -169,28 +169,6 @@ export const rawNodes: (Omit<GraphNode, 'community_id' | 'degree'> & { first_app
   { id: 'gradient_descent', name: 'Gradient Descent', category: 'optimization', description: '梯度下降优化方法，一切优化算法的基础', influence_score: 8.8, first_appeared: 1951 },
   { id: 'learning_rate', name: 'Learning Rate', category: 'optimization', description: '学习率，控制参数更新步长的关键超参数', influence_score: 7.8, first_appeared: 1951 },
   { id: 'dropout', name: 'Dropout', category: 'regularization', description: '随机失活正则化，简单有效的防过拟合技术', influence_score: 8.5, first_appeared: 2012 },
-];
-
-export const historicalEvents: HistoricalEvent[] = [
-  { year: 1956, title: '达特茅斯会议', description: '人工智能作为学科正式诞生', category: 'milestone' },
-  { year: 1957, title: '感知机', description: 'Frank Rosenblatt 发明感知机', category: 'breakthrough' },
-  { year: 1986, title: '反向传播', description: 'Rumelhart 等人重新提出反向传播算法', category: 'breakthrough' },
-  { year: 1989, title: 'CNN 诞生', description: 'Yann LeCun 提出卷积神经网络 LeNet', category: 'breakthrough' },
-  { year: 1997, title: 'LSTM', description: 'Hochreiter & Schmidhuber 提出 LSTM', category: 'breakthrough' },
-  { year: 2012, title: 'AlexNet', description: '深度学习革命爆发，ImageNet 竞赛大胜', category: 'breakthrough' },
-  { year: 2014, title: 'GAN', description: 'Goodfellow 提出生成对抗网络', category: 'breakthrough' },
-  { year: 2014, title: 'Adam 优化器', description: 'Kingma & Ba 提出 Adam 优化器', category: 'release' },
-  { year: 2015, title: 'ResNet', description: '残差网络问世，突破深度限制', category: 'breakthrough' },
-  { year: 2017, title: 'Transformer', description: 'Attention Is All You Need 论文发表', category: 'release' },
-  { year: 2018, title: 'BERT', description: 'Google 发布 BERT 预训练模型', category: 'release' },
-  { year: 2018, title: 'GPT', description: 'OpenAI 发布 GPT-1', category: 'release' },
-  { year: 2020, title: 'GPT-3', description: 'OpenAI 发布 GPT-3', category: 'release' },
-  { year: 2021, title: 'DALL·E', description: 'OpenAI 发布 DALL·E 文本生成图像', category: 'release' },
-  { year: 2022, title: 'ChatGPT', description: '生成式 AI 破圈，ChatGPT 引发全球 AI 热潮', category: 'breakthrough' },
-  { year: 2022, title: 'Stable Diffusion', description: 'Stability AI 发布 Stable Diffusion', category: 'release' },
-  { year: 2023, title: 'GPT-4', description: 'OpenAI 发布 GPT-4，多模态能力', category: 'release' },
-  { year: 2023, title: 'Llama 2', description: 'Meta 开源 Llama 2 大模型', category: 'release' },
-  { year: 2024, title: 'Sora', description: 'OpenAI 发布 Sora 文本生成视频', category: 'release' },
 ];
 
 export function getTimelineRange(): TimelineRange {

@@ -1,6 +1,6 @@
-import { ref, computed, watch, type Ref } from 'vue'
-import type { GraphNode, GraphEdge, HistoricalEvent, TimelineRange } from '../types/graph'
-import { historicalEvents, getTimelineRange } from '../mock/data'
+import { ref, computed, type Ref } from 'vue'
+import type { GraphNode, GraphEdge, TimelineRange } from '../types/graph'
+import { getTimelineRange } from '../mock/data'
 
 export interface TimelineState {
   currentYear: Ref<number>
@@ -9,7 +9,6 @@ export interface TimelineState {
   range: Ref<TimelineRange>
   visibleNodes: Ref<GraphNode[]>
   visibleEdges: Ref<GraphEdge[]>
-  currentEvent: Ref<HistoricalEvent | null>
 }
 
 export interface TimelineActions {
@@ -31,7 +30,6 @@ export function useTimeline(
   const currentYear = ref(range.value.maxYear)
   const isPlaying = ref(false)
   const playbackSpeed = ref(1)
-  const currentEvent = ref<HistoricalEvent | null>(null)
 
   let playInterval: ReturnType<typeof setInterval> | null = null
 
@@ -47,11 +45,6 @@ export function useTimeline(
       visibleNodeIds.has(e.source) && visibleNodeIds.has(e.target)
     )
   })
-
-  watch(currentYear, (year) => {
-    const event = historicalEvents.find(e => e.year === year)
-    currentEvent.value = event || null
-  }, { immediate: true })
 
   function play() {
     if (isPlaying.value) return
@@ -105,7 +98,6 @@ export function useTimeline(
     range,
     visibleNodes,
     visibleEdges,
-    currentEvent,
     play,
     pause,
     seek,

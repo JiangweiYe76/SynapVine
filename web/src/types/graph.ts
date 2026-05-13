@@ -19,13 +19,6 @@ export interface Milestone {
   impact?: number
 }
 
-export interface HistoricalEvent {
-  year: number
-  title: string
-  description: string
-  category?: 'breakthrough' | 'release' | 'milestone'
-}
-
 export interface TimelineRange {
   minYear: number
   maxYear: number
