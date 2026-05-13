@@ -9,7 +9,7 @@ import type {
 } from '../types/graph'
 import { mockServer } from '../mock/server'
 
-const USE_MOCK = true
+const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
 let token: string | null = null
 
