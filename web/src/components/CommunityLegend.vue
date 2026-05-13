@@ -46,10 +46,12 @@ const topLevelChildren = computed(() => props.communities[0]?.children || [])
 </script>
 
 <template>
-  <div class="bg-(--color-bg-secondary) rounded-2xl p-5 w-72 select-none shadow-2xl transition-colors duration-300">
-    <h3 class="text-(--color-text-primary) font-semibold mb-4 pl-2">{{ t('communityLegend.title') }}</h3>
+  <div class="absolute left-12 top-12 bottom-12 w-72 bg-(--color-bg-secondary) flex flex-col z-30 shadow-2xl rounded-2xl select-none transition-colors duration-300">
+    <div class="flex items-center px-6 py-5 border-b border-(--color-border-default) shrink-0">
+      <h2 class="text-lg font-semibold text-(--color-text-primary)">{{ t('communityLegend.title') }}</h2>
+    </div>
 
-    <div class="flex flex-col gap-1">
+    <div class="flex-1 overflow-y-auto px-6 py-6 space-y-1">
       <div
         class="flex items-center gap-3 cursor-pointer rounded-lg px-3 py-2.5 transition-colors"
         :class="highlightedCommunity.length === 0

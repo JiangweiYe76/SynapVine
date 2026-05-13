@@ -152,13 +152,11 @@ function handleCommunityHighlight(communityId: number | null) {
     </header>
 
     <div class="flex-1 flex relative overflow-hidden">
-      <div class="absolute left-12 top-12 z-30">
-        <CommunityLegend
-          :communities="communities"
-          :highlighted-community="highlightedCommunity"
-          @highlight="handleCommunityHighlight"
-        />
-      </div>
+      <CommunityLegend
+        :communities="communities"
+        :highlighted-community="highlightedCommunity"
+        @highlight="handleCommunityHighlight"
+      />
 
       <GraphCanvas
         :nodes="timelineVisible ? timeline.visibleNodes.value : nodes"
