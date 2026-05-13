@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, provide, computed } from 'vue'
+import { ref, onMounted, onUnmounted, provide, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import GraphCanvas from './components/GraphCanvas.vue'
 import SearchBar from './components/SearchBar.vue'
@@ -48,8 +48,19 @@ function toggleLocale() {
   locale.value = locale.value === 'zh-CN' ? 'en-US' : 'zh-CN'
 }
 
+function handleKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape' && nodeDetail.value) {
+    handleCloseDetail()
+  }
+}
+
 onMounted(() => {
   loadInitial()
+  document.addEventListener('keydown', handleKeydown)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleKeydown)
 })
 
 async function handleSearch(query: string) {
