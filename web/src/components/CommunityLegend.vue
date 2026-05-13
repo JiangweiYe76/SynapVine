@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { HierarchicalCommunity } from '../types/graph'
+import { ChevronRight } from 'lucide-vue-next'
 
 const { t } = useI18n()
 
@@ -79,13 +80,10 @@ const topLevelChildren = computed(() => props.communities[0]?.children || [])
             class="w-5 h-5 flex items-center justify-center text-(--color-text-muted) hover:text-(--color-text-primary) shrink-0 rounded transition-colors"
             @click.stop="toggleCollapse(comm.id)"
           >
-            <svg
+            <ChevronRight
               class="w-3.5 h-3.5 transition-transform duration-200"
-              :class="collapsed.has(comm.id) ? '' : 'rotate-90'"
-              fill="none" stroke="currentColor" viewBox="0 0 24 24"
-            >
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
+              :class="{ 'rotate-90': !collapsed.has(comm.id) }"
+            />
           </button>
           <div v-else class="w-5 shrink-0" />
           <div

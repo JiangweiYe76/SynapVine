@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { NodeDetail as NodeDetailType, HierarchicalCommunity } from '../types/graph'
 import { PALETTE } from '../types/graph'
+import { X } from 'lucide-vue-next'
 
 const { t } = useI18n()
 
@@ -64,9 +65,7 @@ function getCommunityColor(communityId: number) {
           class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-(--color-bg-tertiary) text-(--color-text-secondary) hover:text-(--color-text-primary) transition-colors"
           @click="emit('close')"
         >
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          <X class="w-6 h-6" />
         </button>
       </div>
 

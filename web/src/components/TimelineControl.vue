@@ -3,6 +3,7 @@ import { inject, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { TimelineState, TimelineActions } from '../composables/useTimeline'
 import { historicalEvents } from '../mock/data'
+import { SkipBack, ChevronLeft, Play, Pause, ChevronRight, SkipForward } from 'lucide-vue-next'
 
 const { t } = useI18n()
 
@@ -65,23 +66,23 @@ function getCategoryColor(category?: string) {
     <div class="timeline-controls-row">
       <div class="playback-btns">
         <button class="ctrl-btn" @click="timeline.seek(timeline.range.value.minYear)" :title="t('timeline.earliest', { year: timeline.range.value.minYear })">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+          <SkipBack :size="15" />
         </button>
         <button class="ctrl-btn" @click="timeline.prev()" :title="t('timeline.prevYear')">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm9.5 6l-8.5 6V6z"/></svg>
+          <ChevronLeft :size="15" />
         </button>
         <button
           class="ctrl-btn play-btn"
           @click="timeline.isPlaying.value ? timeline.pause() : timeline.play()"
         >
-          <svg v-if="timeline.isPlaying.value" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-          <svg v-else viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          <Pause v-if="timeline.isPlaying.value" :size="18" />
+          <Play v-else :size="18" />
         </button>
         <button class="ctrl-btn" @click="timeline.next()" :title="t('timeline.nextYear')">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          <ChevronRight :size="15" />
         </button>
         <button class="ctrl-btn" @click="timeline.seek(timeline.range.value.maxYear)" :title="t('timeline.latest', { year: timeline.range.value.maxYear })">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 18h2V6h-2zm-11-7l8.5 6V6z"/></svg>
+          <SkipForward :size="15" />
         </button>
       </div>
 
@@ -224,11 +225,6 @@ function getCategoryColor(category?: string) {
   color: var(--color-text-secondary);
   cursor: pointer;
   transition: all 0.15s;
-}
-
-.ctrl-btn svg {
-  width: 15px;
-  height: 15px;
 }
 
 .ctrl-btn:hover {

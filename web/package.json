@@ -11,6 +11,7 @@
   "dependencies": {
     "3d-force-graph": "^1.80.0",
     "@intlify/unplugin-vue-i18n": "^11.1.2",
+    "lucide-vue-next": "^1.0.0",
     "three": "^0.184.0",
     "three-spritetext": "^1.10.0",
     "vue": "^3.5.32",

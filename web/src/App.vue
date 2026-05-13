@@ -13,6 +13,7 @@ import { useTimeline } from './composables/useTimeline'
 import { useTheme } from './composables/useTheme'
 import type { SearchResult, NodeDetail as NodeDetailType } from './types/graph'
 import { searchNodes, getNodeDetail } from './api/graph'
+import { Zap, Sun, Moon, Clock, Settings, X } from 'lucide-vue-next'
 
 const {
   nodes,
@@ -105,9 +106,7 @@ function handleCommunityHighlight(communityId: number | null) {
   <div class="flex flex-col h-screen bg-(--color-bg-primary) transition-colors duration-300">
     <header class="h-16 bg-(--color-bg-secondary) border-b border-(--color-border-default) flex items-center justify-between px-8 shrink-0 transition-colors duration-300">
       <div class="flex items-center gap-4">
-        <svg class="w-7 h-7 text-[#58a6ff]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-        </svg>
+        <Zap class="w-7 h-7 text-[#58a6ff]" />
         <h1 class="text-xl font-semibold text-(--color-text-primary)">{{ t('app.title') }}</h1>
       </div>
       <div class="flex items-center gap-4">
@@ -122,12 +121,8 @@ function handleCommunityHighlight(communityId: number | null) {
           @click="theme.toggleTheme"
           :title="theme.theme.value === 'dark' ? t('theme.switchToLight') : t('theme.switchToDark')"
         >
-          <svg v-if="theme.theme.value === 'dark'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-          </svg>
-          <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-          </svg>
+          <Sun v-if="theme.theme.value === 'dark'" class="w-5 h-5" />
+          <Moon v-else class="w-5 h-5" />
         </button>
         <button
           class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-(--color-bg-tertiary) text-(--color-text-secondary) hover:text-(--color-text-primary) text-xs font-semibold transition-colors"
@@ -141,23 +136,15 @@ function handleCommunityHighlight(communityId: number | null) {
           @click="timelineVisible = !timelineVisible"
           :title="timelineVisible ? t('timeline.hide') : t('timeline.show')"
         >
-          <svg v-if="timelineVisible" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            <line stroke-linecap="round" stroke-width="2" x1="2" y1="2" x2="22" y2="22" />
-          </svg>
+          <Clock v-if="timelineVisible" class="w-5 h-5" />
+          <Clock v-else class="w-5 h-5 opacity-40" />
         </button>
         <button
           class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-(--color-bg-tertiary) text-(--color-text-secondary) hover:text-(--color-text-primary) transition-colors"
           @click="showSettings = true"
           :title="t('settings.title')"
         >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
+          <Settings class="w-5 h-5" />
         </button>
       </div>
     </header>
@@ -207,9 +194,7 @@ function handleCommunityHighlight(communityId: number | null) {
             class="text-white/80 hover:text-white transition-colors"
             @click="clearError"
           >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X class="w-4 h-4" />
           </button>
         </div>
       </Transition>
