@@ -1,6 +1,7 @@
 package service
 
 import (
+	"log/slog"
 	"sort"
 	"strings"
 
@@ -86,6 +87,13 @@ func New(nodes []model.Node, edges []model.Edge, communities []model.Community, 
 		})
 		svc.neighborMap[id] = neighbors
 	}
+
+	slog.Info("graph_service_initialized",
+		slog.Int("nodes", len(nodes)),
+		slog.Int("edges", len(edges)),
+		slog.Int("communities", len(communities)),
+		slog.Int("max_level", maxLevel),
+	)
 
 	return svc
 }

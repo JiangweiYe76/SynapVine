@@ -4,6 +4,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
+	"log/slog"
 	"strconv"
 	"time"
 )
@@ -21,11 +22,20 @@ import (
 func VerifySignature(path, token, timestamp, nonce, signature string, nonceStore *NonceStore) bool {
 	// Parse and validate timestamp (must be within 30 seconds)
 	if ts, err := strconv.ParseInt(timestamp, 10, 64); err != nil || time.Now().Unix()-ts > 30 {
+		slog.Warn("signature_timestamp_invalid",
+			slog.String("path", path),
+			slog.String("timestamp", timestamp),
+			slog.String("reason", "expired_or_malformed"),
+		)
 		return false
 	}
 
 	// Check nonce to prevent replay attacks
 	if !nonceStore.Mark(nonce) {
+		slog.Warn("signature_replay_detected",
+			slog.String("path", path),
+			slog.String("nonce", nonce),
+		)
 		return false
 	}
 
@@ -38,5 +48,12 @@ func VerifySignature(path, token, timestamp, nonce, signature string, nonceStore
 	expected := hex.EncodeToString(mac.Sum(nil))
 
 	// Compare signatures using constant-time comparison
-	return hmac.Equal([]byte(signature), []byte(expected))
+	if !hmac.Equal([]byte(signature), []byte(expected)) {
+		slog.Warn("signature_mismatch",
+			slog.String("path", path),
+		)
+		return false
+	}
+
+	return true
 }

@@ -1,7 +1,8 @@
 package main
 
 import (
-	"log"
+	"log/slog"
+	"os"
 	"strings"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	"ai-graph-server/internal/config"
 	"ai-graph-server/internal/handler"
 	"ai-graph-server/internal/loader"
+	"ai-graph-server/internal/middleware"
 	"ai-graph-server/internal/security"
 	"ai-graph-server/internal/service"
 
@@ -18,13 +20,25 @@ import (
 )
 
 func main() {
+	// Initialize structured logger with JSON output
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}))
+	slog.SetDefault(logger)
+
 	// Load configuration from environment variables
 	cfg := config.Load()
+	slog.Info("configuration_loaded",
+		slog.String("port", cfg.Port),
+		slog.String("data_path", cfg.DataPath),
+		slog.String("allowed_origin", cfg.AllowedOrigin),
+	)
 
 	// Load graph data from JSON file
 	graphData, err := loader.LoadGraphData(cfg.DataPath)
 	if err != nil {
-		log.Fatalf("Failed to load graph data from %s: %v", cfg.DataPath, err)
+		slog.Error("failed_to_load_graph_data", slog.String("path", cfg.DataPath), slog.Any("error", err))
+		os.Exit(1)
 	}
 
 	// Detect flat communities using Louvain algorithm
@@ -51,7 +65,10 @@ func main() {
 	go func() {
 		for {
 			time.Sleep(1 * time.Minute)
-			tokenStore.CleanExpired()
+			cleaned := tokenStore.CleanExpired()
+			if cleaned > 0 {
+				slog.Info("tokens_cleaned", slog.Int("count", cleaned))
+			}
 		}
 	}()
 
@@ -78,6 +95,9 @@ func main() {
 			})
 		},
 	}))
+
+	// Apply request logging middleware
+	app.Use(middleware.Logger())
 
 	// Apply CORS middleware
 	app.Use(cors.New(cors.Config{
@@ -128,13 +148,17 @@ func main() {
 	api.Get("/expand", gh.Expand)
 
 	// Log startup information
-	log.Printf("🚀 AI-Graph Server starting on :%s", cfg.Port)
-	log.Printf("📊 Loaded %d nodes, %d edges, %d hierarchical communities (max level %d)",
-		len(graphData.Nodes), len(graphData.Edges),
-		community.CountAllCommunities(hierarchicalCommunities), maxLevel)
+	slog.Info("server_starting",
+		slog.String("port", cfg.Port),
+		slog.Int("nodes", len(graphData.Nodes)),
+		slog.Int("edges", len(graphData.Edges)),
+		slog.Int("communities", community.CountAllCommunities(hierarchicalCommunities)),
+		slog.Int("max_level", maxLevel),
+	)
 
 	// Start HTTP server
 	if err := app.Listen(":" + cfg.Port); err != nil {
-		log.Fatalf("Server failed: %v", err)
+		slog.Error("server_failed", slog.Any("error", err))
+		os.Exit(1)
 	}
 }

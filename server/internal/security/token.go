@@ -60,13 +60,17 @@ func (ts *TokenStore) Validate(token string) bool {
 }
 
 // CleanExpired removes all expired tokens from the store
-func (ts *TokenStore) CleanExpired() {
+// Returns the number of tokens that were cleaned.
+func (ts *TokenStore) CleanExpired() int {
 	ts.mu.Lock()
 	defer ts.mu.Unlock()
 	now := time.Now()
+	count := 0
 	for token, expire := range ts.tokens {
 		if now.After(expire) {
 			delete(ts.tokens, token)
+			count++
 		}
 	}
+	return count
 }

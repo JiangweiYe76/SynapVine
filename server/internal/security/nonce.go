@@ -1,6 +1,7 @@
 package security
 
 import (
+	"log/slog"
 	"sync"
 	"time"
 )
@@ -27,6 +28,7 @@ func (ns *NonceStore) Mark(nonce string) bool {
 
 	// Check if nonce already exists
 	if _, exists := ns.nonces[nonce]; exists {
+		slog.Warn("nonce_replay_rejected", slog.String("nonce", nonce))
 		return false
 	}
 

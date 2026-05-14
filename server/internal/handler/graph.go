@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log/slog"
 	"strconv"
 	"strings"
 
@@ -62,6 +63,7 @@ func (h *GraphHandler) NodeDetail(c *fiber.Ctx) error {
 	id := c.Params("id")
 	detail, ok := h.svc.NodeDetail(id)
 	if !ok {
+		slog.Warn("node_not_found", slog.String("node_id", id), slog.String("ip", c.IP()))
 		return c.Status(404).JSON(model.ErrorResponse{
 			Error:   "node_not_found",
 			Message: "节点 " + id + " 不存在",
@@ -96,13 +98,20 @@ func (h *GraphHandler) NodeEdges(c *fiber.Ctx) error {
 func (h *GraphHandler) Search(c *fiber.Ctx) error {
 	query := c.Query("q", "")
 	if query == "" {
+		slog.Warn("search_missing_query", slog.String("ip", c.IP()))
 		return c.Status(400).JSON(model.ErrorResponse{
 			Error:   "missing_query",
 			Message: "请提供搜索关键词 q 参数",
 		})
 	}
 	limit, _ := strconv.Atoi(c.Query("limit", "20"))
-	return c.JSON(h.svc.Search(query, limit))
+	result := h.svc.Search(query, limit)
+	slog.Info("search_executed",
+		slog.String("query", query),
+		slog.Int("results", len(result.Results)),
+		slog.String("ip", c.IP()),
+	)
+	return c.JSON(result)
 }
 
 // Expand handles GET /api/graph/expand
