@@ -22,6 +22,12 @@ const emit = defineEmits<{
 const containerRef = ref<HTMLDivElement>()
 let graph: any = null
 
+interface SavedCamera {
+  pos: { x: number; y: number; z: number }
+  lookAt: { x: number; y: number; z: number }
+}
+const savedCamera = ref<SavedCamera | null>(null)
+
 function getNodeColor(node: any) {
   return PALETTE[node.community_id % PALETTE.length]
 }
@@ -215,10 +221,30 @@ watch(() => props.highlightedCommunity, (communityIds) => {
   applyCommunityFilter(communityIds)
 })
 
-watch(() => props.selectedNode, (node) => {
+watch(() => props.selectedNode, (node, prevNode) => {
   refreshNodes()
 
-  if (!graph || !node) return
+  if (!graph) return
+
+  if (!node) {
+    if (savedCamera.value) {
+      graph.cameraPosition(
+        savedCamera.value.pos,
+        savedCamera.value.lookAt,
+        800
+      )
+      savedCamera.value = null
+    }
+    return
+  }
+
+  if (!prevNode) {
+    const cp = graph.cameraPosition()
+    savedCamera.value = {
+      pos: { x: cp.x, y: cp.y, z: cp.z },
+      lookAt: { x: cp.lookAt.x, y: cp.lookAt.y, z: cp.lookAt.z },
+    }
+  }
 
   const tryLookAt = () => {
     const graphNodes = graph.graphData()?.nodes || []
