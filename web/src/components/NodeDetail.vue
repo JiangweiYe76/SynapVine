@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import type { NodeDetail as NodeDetailType, HierarchicalCommunity } from '../types/graph'
 import { PALETTE } from '../types/graph'
 import { X } from 'lucide-vue-next'
+import { Button } from '@/components/ui/button'
 
 const { t } = useI18n()
 
@@ -61,12 +62,13 @@ function getCommunityColor(communityId: number) {
     >
       <div class="flex items-center justify-between px-6 py-5 border-b border-(--color-border-default) shrink-0">
         <h2 class="text-lg font-semibold text-(--color-text-primary)">{{ t('nodeDetail.title') }}</h2>
-        <button
-          class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-(--color-bg-tertiary) text-(--color-text-secondary) hover:text-(--color-text-primary) transition-colors"
+        <Button
+          variant="ghost"
+          size="icon"
           @click="emit('close')"
         >
           <X class="w-6 h-6" />
-        </button>
+        </Button>
       </div>
 
       <div class="flex-1 overflow-y-auto px-6 py-6 space-y-6">
@@ -90,7 +92,7 @@ function getCommunityColor(communityId: number) {
           <div class="flex items-center gap-4">
             <div class="flex-1 h-3 bg-(--color-border-default) rounded-full overflow-hidden transition-colors duration-300">
               <div
-                class="h-full bg-gradient-to-r from-[#58a6ff] to-[#79c0ff] rounded-full transition-all duration-500"
+                class="h-full bg-gradient-to-r from-primary to-primary/70 rounded-full transition-all duration-500"
                 :style="{ width: `${(detail.node.influence_score / 10) * 100}%` }"
               />
             </div>
@@ -121,7 +123,7 @@ function getCommunityColor(communityId: number) {
               </div>
               <div class="flex items-center gap-4">
                 <span class="text-sm text-(--color-text-muted)">{{ neighbor.relation }}</span>
-                <span class="text-sm font-semibold text-[#58a6ff]">{{ (neighbor.weight * 100).toFixed(0) }}%</span>
+                <span class="text-sm font-semibold text-primary">{{ (neighbor.weight * 100).toFixed(0) }}%</span>
               </div>
             </div>
           </div>

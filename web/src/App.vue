@@ -14,6 +14,13 @@ import { useTheme } from './composables/useTheme'
 import type { SearchResult, NodeDetail as NodeDetailType } from './types/graph'
 import { searchNodes, getNodeDetail } from './api/graph'
 import { Zap, Sun, Moon, Settings, X } from 'lucide-vue-next'
+import { Button } from '@/components/ui/button'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 const {
   nodes,
@@ -103,10 +110,11 @@ function handleCommunityHighlight(communityId: number | null) {
 </script>
 
 <template>
-  <div class="flex flex-col h-screen bg-(--color-bg-primary) transition-colors duration-300">
+  <TooltipProvider>
+    <div class="flex flex-col h-screen bg-(--color-bg-primary) transition-colors duration-300">
     <header class="h-16 bg-(--color-bg-secondary) border-b border-(--color-border-default) flex items-center justify-between px-8 shrink-0 transition-colors duration-300">
       <div class="flex items-center gap-4">
-        <Zap class="w-7 h-7 text-[#58a6ff]" />
+        <Zap class="w-7 h-7 text-primary" />
         <h1 class="text-xl font-semibold text-(--color-text-primary)">{{ t('app.title') }}</h1>
       </div>
       <div class="flex items-center gap-4">
@@ -116,28 +124,49 @@ function handleCommunityHighlight(communityId: number | null) {
           :results="searchResults"
           :loading="loading"
         />
-        <button
-          class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-(--color-bg-tertiary) text-(--color-text-secondary) hover:text-(--color-text-primary) transition-colors"
-          @click="theme.toggleTheme"
-          :title="theme.theme.value === 'dark' ? t('theme.switchToLight') : t('theme.switchToDark')"
-        >
-          <Sun v-if="theme.theme.value === 'dark'" class="w-5 h-5" />
-          <Moon v-else class="w-5 h-5" />
-        </button>
-        <button
-          class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-(--color-bg-tertiary) text-(--color-text-secondary) hover:text-(--color-text-primary) text-xs font-semibold transition-colors"
-          @click="toggleLocale"
-          :title="locale === 'zh-CN' ? 'Switch to English' : '切换到中文'"
-        >
-          {{ locale === 'zh-CN' ? 'EN' : '中' }}
-        </button>
-        <button
-          class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-(--color-bg-tertiary) text-(--color-text-secondary) hover:text-(--color-text-primary) transition-colors"
-          @click="showSettings = true"
-          :title="t('settings.title')"
-        >
-          <Settings class="w-5 h-5" />
-        </button>
+        <Tooltip>
+          <TooltipTrigger as-child>
+            <Button
+              variant="ghost"
+              size="icon"
+              @click="theme.toggleTheme"
+            >
+              <Sun v-if="theme.theme.value === 'dark'" class="w-5 h-5" />
+              <Moon v-else class="w-5 h-5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>{{ theme.theme.value === 'dark' ? t('theme.switchToLight') : t('theme.switchToDark') }}</p>
+          </TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger as-child>
+            <Button
+              variant="ghost"
+              class="w-10 h-10 text-xs font-semibold"
+              @click="toggleLocale"
+            >
+              {{ locale === 'zh-CN' ? 'EN' : '中' }}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>{{ locale === 'zh-CN' ? 'Switch to English' : '切换到中文' }}</p>
+          </TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger as-child>
+            <Button
+              variant="ghost"
+              size="icon"
+              @click="showSettings = true"
+            >
+              <Settings class="w-5 h-5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>{{ t('settings.title') }}</p>
+          </TooltipContent>
+        </Tooltip>
       </div>
     </header>
 
@@ -171,7 +200,7 @@ function handleCommunityHighlight(communityId: number | null) {
         class="absolute inset-0 bg-(--color-bg-primary)/80 flex items-center justify-center z-50"
       >
         <div class="flex flex-col items-center gap-4">
-          <div class="w-12 h-12 border-4 border-[#58a6ff] border-t-transparent rounded-full animate-spin" />
+          <div class="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
           <span class="text-sm text-(--color-text-secondary)">{{ t('app.loading') }}</span>
         </div>
       </div>
@@ -182,20 +211,22 @@ function handleCommunityHighlight(communityId: number | null) {
           class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-red-500/90 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-3 z-50"
         >
           <span class="text-sm">{{ error }}</span>
-          <button
-            class="text-white/80 hover:text-white transition-colors"
+          <Button
+            variant="ghost"
+            class="text-white/80 hover:text-white h-auto w-auto p-0"
             @click="clearError"
           >
             <X class="w-4 h-4" />
-          </button>
+          </Button>
         </div>
       </Transition>
     </div>
 
     <TimelineControl v-model="timelineVisible" />
     <StatusBar :stats="stats" :loading="loading" />
-    <SettingsDialog v-if="showSettings" @close="showSettings = false" />
+    <SettingsDialog v-model:open="showSettings" />
   </div>
+  </TooltipProvider>
 </template>
 
 <style scoped>

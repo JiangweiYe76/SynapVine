@@ -1,12 +1,36 @@
 <script setup lang="ts">
 import { reactive, watch, onMounted, onUnmounted, inject, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Settings, X } from 'lucide-vue-next'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 const { t } = useI18n()
 
+const props = defineProps<{
+  open?: boolean
+}>()
+
 const emit = defineEmits<{
-  close: []
+  (e: 'update:open', value: boolean): void
 }>()
 
 const themeComposable = inject<any>('theme')!
@@ -54,15 +78,13 @@ function resetDefaults() {
 
 const speeds = [0.5, 1, 2, 5]
 
-function handleOverlayClick(e: MouseEvent) {
-  if ((e.target as HTMLElement).dataset.overlay !== undefined) {
-    emit('close')
-  }
+function close() {
+  emit('update:open', false)
 }
 
 function handleKeydown(e: KeyboardEvent) {
   if (e.key === 'Escape') {
-    emit('close')
+    close()
   }
 }
 
@@ -76,54 +98,25 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div
-    data-overlay
-    class="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]"
-    @click="handleOverlayClick"
-  >
-    <div
-      class="bg-(--color-bg-secondary) border border-(--color-border-default) rounded-2xl shadow-2xl w-[440px] max-h-[85vh] flex flex-col transition-colors duration-300"
-    >
-      <div class="flex items-center justify-between px-6 py-5 border-b border-(--color-border-default) shrink-0">
-        <div class="flex items-center gap-3">
-          <Settings class="w-6 h-6 text-(--color-text-secondary)" />
-          <h2 class="text-lg font-semibold text-(--color-text-primary)">{{ t('settings.title') }}</h2>
-        </div>
-        <button
-          class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-(--color-bg-tertiary) text-(--color-text-secondary) hover:text-(--color-text-primary) transition-colors"
-          @click="emit('close')"
-        >
-          <X class="w-6 h-6" />
-        </button>
-      </div>
+  <Dialog :open="open" @update:open="emit('update:open', $event)">
+    <DialogContent class="sm:max-w-[440px]">
+      <DialogHeader>
+        <DialogTitle>{{ t('settings.title') }}</DialogTitle>
+      </DialogHeader>
 
-      <div class="flex-1 overflow-y-auto px-6 py-6 space-y-8">
+      <div class="space-y-8 py-2">
         <section>
           <h3 class="text-sm font-semibold text-(--color-text-secondary) uppercase tracking-wider mb-4">{{ t('settings.appearance') }}</h3>
 
           <div class="space-y-5">
             <div class="flex items-center justify-between">
               <label class="text-sm text-(--color-text-primary)">{{ t('settings.theme') }}</label>
-              <div class="flex bg-(--color-bg-tertiary) rounded-lg p-1 gap-1">
-                <button
-                  class="px-4 py-1.5 rounded-md text-sm transition-colors"
-                  :class="currentTheme === 'dark'
-                    ? 'bg-(--color-bg-primary) text-(--color-text-primary) shadow-sm'
-                    : 'text-(--color-text-secondary) hover:text-(--color-text-primary)'"
-                  @click="themeComposable.setTheme('dark')"
-                >
-                  {{ t('settings.themeDark') }}
-                </button>
-                <button
-                  class="px-4 py-1.5 rounded-md text-sm transition-colors"
-                  :class="currentTheme === 'light'
-                    ? 'bg-(--color-bg-primary) text-(--color-text-primary) shadow-sm'
-                    : 'text-(--color-text-secondary) hover:text-(--color-text-primary)'"
-                  @click="themeComposable.setTheme('light')"
-                >
-                  {{ t('settings.themeLight') }}
-                </button>
-              </div>
+              <Tabs :model-value="currentTheme" @update:model-value="themeComposable.setTheme($event as any)">
+                <TabsList class="grid w-32 grid-cols-2">
+                  <TabsTrigger value="dark">{{ t('settings.themeDark') }}</TabsTrigger>
+                  <TabsTrigger value="light">{{ t('settings.themeLight') }}</TabsTrigger>
+                </TabsList>
+              </Tabs>
             </div>
 
             <div>
@@ -174,50 +167,41 @@ onUnmounted(() => {
           <div class="space-y-5">
             <div class="flex items-center justify-between">
               <label class="text-sm text-(--color-text-primary)">{{ t('settings.defaultSpeed') }}</label>
-              <select
-                :value="settings.timelineSpeed"
-                @change="settings.timelineSpeed = parseFloat(($event.target as HTMLSelectElement).value)"
-                class="bg-(--color-bg-tertiary) border border-(--color-border-default) rounded-lg px-3 py-1.5 text-sm text-(--color-text-primary) outline-none focus:border-(--color-accent-blue) transition-colors cursor-pointer"
-              >
-                <option v-for="s in speeds" :key="s" :value="s">{{ s }}x</option>
-              </select>
+              <Select :model-value="settings.timelineSpeed.toString()" @update:model-value="(v: any) => { if (v) settings.timelineSpeed = parseFloat(v) }">
+                <SelectTrigger class="w-20">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem v-for="s in speeds" :key="s" :value="s.toString()">
+                    {{ s }}x
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div class="flex items-center justify-between">
               <label class="text-sm text-(--color-text-primary)">{{ t('settings.autoPlayTimeline') }}</label>
-              <button
-                role="switch"
-                :aria-checked="settings.autoPlayTimeline"
-                class="relative w-11 h-6 rounded-full transition-colors cursor-pointer"
-                :class="settings.autoPlayTimeline ? 'bg-(--color-accent-blue)' : 'bg-(--color-bg-tertiary)'"
-                @click="settings.autoPlayTimeline = !settings.autoPlayTimeline"
-              >
-                <span
-                  class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform shadow-sm"
-                  :class="settings.autoPlayTimeline ? 'translate-x-5' : 'translate-x-0'"
-                />
-              </button>
+              <Switch
+                :checked="settings.autoPlayTimeline"
+                @update:checked="settings.autoPlayTimeline = $event"
+              />
             </div>
           </div>
         </section>
-
-
       </div>
 
-      <div class="px-6 py-4 border-t border-(--color-border-default) flex justify-between items-center shrink-0">
-        <button
-          class="px-4 py-2 text-sm text-(--color-text-secondary) hover:text-(--color-accent-red) rounded-lg hover:bg-(--color-bg-tertiary) transition-colors"
+      <DialogFooter>
+        <Button
+          variant="ghost"
+          class="text-(--color-text-secondary) hover:text-(--color-accent-red)"
           @click="resetDefaults"
         >
           {{ t('settings.resetDefaults') }}
-        </button>
-        <button
-          class="px-6 py-2 text-sm font-medium bg-(--color-accent-blue) text-white rounded-lg hover:opacity-90 transition-opacity"
-          @click="emit('close')"
-        >
+        </Button>
+        <Button @click="close">
           {{ t('settings.done') }}
-        </button>
-      </div>
-    </div>
-  </div>
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
 </template>

@@ -3,6 +3,7 @@ import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { SearchResult } from '../types/graph'
 import { Search as SearchIcon } from 'lucide-vue-next'
+import { Input } from '@/components/ui/input'
 
 const { t } = useI18n()
 
@@ -46,18 +47,15 @@ function handleBlur() {
 </script>
 
 <template>
-  <div class="relative">
-    <div class="flex items-center gap-3 bg-(--color-bg-tertiary) border-(--color-border-default) rounded-xl px-4 py-3 w-96 transition-colors duration-300">
-      <SearchIcon class="w-5 h-5 text-(--color-text-secondary)" />
-      <input
-        v-model="query"
-        type="text"
-        :placeholder="t('search.placeholder')"
-        class="bg-transparent border-none outline-none text-base text-(--color-text-primary) placeholder-(--color-text-muted) w-full"
-        @blur="handleBlur"
-      >
-      <div v-if="loading" class="w-5 h-5 border-2 border-[#58a6ff] border-t-transparent rounded-full animate-spin" />
-    </div>
+  <div class="relative w-96">
+    <SearchIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground z-10 pointer-events-none" />
+    <Input
+      v-model="query"
+      :placeholder="t('search.placeholder')"
+      class="pl-10 pr-10"
+      @blur="handleBlur"
+    />
+    <div v-if="loading" class="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
 
     <div
       v-if="showResults && results.length > 0"

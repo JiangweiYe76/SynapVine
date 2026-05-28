@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { HierarchicalCommunity } from '../types/graph'
 import { ChevronRight, ChevronLeft } from 'lucide-vue-next'
+import { Button } from '@/components/ui/button'
 
 const { t } = useI18n()
 
@@ -48,13 +49,14 @@ const topLevelChildren = computed(() => props.communities[0]?.children || [])
 </script>
 
 <template>
-  <button
+  <Button
     v-if="!panelVisible"
-    class="absolute left-0 top-12 w-10 h-14 bg-(--color-bg-secondary) border border-(--color-border-default) rounded-r-xl flex items-center justify-center z-30 shadow-lg hover:bg-(--color-bg-tertiary) transition-colors cursor-pointer"
+    variant="ghost"
+    class="absolute left-0 top-12 w-10 h-14 z-30 bg-(--color-bg-secondary) border border-l-0 border-(--color-border-default) rounded-r-xl shadow-lg hover:bg-(--color-bg-tertiary)"
     @click="panelVisible = true"
   >
     <ChevronRight class="w-5 h-5 text-(--color-text-secondary)" />
-  </button>
+  </Button>
 
   <Transition
     enter-active-class="transition-transform duration-300 ease-out"
@@ -70,12 +72,13 @@ const topLevelChildren = computed(() => props.communities[0]?.children || [])
     >
       <div class="flex items-center justify-between px-6 py-5 border-b border-(--color-border-default) shrink-0">
         <h2 class="text-lg font-semibold text-(--color-text-primary)">{{ t('communityLegend.title') }}</h2>
-        <button
-          class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-(--color-bg-tertiary) text-(--color-text-secondary) hover:text-(--color-text-primary) transition-colors"
+        <Button
+          variant="ghost"
+          size="icon"
           @click="panelVisible = false"
         >
           <ChevronLeft class="w-5 h-5" />
-        </button>
+        </Button>
       </div>
 
       <div class="flex-1 overflow-y-auto px-6 py-6 space-y-1">
@@ -101,16 +104,18 @@ const topLevelChildren = computed(() => props.communities[0]?.children || [])
               : 'hover:bg-(--color-bg-tertiary)'"
             @click="handleClick(comm)"
           >
-            <button
+            <Button
               v-if="comm.children && comm.children.length > 0"
-              class="w-5 h-5 flex items-center justify-center text-(--color-text-muted) hover:text-(--color-text-primary) shrink-0 rounded transition-colors"
+              variant="ghost"
+              size="icon"
+              class="size-5"
               @click.stop="toggleCollapse(comm.id)"
             >
               <ChevronRight
-                class="w-3.5 h-3.5 transition-transform duration-200"
+                class="size-3.5 transition-transform duration-200"
                 :class="{ 'rotate-90': !collapsed.has(comm.id) }"
               />
-            </button>
+            </Button>
             <div v-else class="w-5 shrink-0" />
             <div
               class="w-3 h-3 rounded-full shrink-0"
