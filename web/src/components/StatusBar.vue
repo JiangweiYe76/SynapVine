@@ -28,7 +28,7 @@ const props = defineProps<{
       <span class="text-base text-(--color-text-primary) font-mono tabular-nums font-medium">{{ stats?.community_count || 0 }}</span>
     </div>
     <div v-if="loading" class="flex items-center gap-3 ml-auto">
-      <div class="w-4 h-4 border-2 border-[#58a6ff] border-t-transparent rounded-full animate-spin" />
+      <div class="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
       <span class="text-sm text-(--color-text-secondary)">{{ t('statusBar.loading') }}</span>
     </div>
   </div>

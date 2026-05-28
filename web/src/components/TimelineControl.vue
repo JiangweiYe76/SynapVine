@@ -6,6 +6,11 @@ import {
   SkipBack, ChevronLeft, Play, Pause, ChevronRight, SkipForward,
   ChevronDown, ChevronUp, Clock,
 } from 'lucide-vue-next'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 const { t } = useI18n()
 
@@ -50,20 +55,32 @@ const progressPercent = computed(() => yearToPercent(timeline.currentYear.value)
         <div class="flex items-center gap-4">
           <!-- Playback -->
           <div class="flex items-center gap-0.5 shrink-0">
-            <button
-              class="ctrl-btn"
-              @click="timeline.seek(timeline.range.value.minYear)"
-              :title="t('timeline.earliest', { year: timeline.range.value.minYear })"
-            >
-              <SkipBack :size="15" />
-            </button>
-            <button
-              class="ctrl-btn"
-              @click="timeline.prev()"
-              :title="t('timeline.prevYear')"
-            >
-              <ChevronLeft :size="15" />
-            </button>
+            <Tooltip>
+              <TooltipTrigger as-child>
+                <button
+                  class="ctrl-btn"
+                  @click="timeline.seek(timeline.range.value.minYear)"
+                >
+                  <SkipBack :size="15" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{{ t('timeline.earliest', { year: timeline.range.value.minYear }) }}</p>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger as-child>
+                <button
+                  class="ctrl-btn"
+                  @click="timeline.prev()"
+                >
+                  <ChevronLeft :size="15" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{{ t('timeline.prevYear') }}</p>
+              </TooltipContent>
+            </Tooltip>
             <button
               class="ctrl-btn play-btn"
               @click="timeline.isPlaying.value ? timeline.pause() : timeline.play()"
@@ -71,20 +88,32 @@ const progressPercent = computed(() => yearToPercent(timeline.currentYear.value)
               <Pause v-if="timeline.isPlaying.value" :size="18" />
               <Play v-else :size="18" />
             </button>
-            <button
-              class="ctrl-btn"
-              @click="timeline.next()"
-              :title="t('timeline.nextYear')"
-            >
-              <ChevronRight :size="15" />
-            </button>
-            <button
-              class="ctrl-btn"
-              @click="timeline.seek(timeline.range.value.maxYear)"
-              :title="t('timeline.latest', { year: timeline.range.value.maxYear })"
-            >
-              <SkipForward :size="15" />
-            </button>
+            <Tooltip>
+              <TooltipTrigger as-child>
+                <button
+                  class="ctrl-btn"
+                  @click="timeline.next()"
+                >
+                  <ChevronRight :size="15" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{{ t('timeline.nextYear') }}</p>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger as-child>
+                <button
+                  class="ctrl-btn"
+                  @click="timeline.seek(timeline.range.value.maxYear)"
+                >
+                  <SkipForward :size="15" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{{ t('timeline.latest', { year: timeline.range.value.maxYear }) }}</p>
+              </TooltipContent>
+            </Tooltip>
           </div>
 
           <!-- Year -->
@@ -106,13 +135,19 @@ const progressPercent = computed(() => yearToPercent(timeline.currentYear.value)
           </div>
 
           <!-- Collapse -->
-          <button
-            class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-(--color-bg-tertiary) text-(--color-text-muted) hover:text-(--color-text-primary) transition-colors shrink-0"
-            @click="emit('update:modelValue', false)"
-            :title="t('timeline.hide')"
-          >
-            <ChevronDown :size="16" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger as-child>
+              <button
+                class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-(--color-bg-tertiary) text-(--color-text-muted) hover:text-(--color-text-primary) transition-colors shrink-0"
+                @click="emit('update:modelValue', false)"
+              >
+                <ChevronDown :size="16" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{{ t('timeline.hide') }}</p>
+            </TooltipContent>
+          </Tooltip>
         </div>
 
         <!-- Track -->
@@ -167,16 +202,22 @@ const progressPercent = computed(() => yearToPercent(timeline.currentYear.value)
     </Transition>
 
     <Transition name="trigger-fade">
-      <div
-        v-show="modelValue === false"
-        class="timeline-trigger"
-        @click="emit('update:modelValue', true)"
-        :title="t('timeline.show')"
-      >
+      <Tooltip>
+        <TooltipTrigger as-child>
+          <div
+            v-show="modelValue === false"
+            class="timeline-trigger"
+            @click="emit('update:modelValue', true)"
+          >
         <Clock :size="14" />
         <span class="text-xs font-medium whitespace-nowrap">{{ t('timeline.show') }}</span>
         <ChevronUp :size="14" />
-      </div>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>{{ t('timeline.show') }}</p>
+        </TooltipContent>
+      </Tooltip>
     </Transition>
   </div>
 </template>
@@ -194,7 +235,7 @@ const progressPercent = computed(() => yearToPercent(timeline.currentYear.value)
   border: 1px solid var(--color-border-default);
   border-radius: 16px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
-  z-index: 100;
+  z-index: 40;
   backdrop-filter: blur(12px);
   transition: border-color 0.3s ease;
 }
@@ -400,7 +441,7 @@ const progressPercent = computed(() => yearToPercent(timeline.currentYear.value)
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(12px);
   cursor: pointer;
-  z-index: 100;
+  z-index: 40;
   color: var(--color-text-secondary);
   transition: all 0.2s ease;
 }
