@@ -13,7 +13,7 @@ import { useTimeline } from './composables/useTimeline'
 import { useTheme } from './composables/useTheme'
 import type { SearchResult, NodeDetail as NodeDetailType } from './types/graph'
 import { searchNodes, getNodeDetail } from './api/graph'
-import { Zap, Sun, Moon, Clock, Settings, X } from 'lucide-vue-next'
+import { Zap, Sun, Moon, Settings, X } from 'lucide-vue-next'
 
 const {
   nodes,
@@ -133,14 +133,6 @@ function handleCommunityHighlight(communityId: number | null) {
         </button>
         <button
           class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-(--color-bg-tertiary) text-(--color-text-secondary) hover:text-(--color-text-primary) transition-colors"
-          @click="timelineVisible = !timelineVisible"
-          :title="timelineVisible ? t('timeline.hide') : t('timeline.show')"
-        >
-          <Clock v-if="timelineVisible" class="w-5 h-5" />
-          <Clock v-else class="w-5 h-5 opacity-40" />
-        </button>
-        <button
-          class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-(--color-bg-tertiary) text-(--color-text-secondary) hover:text-(--color-text-primary) transition-colors"
           @click="showSettings = true"
           :title="t('settings.title')"
         >
@@ -200,9 +192,7 @@ function handleCommunityHighlight(communityId: number | null) {
       </Transition>
     </div>
 
-    <Transition name="timeline-slide">
-      <TimelineControl v-if="timelineVisible" />
-    </Transition>
+    <TimelineControl v-model="timelineVisible" />
     <StatusBar :stats="stats" :loading="loading" />
     <SettingsDialog v-if="showSettings" @close="showSettings = false" />
   </div>
@@ -218,14 +208,5 @@ function handleCommunityHighlight(communityId: number | null) {
   opacity: 0;
 }
 
-.timeline-slide-enter-active,
-.timeline-slide-leave-active {
-  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-}
 
-.timeline-slide-enter-from,
-.timeline-slide-leave-to {
-  opacity: 0;
-  transform: translateY(100%);
-}
 </style>

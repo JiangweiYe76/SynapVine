@@ -2,11 +2,22 @@
 import { inject, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { TimelineState, TimelineActions } from '../composables/useTimeline'
-import { SkipBack, ChevronLeft, Play, Pause, ChevronRight, SkipForward } from 'lucide-vue-next'
+import {
+  SkipBack, ChevronLeft, Play, Pause, ChevronRight, SkipForward,
+  ChevronDown, ChevronUp, Clock,
+} from 'lucide-vue-next'
 
 const { t } = useI18n()
 
 const timeline = inject('timeline') as TimelineState & TimelineActions
+
+const props = defineProps<{
+  modelValue?: boolean
+}>()
+
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: boolean): void
+}>()
 
 const speeds = [0.5, 1, 2, 5]
 
@@ -29,94 +40,144 @@ const progressPercent = computed(() => yearToPercent(timeline.currentYear.value)
 </script>
 
 <template>
-  <div class="timeline-container" :class="{ 'is-playing': timeline.isPlaying.value }">
-    <div class="timeline-controls-row">
-      <div class="playback-btns">
-        <button class="ctrl-btn" @click="timeline.seek(timeline.range.value.minYear)" :title="t('timeline.earliest', { year: timeline.range.value.minYear })">
-          <SkipBack :size="15" />
-        </button>
-        <button class="ctrl-btn" @click="timeline.prev()" :title="t('timeline.prevYear')">
-          <ChevronLeft :size="15" />
-        </button>
-        <button
-          class="ctrl-btn play-btn"
-          @click="timeline.isPlaying.value ? timeline.pause() : timeline.play()"
-        >
-          <Pause v-if="timeline.isPlaying.value" :size="18" />
-          <Play v-else :size="18" />
-        </button>
-        <button class="ctrl-btn" @click="timeline.next()" :title="t('timeline.nextYear')">
-          <ChevronRight :size="15" />
-        </button>
-        <button class="ctrl-btn" @click="timeline.seek(timeline.range.value.maxYear)" :title="t('timeline.latest', { year: timeline.range.value.maxYear })">
-          <SkipForward :size="15" />
-        </button>
-      </div>
+  <div>
+    <Transition name="timeline-slide">
+      <div
+        v-show="modelValue !== false"
+        class="timeline-container"
+        :class="{ 'is-playing': timeline.isPlaying.value }"
+      >
+        <div class="flex items-center gap-4">
+          <!-- Playback -->
+          <div class="flex items-center gap-0.5 shrink-0">
+            <button
+              class="ctrl-btn"
+              @click="timeline.seek(timeline.range.value.minYear)"
+              :title="t('timeline.earliest', { year: timeline.range.value.minYear })"
+            >
+              <SkipBack :size="15" />
+            </button>
+            <button
+              class="ctrl-btn"
+              @click="timeline.prev()"
+              :title="t('timeline.prevYear')"
+            >
+              <ChevronLeft :size="15" />
+            </button>
+            <button
+              class="ctrl-btn play-btn"
+              @click="timeline.isPlaying.value ? timeline.pause() : timeline.play()"
+            >
+              <Pause v-if="timeline.isPlaying.value" :size="18" />
+              <Play v-else :size="18" />
+            </button>
+            <button
+              class="ctrl-btn"
+              @click="timeline.next()"
+              :title="t('timeline.nextYear')"
+            >
+              <ChevronRight :size="15" />
+            </button>
+            <button
+              class="ctrl-btn"
+              @click="timeline.seek(timeline.range.value.maxYear)"
+              :title="t('timeline.latest', { year: timeline.range.value.maxYear })"
+            >
+              <SkipForward :size="15" />
+            </button>
+          </div>
 
-      <div class="year-display">
-        <span class="year-num">{{ timeline.currentYear.value }}</span>
-      </div>
+          <!-- Year -->
+          <div class="flex-1 flex items-center justify-center">
+            <span class="year-num">{{ timeline.currentYear.value }}</span>
+          </div>
 
-      <div class="speed-group">
-        <button
-          v-for="s in speeds"
-          :key="s"
-          class="speed-btn"
-          :class="{ active: timeline.playbackSpeed.value === s }"
-          @click="timeline.setSpeed(s)"
-        >
-          {{ s }}×
-        </button>
-      </div>
-    </div>
+          <!-- Speed -->
+          <div class="flex items-center gap-0.5 shrink-0 bg-(--color-bg-tertiary) rounded-lg p-0.5">
+            <button
+              v-for="s in speeds"
+              :key="s"
+              class="speed-btn"
+              :class="{ active: timeline.playbackSpeed.value === s }"
+              @click="timeline.setSpeed(s)"
+            >
+              {{ s }}×
+            </button>
+          </div>
 
-    <div class="timeline-track">
-      <div class="slider-wrapper">
-        <div class="slider-bg">
-          <div class="slider-fill" :style="{ width: `${progressPercent}%` }" />
-          <div class="slider-ticks">
-            <div
-              v-for="(decade, index) in decadeTicks"
-              :key="decade"
-              class="slider-tick"
-              :style="{ left: `${yearToPercent(decade)}%` }"
-              :class="{
-                'tick-first': index === 0,
-                'tick-last': index === decadeTicks.length - 1,
-                'tick-passed': decade <= timeline.currentYear.value,
-              }"
+          <!-- Collapse -->
+          <button
+            class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-(--color-bg-tertiary) text-(--color-text-muted) hover:text-(--color-text-primary) transition-colors shrink-0"
+            @click="emit('update:modelValue', false)"
+            :title="t('timeline.hide')"
+          >
+            <ChevronDown :size="16" />
+          </button>
+        </div>
+
+        <!-- Track -->
+        <div class="timeline-track">
+          <div class="slider-wrapper">
+            <div class="slider-bg">
+              <div class="slider-fill" :style="{ width: `${progressPercent}%` }" />
+              <div class="slider-ticks">
+                <div
+                  v-for="(decade, index) in decadeTicks"
+                  :key="decade"
+                  class="slider-tick"
+                  :style="{ left: `${yearToPercent(decade)}%` }"
+                  :class="{
+                    'tick-first': index === 0,
+                    'tick-last': index === decadeTicks.length - 1,
+                    'tick-passed': decade <= timeline.currentYear.value,
+                  }"
+                />
+              </div>
+            </div>
+            <input
+              type="range"
+              class="timeline-slider"
+              :min="timeline.range.value.minYear"
+              :max="timeline.range.value.maxYear"
+              :value="timeline.currentYear.value"
+              :style="{ '--progress': `${progressPercent}%` }"
+              @input="(e) => timeline.seek(Number((e.target as HTMLInputElement).value))"
             />
           </div>
+          <div class="tick-labels">
+            <span
+              v-for="(decade, index) in decadeTicks"
+              :key="decade"
+              class="tick-label"
+              :class="{ 'tick-passed': decade <= timeline.currentYear.value }"
+              :style="{
+                left: `${yearToPercent(decade)}%`,
+                transform: index === 0
+                  ? 'translateX(0)'
+                  : index === decadeTicks.length - 1
+                    ? 'translateX(-100%)'
+                    : 'translateX(-50%)',
+              }"
+            >
+              {{ decade }}
+            </span>
+          </div>
         </div>
-        <input
-          type="range"
-          class="timeline-slider"
-          :min="timeline.range.value.minYear"
-          :max="timeline.range.value.maxYear"
-          :value="timeline.currentYear.value"
-          :style="{ '--progress': `${progressPercent}%` }"
-          @input="(e) => timeline.seek(Number((e.target as HTMLInputElement).value))"
-        />
       </div>
-      <div class="tick-labels">
-        <span
-          v-for="(decade, index) in decadeTicks"
-          :key="decade"
-          class="tick-label"
-          :class="{ 'tick-passed': decade <= timeline.currentYear.value }"
-          :style="{
-            left: `${yearToPercent(decade)}%`,
-            transform: index === 0
-              ? 'translateX(0)'
-              : index === decadeTicks.length - 1
-                ? 'translateX(-100%)'
-                : 'translateX(-50%)'
-          }"
-        >
-          {{ decade }}
-        </span>
+    </Transition>
+
+    <Transition name="trigger-fade">
+      <div
+        v-show="modelValue === false"
+        class="timeline-trigger"
+        @click="emit('update:modelValue', true)"
+        :title="t('timeline.show')"
+      >
+        <Clock :size="14" />
+        <span class="text-xs font-medium whitespace-nowrap">{{ t('timeline.show') }}</span>
+        <ChevronUp :size="14" />
       </div>
-    </div>
+    </Transition>
   </div>
 </template>
 
@@ -141,19 +202,6 @@ const progressPercent = computed(() => yearToPercent(timeline.currentYear.value)
 .timeline-container.is-playing {
   border-color: var(--color-timeline-accent);
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3), 0 0 30px var(--color-timeline-accent-dim);
-}
-
-.timeline-controls-row {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.playback-btns {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  flex-shrink: 0;
 }
 
 .ctrl-btn {
@@ -189,13 +237,6 @@ const progressPercent = computed(() => yearToPercent(timeline.currentYear.value)
   transform: scale(1.08);
 }
 
-.year-display {
-  flex: 1;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
 .year-num {
   font-family: 'JetBrains Mono', monospace;
   font-size: 32px;
@@ -203,16 +244,6 @@ const progressPercent = computed(() => yearToPercent(timeline.currentYear.value)
   color: var(--color-timeline-accent);
   letter-spacing: 3px;
   line-height: 1;
-}
-
-.speed-group {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  flex-shrink: 0;
-  background: var(--color-bg-tertiary);
-  border-radius: 8px;
-  padding: 2px;
 }
 
 .speed-btn {
@@ -288,10 +319,7 @@ const progressPercent = computed(() => yearToPercent(timeline.currentYear.value)
   transition: background 0.2s;
 }
 
-.slider-tick.tick-first {
-  display: none;
-}
-
+.slider-tick.tick-first,
 .slider-tick.tick-last {
   display: none;
 }
@@ -357,4 +385,53 @@ const progressPercent = computed(() => yearToPercent(timeline.currentYear.value)
   font-weight: 600;
 }
 
+.timeline-trigger {
+  position: fixed;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-default);
+  border-radius: 20px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(12px);
+  cursor: pointer;
+  z-index: 100;
+  color: var(--color-text-secondary);
+  transition: all 0.2s ease;
+}
+
+.timeline-trigger:hover {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+  transform: translateX(-50%) translateY(-2px);
+  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.35);
+}
+
+/* Transitions */
+.timeline-slide-enter-active,
+.timeline-slide-leave-active {
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.timeline-slide-enter-from,
+.timeline-slide-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(100%);
+}
+
+.trigger-fade-enter-active,
+.trigger-fade-leave-active {
+  transition: all 0.25s ease;
+}
+
+.trigger-fade-enter-from,
+.trigger-fade-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(8px);
+}
 </style>
