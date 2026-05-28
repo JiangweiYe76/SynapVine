@@ -34,5 +34,7 @@ Thumbs.db
 # Docs
 docs/
 
-# Trae
+# AI Coding Tools
 .trae/
+.claude/
+.codex/
