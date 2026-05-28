@@ -113,7 +113,7 @@ func main() {
 		if ua == "" || len(ua) < 20 {
 			return c.Status(403).JSON(fiber.Map{
 				"error":   "forbidden",
-				"message": "无效的客户端",
+				"message": "Invalid client",
 			})
 		}
 		return c.JSON(fiber.Map{
@@ -133,7 +133,7 @@ func main() {
 		if token == "" || !tokenStore.Validate(token) {
 			return c.Status(401).JSON(fiber.Map{
 				"error":   "invalid_token",
-				"message": "token 无效或已过期",
+				"message": "Token is invalid or expired",
 			})
 		}
 		return c.Next()

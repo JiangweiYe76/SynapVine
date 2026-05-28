@@ -66,7 +66,7 @@ func (h *GraphHandler) NodeDetail(c *fiber.Ctx) error {
 		slog.Warn("node_not_found", slog.String("node_id", id), slog.String("ip", c.IP()))
 		return c.Status(404).JSON(model.ErrorResponse{
 			Error:   "node_not_found",
-			Message: "节点 " + id + " 不存在",
+			Message: "Node " + id + " does not exist",
 		})
 	}
 	return c.JSON(detail)
@@ -87,7 +87,7 @@ func (h *GraphHandler) NodeEdges(c *fiber.Ctx) error {
 	if !ok {
 		return c.Status(404).JSON(model.ErrorResponse{
 			Error:   "node_not_found",
-			Message: "节点 " + id + " 不存在",
+			Message: "Node " + id + " does not exist",
 		})
 	}
 	return c.JSON(result)
@@ -101,7 +101,7 @@ func (h *GraphHandler) Search(c *fiber.Ctx) error {
 		slog.Warn("search_missing_query", slog.String("ip", c.IP()))
 		return c.Status(400).JSON(model.ErrorResponse{
 			Error:   "missing_query",
-			Message: "请提供搜索关键词 q 参数",
+			Message: "Please provide a search query via the 'q' parameter",
 		})
 	}
 	limit, _ := strconv.Atoi(c.Query("limit", "20"))
@@ -121,7 +121,7 @@ func (h *GraphHandler) Expand(c *fiber.Ctx) error {
 	if idsStr == "" {
 		return c.Status(400).JSON(model.ErrorResponse{
 			Error:   "missing_ids",
-			Message: "请提供节点 ID 列表 ids 参数",
+			Message: "Please provide node IDs via the 'ids' parameter",
 		})
 	}
 
