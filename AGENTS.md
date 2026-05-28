@@ -80,6 +80,17 @@ bun run preview
 
 ---
 
+## Language Policy
+
+All development artifacts must be written in English:
+
+- **Code comments** — All Go doc comments, inline `//` comments, and Vue/TS JSDoc must be in English.
+- **Log messages** — All `slog` output messages and human-readable attribute values must be in English.
+- **API error messages** — The `message` field in all HTTP error responses must be in English.
+- **Commit messages & PRs** — All Git commit messages and pull request descriptions must be in English.
+
+---
+
 ## Code Conventions
 
 ### Go (Backend)
@@ -89,6 +100,8 @@ bun run preview
 - All exported types/functions must have doc comments.
 - Layered architecture: `handler` (HTTP) -> `service` (business logic) -> `community`/`loader` (data).
 - Error responses follow the JSON shape: `{"error": "error_code", "message": "human readable"}`.
+- All `slog` messages and attribute values must be in English.
+- All doc comments on exported identifiers must be in English.
 
 ### Vue / TypeScript (Frontend)
 
@@ -99,12 +112,13 @@ bun run preview
 - API calls are centralized in `api/graph.ts`. Do not call `fetch` directly from components.
 - Components use PascalCase file names (e.g., `GraphCanvas.vue`).
 - Use Tailwind CSS for styling. CSS variables for theme colors (e.g., `--color-bg-primary`). Scoped `<style>` blocks are reserved for transitions/animations only.
+- All code comments, JSDoc, and inline annotations must be in English.
 
 ### Internationalization (i18n)
 
 - All user-visible strings must go through `vue-i18n`. Use `t('key')` from `useI18n()`.
-- Translation files: `web/src/locales/en-US.json`, `web/src/locales/zh-CN.json`.
-- When adding new UI text, add keys to **both** locale files.
+- `en-US.json` is the **source of truth** for development. All new UI text keys and English values are added there first.
+- `zh-CN.json` is maintained as a translation layer. Do not write Chinese text directly into components or code.
 
 ---
 
@@ -182,3 +196,4 @@ If you modify anything in `server/internal/security/`, you **must** ensure the f
 - If you modify both Go and Vue code, mention both in the commit message (e.g., `feat: add node filtering to API and UI`).
 - Run `go mod tidy` in `server/` before committing Go changes.
 - Run `bun run build` in `web/` before committing frontend changes to ensure TypeScript compiles cleanly.
+- All commit messages and PR descriptions must be written in English.
