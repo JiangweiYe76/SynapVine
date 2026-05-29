@@ -158,7 +158,7 @@ docker-compose up -d
 All development artifacts must be written in English:
 
 - **Code comments** — All Go doc comments, inline `//` comments, and Vue/TS JSDoc must be in English.
-- **Log messages** — All `slog` output messages and human-readable attribute values must be in English.
+- **Log messages** — All log output messages and human-readable attribute values must be in English.
 - **API error messages** — The `message` field in all HTTP error responses must be in English.
 - **Commit messages & PRs** — All Git commit messages and pull request descriptions must be in English.
 
