@@ -1,12 +1,12 @@
-# AI Knowledge Graph
+# SynapVine — AI Knowledge Graph
 
-An interactive 3D knowledge graph visualization of AI concepts, built with Vue 3 and Go. Nodes represent AI concepts (Transformer, BERT, GAN, etc.) and edges represent relationships between them. Communities are automatically detected using the Louvain algorithm, with multi-level hierarchical grouping.
+An interactive 3D knowledge graph visualization of AI concepts, with a management console for graph operations. Nodes represent AI concepts (Transformer, BERT, GAN, etc.) and edges represent relationships between them. Communities are automatically detected using the Louvain algorithm, with multi-level hierarchical grouping.
 
 ***
 
 ## Features
 
-### 3D Force-Directed Graph
+### 3D Force-Directed Graph (Portal)
 
 - WebGL-rendered 3D graph with force-directed layout
 - Node size reflects influence score, edge width reflects relationship weight
@@ -37,120 +37,83 @@ An interactive 3D knowledge graph visualization of AI concepts, built with Vue 3
 - Speed control (0.5x, 1x, 2x, 5x)
 - Milestone event popups at key years (e.g., 2017 Transformer paper, 2022 ChatGPT)
 
-### Dark Theme
+### Management Console
 
-- Toggle between dark and light themes
-- Persistent preference via localStorage
-
-### Security (Anti-Scraping)
-
-- Rate limiting (60 req/min per IP)
-- Token-based authentication (temporary tokens, 5 min TTL)
-- HMAC request signing with nonce replay protection
-- AES-GCM response encryption (DevTools sees only binary)
-- CORS with origin/referer validation
+- Dashboard with graph statistics
+- Node and edge management interfaces
+- JWT-based authentication
 
 ***
 
 ## Architecture
 
 ```
-┌──────────────────────────────────────────────────┐
-│  Vue 3 + TypeScript + Vite                        │
-│  ┌──────────┐ ┌───────────┐ ┌──────────────────┐ │
-│  │ SearchBar │ │ GraphCanvas│  │   NodeDetail     │ │
-│  └──────────┘ │ (3d-force  │  └──────────────────┘ │
-│  ┌──────────┐ │  -graph)  │                       │
-│  │Community  │ │           │                       │
-│  │ Legend    │ └───────────┘                       │
-│  └──────────┘ ┌──────────────┐ ┌───────────────┐  │
-│  ┌──────────┐ │ Timeline     │ │  StatusBar     │  │
-│  │ Theme    │ │ Control      │ └───────────────┘  │
-│  │ Toggle    │ └──────────────┘                   │
-│  └──────────┘                                      │
-└──────────────────────────────────────────────────┘
-                    │
-       HTTP/API (token + HMAC + AES)
-                    │
-┌──────────────────────────────────────────────────┐
-│  Go + Fiber (REST API)                            │
-│  ┌──────────┐ ┌───────────┐ ┌──────────────────┐ │
-│  │ Handler  │ │  Service   │ │  Community        │ │
-│  │ (router) │ │ (business) │ │  (Louvain +       │ │
-│  └──────────┘ └───────────┘ │   Hierarchical)    │ │
-│  ┌──────────┐ ┌───────────┐ └──────────────────┘ │
-│  │ Security │ │  Loader    │                      │
-│  │ (token,  │ │ (graph.json)                      │
-│  │  signer, │ └───────────┘                      │
-│  │  cipher) │                                      │
-│  └──────────┘                                      │
-└──────────────────────────────────────────────────┘
-                    │
-            data/graph.json
+                              ┌──────────────────────┐
+                              │      clients/        │
+                              │  ┌───────┐ ┌───────┐ │
+                              │  │portal │ │console│ │
+                              │  └───────┘ └───────┘ │
+                              └──────────┬─────┬─────┘
+                                         │     │
+                              ┌──────────┘     └──────────┐
+                              │                           │
+                              ▼                           ▼
+                    ┌─────────────────┐        ┌─────────────────┐
+                    │  services/      │        │  services/      │
+                    │  portal         │        │  console        │
+                    │                 │        │                 │
+                    │  Public read-   │        │  Auth + console │
+                    │  only graph     │        │  management     │
+                    └────────┬────────┘        └────────┬────────┘
+                             │                          │
+                             └────────────┬─────────────┘
+                                          │
+                                          ▼
+                               ┌──────────────────────┐
+                               │        core          │
+                               │   (internal)         │
+                               │   Neo4j CRUD         │
+                               │   Community detect   │
+                               │   Review queue       │
+                               └──────────────────────┘
+                                          │
+                                          ▼
+                               ┌──────────────────────┐
+                               │     discovery        │
+                               │   (internal)         │
+                               │   arXiv / social     │
+                               │   LLM pipeline       │
+                               └──────────────────────┘
 ```
 
 ***
 
-## Project Structure
-
-```
-AI-Graph/
-├── PRD.md                         # Product requirements (Chinese)
-├── TechDesign.md                  # Technical design (Chinese)
-├── data/
-│   └── graph.json                 # Static graph data
-├── server/
-│   ├── main.go                    # Entry point, Fiber app
-│   ├── go.mod / go.sum
-│   └── internal/
-│       ├── config/config.go       # Configuration
-│       ├── model/graph.go         # Data structures
-│       ├── loader/loader.go       # JSON data loading
-│       ├── community/             # Louvain & hierarchical detection
-│       ├── service/graph.go       # Business logic
-│       ├── handler/graph.go       # HTTP handlers
-│       └── security/              # Token, HMAC, AES, nonce
-├── web/
-│   ├── package.json / bun.lock
-│   ├── vite.config.ts
-│   └── src/
-│       ├── main.ts                # App entry
-│       ├── App.vue                 # Root component
-│       ├── api/graph.ts           # API client
-│       ├── mock/                  # Mock API for dev
-│       ├── types/graph.ts         # TypeScript types
-│       ├── composables/           # State management
-│       │   ├── useGraph.ts
-│       │   ├── useTheme.ts
-│       │   └── useTimeline.ts
-│       └── components/            # Vue components
-│           ├── GraphCanvas.vue    # 3D graph renderer
-│           ├── SearchBar.vue
-│           ├── CommunityLegend.vue
-│           ├── NodeDetail.vue
-│           ├── StatusBar.vue
-│           └── TimelineControl.vue
-```
-
-***
 
 ## Getting Started
 
 ### Prerequisites
 
-- **Go** ≥ 1.21
-- **Bun** ≥ 1.0 (or npm)
-- **Node.js** ≥ 18
+- **Go** >= 1.21
+- **Bun** >= 1.0 (or npm)
+- **Node.js** >= 18
+- **Docker** & **Docker Compose** (for Neo4j)
 
-### Server
+### Infrastructure
 
 ```bash
-cd server
+cd services/infra
+docker-compose up -d
+```
+
+Neo4j Browser: `http://localhost:7474`
+
+### Backend — Portal
+
+```bash
+cd services/portal
 go mod tidy
 go run main.go
 ```
-
-The server starts on `http://localhost:8000`.
 
 **Environment variables:**
 
@@ -160,71 +123,118 @@ The server starts on `http://localhost:8000`.
 | `DATA_PATH`      | `../data/graph.json`    | Graph data file path |
 | `ALLOWED_ORIGIN` | `http://localhost:5173` | CORS allowed origin  |
 
-### Web
+### Backend — Core
 
 ```bash
-cd web
-bun install
-
-# Mock mode (no server needed)
-bun run dev
-
-# Production build
-bun run build
-bun run preview
+cd services/core
+go mod tidy
+go run main.go
 ```
 
-The dev server starts on `http://localhost:5173`. In mock mode, all API calls are intercepted by the built-in mock server.
+**Environment variables:**
+
+| Variable         | Default                 | Description                |
+| ---------------- | ----------------------- | -------------------------- |
+| `PORT`           | `8001`                  | Server port                |
+| `DATA_PATH`      | `../../data/graph.json` | Graph data file path       |
+| `ALLOWED_ORIGIN` | `http://localhost:5174` | CORS allowed origin        |
+| `JWT_SECRET`     | *(dev key)*             | JWT signing secret         |
+
+### Frontend — Portal
+
+```bash
+cd clients/portal
+bun install
+bun run dev
+```
+
+Dev server proxies `/api` to Portal backend.
+
+### Frontend — Console
+
+```bash
+cd clients/console
+bun install
+bun run dev
+```
+
+Dev server proxies `/api` to Core backend.
 
 ***
 
 ## API Endpoints
 
-| Method | Path                         | Description                                 |
-| ------ | ---------------------------- | ------------------------------------------- |
-| GET    | `/api/token`                 | Obtain a temporary access token             |
-| GET    | `/api/graph/summary`         | Graph overview (communities, stats, top 20) |
-| GET    | `/api/graph/nodes`           | Paginated node list (with filters)          |
-| GET    | `/api/graph/nodes/:id`       | Node detail + neighbors                     |
-| GET    | `/api/graph/nodes/:id/edges` | Edges connected to a node                   |
-| GET    | `/api/graph/search`          | Search nodes by name/description            |
-| GET    | `/api/graph/expand`          | Expand graph by loading neighbors & edges   |
+### Portal (Public Graph API)
+
+| Method | Path                         | Auth | Description                                 |
+| ------ | ---------------------------- | ---- | ------------------------------------------- |
+| GET    | `/api/token`                 | No   | Obtain a temporary access token             |
+| GET    | `/api/graph/summary`         | Yes  | Graph overview (communities, stats, top 20) |
+| GET    | `/api/graph/nodes`           | Yes  | Paginated node list (with filters)          |
+| GET    | `/api/graph/nodes/:id`       | Yes  | Node detail + neighbors                     |
+| GET    | `/api/graph/nodes/:id/edges` | Yes  | Edges connected to a node                   |
+| GET    | `/api/graph/search`          | Yes  | Search nodes by name/description            |
+| GET    | `/api/graph/expand`          | Yes  | Expand graph by loading neighbors & edges   |
 
 All `/api/graph/*` endpoints require a valid token (`?token=xxx`).
+
+### Console (Auth)
+
+| Method | Path              | Auth | Description          |
+| ------ | ----------------- | ---- | -------------------- |
+| POST   | `/api/auth/login` | No   | User login           |
+| GET    | `/api/me`         | JWT  | Current user profile |
+
+***
+
+## Tech Stack
+
+| Layer | Tech | Version |
+|-------|------|---------|
+| Portal Frontend | Vue + TypeScript | 3.5.32 |
+| Console Frontend | Vue + TypeScript | 3.5.32 |
+| Build Tool | Vite | 8.0.10 |
+| CSS | Tailwind CSS | 4.3.0 |
+| 3D Rendering | 3d-force-graph (Three.js) | ^1.80.0 |
+| i18n | vue-i18n | ^11.4.2 |
+| Portal API | Go + Fiber | 1.26.3 / v2.52.13 |
+| Auth / Core | Go + Fiber | 1.26.3 / v2.52.13 |
+| Graph DB | Neo4j | 5.23 |
+| Graph Lib | gonum | v0.17.0 |
+| Package Manager | Bun | >= 1.0 |
 
 ***
 
 ## Roadmap
 
-### Phase 1 (Current) — Static Graph MVP
+### Phase 1 — Static Graph
 
-- [x] Graph JSON data
-- [x] Server API with community detection
-- [x] 3D force-directed graph rendering
-- [x] Node interaction (hover, click, drag)
-- [x] Search & community filtering
-- [x] Timeline playback
-- [x] Dark theme
-- [ ] Edge hover tooltip
-- [ ] Data quality review
+- [x] Graph JSON data source
+- [x] 3D force-directed graph rendering (Portal)
+- [x] Community detection (Louvain + hierarchical)
+- [x] Search, timeline, dark theme
+- [x] Management console (Dashboard, login)
+- [x] Neo4j integration (core)
+- [ ] Node/edge CRUD in console
+- [ ] Review queue for discovery pipeline
 
-### Phase 2 (Planned) — Dynamic Data Pipeline
+### Phase 2 — Dynamic Graph
 
-- [ ] Neo4j graph database integration
-- [ ] ArXiv paper ingestion pipeline
-- [ ] Reddit / Hacker News social media crawler
-- [ ] Automated keyword extraction & new concept discovery
-- [ ] Scheduled community re-detection
+- [ ] `services/console` (auth + console management)
+- [ ] `services/discovery` (TypeScript) — arXiv / social media ingestion
+- [ ] LLM pipeline for node/edge generation
+- [ ] Automated community re-detection
 - [ ] Live data freshness status
 
 ***
 
-## Technical Highlights
+## Security (Portal Layer)
 
-- **Louvain Community Detection**: Pure Go implementation using `gonum/graph`, with recursive hierarchical partitioning for up to 3 levels of communities.
-- **WebGL 3D Rendering**: `3d-force-graph` (Three.js) for GPU-accelerated rendering, smooth at thousands of nodes.
-- **Defense in Depth**: 5-layer API protection (rate limiting → CORS → token auth → HMAC signing → AES response encryption).
-- **Mock-First Development**: Web frontend runs independently with a full mock API server, enabling offline development without the Go server.
+- Rate limiting (60 req/min per IP)
+- Token-based authentication (temporary tokens, 5 min TTL)
+- HMAC request signing with nonce replay protection
+- AES-GCM response encryption
+- CORS with origin/referer validation
 
 ***
 
