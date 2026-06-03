@@ -60,11 +60,31 @@ type Pagination struct {
 	HasMore bool `json:"has_more"`
 }
 
+// EdgeCreateRequest represents a request to create a new edge
+type EdgeCreateRequest struct {
+	Source   string  `json:"source"`
+	Target   string  `json:"target"`
+	Weight   float64 `json:"weight"`
+	Relation string  `json:"relation"`
+}
+
+// EdgeUpdateRequest represents a request to update an existing edge
+type EdgeUpdateRequest struct {
+	Weight   *float64 `json:"weight,omitempty"`
+	Relation *string  `json:"relation,omitempty"`
+}
+
+// EdgesListResponse is the response for listing edges with pagination
+type EdgesListResponse struct {
+	Edges      []Edge     `json:"edges"`
+	Pagination Pagination `json:"pagination"`
+}
+
 // StatsResponse provides graph statistics for the dashboard
 type StatsResponse struct {
-	TotalNodes     int            `json:"total_nodes"`
-	TotalEdges     int            `json:"total_edges"`
-	CategoryCount  int            `json:"category_count"`
-	Categories     map[string]int `json:"categories"`
-	AvgInfluence   float64        `json:"avg_influence"`
+	TotalNodes    int            `json:"total_nodes"`
+	TotalEdges    int            `json:"total_edges"`
+	CategoryCount int            `json:"category_count"`
+	Categories    map[string]int `json:"categories"`
+	AvgInfluence  float64        `json:"avg_influence"`
 }

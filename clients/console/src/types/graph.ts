@@ -46,6 +46,23 @@ export interface NodeUpdateRequest {
   milestones?: string[]
 }
 
+export interface EdgeCreateRequest {
+  source: string
+  target: string
+  weight: number
+  relation: string
+}
+
+export interface EdgeUpdateRequest {
+  weight?: number
+  relation?: string
+}
+
+export interface EdgesListResponse {
+  edges: Edge[]
+  pagination: Pagination
+}
+
 export interface StatsResponse {
   total_nodes: number
   total_edges: number
