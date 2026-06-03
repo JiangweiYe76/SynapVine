@@ -9,6 +9,7 @@ type Config struct {
 	Port          string // HTTP server port
 	AllowedOrigin string // Allowed CORS origin
 	JWTSecret     string // Secret key for JWT signing
+	DataPath      string // Path to graph.json data file
 }
 
 // Load reads configuration from environment variables with fallback defaults
@@ -29,9 +30,15 @@ func Load() *Config {
 		jwtSecret = "console-dev-secret-key-change-in-production"
 	}
 
+	dataPath := os.Getenv("DATA_PATH")
+	if dataPath == "" {
+		dataPath = "../data/graph.json"
+	}
+
 	return &Config{
 		Port:          port,
 		AllowedOrigin: allowedOrigin,
 		JWTSecret:     jwtSecret,
+		DataPath:      dataPath,
 	}
 }

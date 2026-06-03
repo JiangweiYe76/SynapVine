@@ -6,6 +6,7 @@ import (
 
 	"console/internal/config"
 	"console/internal/handler"
+	"console/internal/loader"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -21,7 +22,15 @@ func main() {
 	slog.Info("configuration_loaded",
 		slog.String("port", cfg.Port),
 		slog.String("allowed_origin", cfg.AllowedOrigin),
+		slog.String("data_path", cfg.DataPath),
 	)
+
+	store, err := loader.NewGraphStore(cfg.DataPath)
+	if err != nil {
+		slog.Error("failed_to_load_graph_data", slog.Any("error", err))
+		os.Exit(1)
+	}
+	slog.Info("graph_data_loaded", slog.String("path", cfg.DataPath))
 
 	app := fiber.New(fiber.Config{
 		AppName: "AI-Graph Console Server",
@@ -35,11 +44,20 @@ func main() {
 	}))
 
 	authHandler := handler.NewAuthHandler(cfg.JWTSecret)
+	nodeHandler := handler.NewNodeHandler(store)
 
 	app.Post("/api/auth/login", authHandler.Login)
 
 	api := app.Group("/api", authHandler.JWTMiddleware())
 	api.Get("/me", authHandler.Me)
+
+	api.Get("/nodes", nodeHandler.List)
+	api.Get("/nodes/:id", nodeHandler.Get)
+	api.Post("/nodes", nodeHandler.Create)
+	api.Put("/nodes/:id", nodeHandler.Update)
+	api.Delete("/nodes/:id", nodeHandler.Delete)
+
+	api.Get("/stats", nodeHandler.Stats)
 
 	slog.Info("console_server_starting", slog.String("port", cfg.Port))
 

@@ -5,7 +5,7 @@ data/
 node_modules/
 
 # Build output
-web/dist/
+clients/*/dist/
 server/ai-graph-*
 
 # IDE
