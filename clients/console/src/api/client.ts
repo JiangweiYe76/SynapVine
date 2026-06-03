@@ -60,6 +60,33 @@ async function mockFetch<T>(path: string, options?: RequestInit): Promise<T> {
     }
   }
 
+  if (pathname === 'edges' && method === 'GET') {
+    const offset = parseInt(params.get('offset') ?? '0')
+    const limit = parseInt(params.get('limit') ?? '20')
+    const search = params.get('search') ?? ''
+    return mock.listEdges(offset, limit, search) as T
+  }
+
+  if (pathname === 'edges' && method === 'POST') {
+    const body = JSON.parse(options!.body as string)
+    return mock.createEdge(body) as T
+  }
+
+  const edgeMatch = pathname.match(/^edges\/(.+)\/(.+)$/)
+  if (edgeMatch) {
+    const source = edgeMatch[1]
+    const target = edgeMatch[2]
+    if (method === 'GET') return mock.getEdge(source, target) as T
+    if (method === 'PUT') {
+      const body = JSON.parse(options!.body as string)
+      return mock.updateEdge(source, target, body) as T
+    }
+    if (method === 'DELETE') {
+      mock.deleteEdge(source, target)
+      return undefined as T
+    }
+  }
+
   throw new Error(`Unknown mock endpoint: ${path}`)
 }
 

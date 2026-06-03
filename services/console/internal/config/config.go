@@ -32,7 +32,7 @@ func Load() *Config {
 
 	dataPath := os.Getenv("DATA_PATH")
 	if dataPath == "" {
-		dataPath = "../data/graph.json"
+		dataPath = "../../data/graph.json"
 	}
 
 	return &Config{

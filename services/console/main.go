@@ -45,6 +45,7 @@ func main() {
 
 	authHandler := handler.NewAuthHandler(cfg.JWTSecret)
 	nodeHandler := handler.NewNodeHandler(store)
+	edgeHandler := handler.NewEdgeHandler(store)
 
 	app.Post("/api/auth/login", authHandler.Login)
 
@@ -56,6 +57,12 @@ func main() {
 	api.Post("/nodes", nodeHandler.Create)
 	api.Put("/nodes/:id", nodeHandler.Update)
 	api.Delete("/nodes/:id", nodeHandler.Delete)
+
+	api.Get("/edges", edgeHandler.List)
+	api.Get("/edges/:source/:target", edgeHandler.Get)
+	api.Post("/edges", edgeHandler.Create)
+	api.Put("/edges/:source/:target", edgeHandler.Update)
+	api.Delete("/edges/:source/:target", edgeHandler.Delete)
 
 	api.Get("/stats", nodeHandler.Stats)
 

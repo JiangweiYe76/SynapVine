@@ -177,6 +177,125 @@ func (s *GraphStore) NodeExists(id string) bool {
 	return false
 }
 
+// ListEdges returns a paginated slice of edges
+func (s *GraphStore) ListEdges(offset, limit int) ([]model.Edge, int) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	total := len(s.data.Edges)
+	if offset >= total {
+		return []model.Edge{}, total
+	}
+	end := offset + limit
+	if end > total {
+		end = total
+	}
+	return s.data.Edges[offset:end], total
+}
+
+// SearchEdges returns a paginated slice of edges matching the query string
+func (s *GraphStore) SearchEdges(query string, offset, limit int) ([]model.Edge, int) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	var matched []model.Edge
+	q := strings.ToLower(query)
+	for _, e := range s.data.Edges {
+		if strings.Contains(strings.ToLower(e.Source), q) ||
+			strings.Contains(strings.ToLower(e.Target), q) ||
+			strings.Contains(strings.ToLower(e.Relation), q) {
+			matched = append(matched, e)
+		}
+	}
+
+	total := len(matched)
+	if offset >= total {
+		return []model.Edge{}, total
+	}
+	end := offset + limit
+	if end > total {
+		end = total
+	}
+	return matched[offset:end], total
+}
+
+// GetEdge returns an edge by source and target, or nil if not found
+func (s *GraphStore) GetEdge(source, target string) *model.Edge {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	for i := range s.data.Edges {
+		if s.data.Edges[i].Source == source && s.data.Edges[i].Target == target {
+			edge := s.data.Edges[i]
+			return &edge
+		}
+	}
+	return nil
+}
+
+// CreateEdge adds a new edge and persists to disk
+func (s *GraphStore) CreateEdge(edge model.Edge) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.data.Edges = append(s.data.Edges, edge)
+	return s.save()
+}
+
+// UpdateEdge updates an existing edge by source and target and persists to disk
+func (s *GraphStore) UpdateEdge(source, target string, update model.EdgeUpdateRequest) (*model.Edge, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for i := range s.data.Edges {
+		if s.data.Edges[i].Source == source && s.data.Edges[i].Target == target {
+			edge := &s.data.Edges[i]
+			if update.Weight != nil {
+				edge.Weight = *update.Weight
+			}
+			if update.Relation != nil {
+				edge.Relation = *update.Relation
+			}
+			if err := s.save(); err != nil {
+				return nil, err
+			}
+			result := *edge
+			return &result, nil
+		}
+	}
+	return nil, nil
+}
+
+// DeleteEdge removes an edge by source and target and persists to disk
+func (s *GraphStore) DeleteEdge(source, target string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for i := range s.data.Edges {
+		if s.data.Edges[i].Source == source && s.data.Edges[i].Target == target {
+			s.data.Edges = append(s.data.Edges[:i], s.data.Edges[i+1:]...)
+			if err := s.save(); err != nil {
+				return false
+			}
+			return true
+		}
+	}
+	return false
+}
+
+// EdgeExists checks if an edge with the given source and target exists
+func (s *GraphStore) EdgeExists(source, target string) bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	for _, e := range s.data.Edges {
+		if e.Source == source && e.Target == target {
+			return true
+		}
+	}
+	return false
+}
+
 // Stats returns graph statistics
 func (s *GraphStore) Stats() model.StatsResponse {
 	s.mu.RLock()
