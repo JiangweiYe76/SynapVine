@@ -11,17 +11,53 @@ async function ensureMockServer() {
   return _mockServer
 }
 
+function parsePath(raw: string): { pathname: string; params: URLSearchParams } {
+  const [pathname, qs = ''] = raw.replace(/^\//, '').split('?')
+  return { pathname, params: new URLSearchParams(qs) }
+}
+
 async function mockFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const mock = await ensureMockServer()
-  const cleanPath = path.replace(/^\//, '')
+  const { pathname, params } = parsePath(path)
+  const method = options?.method ?? 'GET'
 
-  if (cleanPath === 'auth/login' && options?.method === 'POST') {
-    const body = JSON.parse(options.body as string)
+  if (pathname === 'auth/login' && method === 'POST') {
+    const body = JSON.parse(options!.body as string)
     return mock.login(body) as T
   }
 
-  if (cleanPath === 'me') {
+  if (pathname === 'me' && method === 'GET') {
     return mock.me() as T
+  }
+
+  if (pathname === 'stats' && method === 'GET') {
+    return mock.getStats() as T
+  }
+
+  if (pathname === 'nodes' && method === 'GET') {
+    const offset = parseInt(params.get('offset') ?? '0')
+    const limit = parseInt(params.get('limit') ?? '20')
+    const search = params.get('search') ?? ''
+    return mock.listNodes(offset, limit, search) as T
+  }
+
+  if (pathname === 'nodes' && method === 'POST') {
+    const body = JSON.parse(options!.body as string)
+    return mock.createNode(body) as T
+  }
+
+  const nodeMatch = pathname.match(/^nodes\/(.+)$/)
+  if (nodeMatch) {
+    const id = nodeMatch[1]
+    if (method === 'GET') return mock.getNode(id) as T
+    if (method === 'PUT') {
+      const body = JSON.parse(options!.body as string)
+      return mock.updateNode(id, body) as T
+    }
+    if (method === 'DELETE') {
+      mock.deleteNode(id)
+      return undefined as T
+    }
   }
 
   throw new Error(`Unknown mock endpoint: ${path}`)

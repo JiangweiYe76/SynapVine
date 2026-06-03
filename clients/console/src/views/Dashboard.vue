@@ -1,20 +1,48 @@
 <script setup lang="ts">
+import { ref, onMounted, computed } from 'vue'
 import Layout from '../components/Layout.vue'
-import { Network, Link2, Users, Activity, ChevronRight } from '@lucide/vue'
+import { Network, Link2, Tag, Activity, ChevronRight } from '@lucide/vue'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { statsAPI } from '@/api/stats'
+import type { StatsResponse } from '@/types/graph'
 
-const stats = [
-  { name: 'Total Nodes', value: '—', icon: Network },
-  { name: 'Total Edges', value: '—', icon: Link2 },
-  { name: 'Communities', value: '—', icon: Users },
-  { name: 'Active Users', value: '1', icon: Activity },
-]
+const stats = ref<StatsResponse | null>(null)
+const loading = ref(true)
+const error = ref<string | null>(null)
+
+const statCards = computed(() => [
+  { name: 'Total Nodes', value: stats.value?.total_nodes ?? 0, icon: Network },
+  { name: 'Total Edges', value: stats.value?.total_edges ?? 0, icon: Link2 },
+  { name: 'Categories', value: stats.value?.category_count ?? 0, icon: Tag },
+  { name: 'Avg Influence', value: (stats.value?.avg_influence ?? 0).toFixed(1), icon: Activity },
+])
+
+const topCategories = computed(() => {
+  if (!stats.value?.categories) return []
+  return Object.entries(stats.value.categories)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+})
 
 const quickActions = [
   { name: 'Manage Nodes', description: 'View and edit knowledge graph nodes', path: '/nodes' },
   { name: 'Manage Edges', description: 'View and edit relationships', path: '/edges' },
 ]
+
+async function fetchStats() {
+  loading.value = true
+  error.value = null
+  try {
+    stats.value = await statsAPI.get()
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : 'Failed to load stats'
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(fetchStats)
 </script>
 
 <template>
@@ -27,20 +55,49 @@ const quickActions = [
         </p>
       </div>
 
-      <!-- Stats Grid -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card v-for="stat in stats" :key="stat.name">
-          <CardContent class="flex items-center gap-4 pt-6">
-            <div class="p-2 rounded-md bg-primary/10 text-primary">
-              <component :is="stat.icon" class="h-5 w-5" />
-            </div>
-            <div>
-              <p class="text-sm font-medium text-muted-foreground">{{ stat.name }}</p>
-              <p class="text-2xl font-bold">{{ stat.value }}</p>
-            </div>
+      <div v-if="loading" class="flex items-center justify-center py-12">
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+
+      <div v-else-if="error" class="flex flex-col items-center justify-center py-12 text-center">
+        <Network class="h-12 w-12 text-destructive/50 mb-4" />
+        <h3 class="text-lg font-medium">Error loading stats</h3>
+        <p class="text-sm text-muted-foreground mt-1">{{ error }}</p>
+      </div>
+
+      <template v-else>
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card v-for="stat in statCards" :key="stat.name">
+            <CardContent class="flex items-center gap-4 pt-6">
+              <div class="p-2 rounded-md bg-primary/10 text-primary">
+                <component :is="stat.icon" class="h-5 w-5" />
+              </div>
+              <div>
+                <p class="text-sm font-medium text-muted-foreground">{{ stat.name }}</p>
+                <p class="text-2xl font-bold">{{ stat.value }}</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <!-- Top Categories -->
+        <Card v-if="topCategories.length > 0">
+          <CardHeader>
+            <CardTitle>Top Categories</CardTitle>
+          </CardHeader>
+          <CardContent class="flex flex-wrap gap-2">
+            <Badge
+              v-for="[name, count] in topCategories"
+              :key="name"
+              variant="outline"
+              class="px-3 py-1"
+            >
+              {{ name }} <span class="ml-1 text-muted-foreground">{{ count }}</span>
+            </Badge>
           </CardContent>
         </Card>
-      </div>
+      </template>
 
       <!-- Quick Actions -->
       <Card>
