@@ -4,9 +4,15 @@ import (
 	"context"
 	"log/slog"
 	"os"
-	"time"
 
+	"core/internal/config"
 	"core/internal/db"
+	"core/internal/handler"
+	"core/internal/repository"
+	"core/internal/service"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 )
 
 func main() {
@@ -15,21 +21,63 @@ func main() {
 	}))
 	slog.SetDefault(logger)
 
-	slog.Info("core_data_service_starting")
+	cfg := config.Load()
+	slog.Info("configuration_loaded",
+		slog.String("port", cfg.Port),
+		slog.String("neo4j_uri", cfg.Neo4jURI),
+	)
 
-	cfg := db.LoadConfigFromEnv()
-	neo, err := db.New(cfg)
+	neoCfg := db.Config{
+		URI:      cfg.Neo4jURI,
+		Username: cfg.Neo4jUser,
+		Password: cfg.Neo4jPassword,
+	}
+	neo, err := db.New(neoCfg)
 	if err != nil {
 		slog.Error("failed_to_connect_neo4j", slog.Any("error", err))
 		os.Exit(1)
 	}
+	defer neo.Close(context.Background())
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	defer neo.Close(ctx)
+	nodeRepo := repository.NewNodeRepository(neo)
+	commRepo := repository.NewCommunityRepository(neo)
 
-	slog.Info("core_ready", slog.String("neo4j_uri", cfg.URI))
+	nodeSvc := service.NewNodeService(nodeRepo)
+	commSvc := service.NewCommunityService(commRepo)
 
-	// TODO: start internal gRPC server for graph data operations
-	select {}
+	nodeHandler := handler.NewNodeHandler(nodeSvc)
+	commHandler := handler.NewCommunityHandler(commSvc)
+	healthHandler := handler.NewHealthHandler()
+
+	app := fiber.New(fiber.Config{
+		AppName: "AI-Graph Core Server",
+	})
+
+	app.Use(cors.New(cors.Config{
+		AllowOrigins:     "*",
+		AllowMethods:     "GET, POST, PUT, DELETE, OPTIONS",
+		AllowHeaders:     "Content-Type, Authorization",
+		AllowCredentials: true,
+	}))
+
+	app.Get("/health", healthHandler.Check)
+
+	app.Get("/api/nodes", nodeHandler.List)
+	app.Get("/api/nodes/:id", nodeHandler.Get)
+	app.Post("/api/nodes", nodeHandler.Create)
+	app.Put("/api/nodes/:id", nodeHandler.Update)
+	app.Delete("/api/nodes/:id", nodeHandler.Delete)
+
+	app.Get("/api/communities", commHandler.List)
+	app.Get("/api/communities/:id", commHandler.Get)
+	app.Post("/api/communities", commHandler.Create)
+	app.Put("/api/communities/:id", commHandler.Update)
+	app.Delete("/api/communities/:id", commHandler.Delete)
+
+	slog.Info("core_server_starting", slog.String("port", cfg.Port))
+
+	if err := app.Listen(":" + cfg.Port); err != nil {
+		slog.Error("server_failed", slog.Any("error", err))
+		os.Exit(1)
+	}
 }

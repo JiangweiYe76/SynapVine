@@ -92,6 +92,24 @@ func (n *Neo4j) Query(ctx context.Context, cypher string, params map[string]any)
 	return result.([]*neo4j.Record), nil
 }
 
+// QueryWrite runs a write query and returns records.
+func (n *Neo4j) QueryWrite(ctx context.Context, cypher string, params map[string]any) ([]*neo4j.Record, error) {
+	session := n.driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	defer session.Close(ctx)
+
+	result, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
+		res, err := tx.Run(ctx, cypher, params)
+		if err != nil {
+			return nil, err
+		}
+		return res.Collect(ctx)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result.([]*neo4j.Record), nil
+}
+
 // Migrate runs all .cypher files in the given directory in lexical order.
 func (n *Neo4j) Migrate(ctx context.Context, migrationsDir string) error {
 	entries, err := os.ReadDir(migrationsDir)
