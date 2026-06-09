@@ -3,6 +3,7 @@ package service
 import (
 	"log/slog"
 	"sort"
+	"strconv"
 	"strings"
 
 	"ai-graph-server/internal/model"
@@ -10,27 +11,21 @@ import (
 
 // GraphService provides graph-related business logic
 type GraphService struct {
-	nodes                    []model.Node
-	edges                    []model.Edge
-	communities              []model.Community
-	hierarchicalCommunities *model.HierarchicalCommunity
-	maxLevel                 int
-	nodeMap                  map[string]*model.Node
-	edgeIndex                map[string][]model.Edge
-	neighborMap              map[string][]model.Neighbor
+	nodes       []model.Node
+	edges       []model.Edge
+	nodeMap     map[string]*model.Node
+	edgeIndex   map[string][]model.Edge
+	neighborMap map[string][]model.Neighbor
 }
 
 // New creates and initializes a new GraphService
-func New(nodes []model.Node, edges []model.Edge, communities []model.Community, hierarchical *model.HierarchicalCommunity, maxLevel int) *GraphService {
+func New(nodes []model.Node, edges []model.Edge) *GraphService {
 	svc := &GraphService{
-		nodes:                    nodes,
-		edges:                    edges,
-		communities:              communities,
-		hierarchicalCommunities: hierarchical,
-		maxLevel:                 maxLevel,
-		nodeMap:                  make(map[string]*model.Node),
-		edgeIndex:                make(map[string][]model.Edge),
-		neighborMap:              make(map[string][]model.Neighbor),
+		nodes:       nodes,
+		edges:       edges,
+		nodeMap:     make(map[string]*model.Node),
+		edgeIndex:   make(map[string][]model.Edge),
+		neighborMap: make(map[string][]model.Neighbor),
 	}
 
 	// Build node map for quick lookup
@@ -91,8 +86,6 @@ func New(nodes []model.Node, edges []model.Edge, communities []model.Community, 
 	slog.Info("graph_service_initialized",
 		slog.Int("nodes", len(nodes)),
 		slog.Int("edges", len(edges)),
-		slog.Int("communities", len(communities)),
-		slog.Int("max_level", maxLevel),
 	)
 
 	return svc
@@ -114,40 +107,16 @@ func (s *GraphService) Summary(topN int) model.SummaryResponse {
 		topN = len(top)
 	}
 
-	// Prepare hierarchical communities
-	var communities []model.HierarchicalCommunity
-	if s.hierarchicalCommunities != nil {
-		communities = []model.HierarchicalCommunity{*s.hierarchicalCommunities}
-	}
-
 	return model.SummaryResponse{
-		Communities: communities,
+		Communities: []model.HierarchicalCommunity{},
 		Stats: model.GraphStats{
 			TotalNodes:     len(s.nodes),
 			TotalEdges:     len(s.edges),
-			CommunityCount: s.countTotalCommunities(),
-			MaxLevel:       s.maxLevel,
+			CommunityCount: 0,
+			MaxLevel:       0,
 		},
 		TopNodes: top[:topN],
 	}
-}
-
-// countTotalCommunities returns the total number of communities in the hierarchy
-func (s *GraphService) countTotalCommunities() int {
-	if s.hierarchicalCommunities == nil {
-		// Fallback to flat communities count
-		return len(s.communities)
-	}
-	return s.countCommunitiesRecursive(s.hierarchicalCommunities)
-}
-
-// countCommunitiesRecursive recursively counts all communities in the hierarchy
-func (s *GraphService) countCommunitiesRecursive(c *model.HierarchicalCommunity) int {
-	count := 1 // Count current community
-	for _, child := range c.Children {
-		count += s.countCommunitiesRecursive(&child)
-	}
-	return count
 }
 
 // Nodes returns a paginated list of nodes with optional filtering
@@ -171,17 +140,13 @@ func (s *GraphService) Nodes(offset, limit int, sortBy, communityFilter string, 
 			}
 		}
 	} else if communityFilter != "" {
-		// Filter by community name
-		var cid int
-		for _, c := range s.communities {
-			if c.Name == communityFilter || strings.EqualFold(c.Name, communityFilter) {
-				cid = c.ID
-				break
-			}
-		}
-		for _, n := range s.nodes {
-			if n.CommunityID == cid {
-				filtered = append(filtered, n)
+		// Filter by community ID
+		cid, err := strconv.Atoi(communityFilter)
+		if err == nil {
+			for _, n := range s.nodes {
+				if n.CommunityID == cid {
+					filtered = append(filtered, n)
+				}
 			}
 		}
 	} else {

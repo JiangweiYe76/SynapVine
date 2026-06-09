@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"ai-graph-server/internal/community"
 	"ai-graph-server/internal/config"
 	"ai-graph-server/internal/handler"
 	"ai-graph-server/internal/loader"
@@ -41,21 +40,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Detect flat communities using Louvain algorithm
-	communities := community.Detect(graphData.Nodes, graphData.Edges)
-	community.AssignCommunities(graphData.Nodes, communities)
-	community.ComputeDegrees(&graphData.Nodes, graphData.Edges)
-
-	// Detect hierarchical communities for multi-level view
-	communityConfig := community.CommunityConfig{
-		MaxLevels:        3,
-		MinCommunitySize: 3,
-	}
-	hierarchicalCommunities, maxLevel := community.DetectHierarchical(graphData.Nodes, graphData.Edges, communityConfig)
-	community.AssignHierarchicalCommunities(graphData.Nodes, hierarchicalCommunities)
-
 	// Initialize service and handler
-	svc := service.New(graphData.Nodes, graphData.Edges, communities, hierarchicalCommunities, maxLevel)
+	svc := service.New(graphData.Nodes, graphData.Edges)
 	gh := handler.NewGraphHandler(svc)
 
 	// Initialize token store for API authentication
@@ -152,8 +138,7 @@ func main() {
 		slog.String("port", cfg.Port),
 		slog.Int("nodes", len(graphData.Nodes)),
 		slog.Int("edges", len(graphData.Edges)),
-		slog.Int("communities", community.CountAllCommunities(hierarchicalCommunities)),
-		slog.Int("max_level", maxLevel),
+
 	)
 
 	// Start HTTP server
