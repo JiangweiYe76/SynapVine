@@ -148,3 +148,19 @@ func (h *NodeHandler) Delete(c *fiber.Ctx) error {
 	slog.Info("node_deleted", slog.String("id", id))
 	return c.SendStatus(204)
 }
+
+// GraphData handles GET /api/graph/data, returning all nodes and edges.
+func (h *NodeHandler) GraphData(c *fiber.Ctx) error {
+	nodes, edges, err := h.svc.GetAll(c.Context())
+	if err != nil {
+		slog.Error("graph_data_failed", slog.Any("error", err))
+		return c.Status(500).JSON(model.ErrorResponse{
+			Error:   "internal_error",
+			Message: "Failed to load graph data",
+		})
+	}
+	return c.JSON(fiber.Map{
+		"nodes": nodes,
+		"edges": edges,
+	})
+}

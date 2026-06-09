@@ -63,6 +63,8 @@ func main() {
 
 	app.Get("/health", healthHandler.Check)
 
+	app.Get("/api/graph/data", nodeHandler.GraphData)
+
 	app.Get("/api/nodes", nodeHandler.List)
 	app.Get("/api/nodes/:id", nodeHandler.Get)
 	app.Post("/api/nodes", nodeHandler.Create)

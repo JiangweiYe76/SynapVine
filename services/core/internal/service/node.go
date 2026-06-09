@@ -74,3 +74,8 @@ func (s *NodeService) Delete(ctx context.Context, id string) error {
 	_, err := s.repo.Delete(ctx, id)
 	return err
 }
+
+// GetAll returns all nodes and edges in the graph.
+func (s *NodeService) GetAll(ctx context.Context) ([]model.Node, []model.Edge, error) {
+	return s.repo.GetAll(ctx)
+}
