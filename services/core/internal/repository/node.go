@@ -209,6 +209,46 @@ func (r *NodeRepository) Exists(ctx context.Context, id string) (bool, error) {
 	return count > 0, nil
 }
 
+// GetAll returns all nodes and edges in the graph.
+func (r *NodeRepository) GetAll(ctx context.Context) ([]model.Node, []model.Edge, error) {
+	nodeQuery := `
+		MATCH (n:Concept)
+		RETURN n.id AS id, n.name AS name, n.category AS category,
+		       n.description AS description, n.influence_score AS influence_score,
+		       n.first_appeared AS first_appeared, n.milestones AS milestones
+	`
+	nodeRecords, err := r.neo.Query(ctx, nodeQuery, nil)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get all nodes: %w", err)
+	}
+
+	nodes := make([]model.Node, 0, len(nodeRecords))
+	for _, rec := range nodeRecords {
+		nodes = append(nodes, recordToNode(rec))
+	}
+
+	edgeQuery := `
+		MATCH (s:Concept)-[r:RELATES_TO]->(t:Concept)
+		RETURN s.id AS source, t.id AS target, r.weight AS weight, r.relation AS relation
+	`
+	edgeRecords, err := r.neo.Query(ctx, edgeQuery, nil)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get all edges: %w", err)
+	}
+
+	edges := make([]model.Edge, 0, len(edgeRecords))
+	for _, rec := range edgeRecords {
+		edges = append(edges, model.Edge{
+			Source:   valueOrEmpty[string](rec, "source"),
+			Target:   valueOrEmpty[string](rec, "target"),
+			Weight:   valueOrDefault(rec, "weight", 0.0),
+			Relation: valueOrEmpty[string](rec, "relation"),
+		})
+	}
+
+	return nodes, edges, nil
+}
+
 func recordToNode(rec *neo4j.Record) model.Node {
 	node := model.Node{
 		ID:             valueOrEmpty[string](rec, "id"),

@@ -9,6 +9,8 @@ type Node struct {
 	InfluenceScore float64  `json:"influence_score"`
 	FirstAppeared  int      `json:"first_appeared"`
 	Milestones     []string `json:"milestones,omitempty"`
+	CommunityID    int      `json:"community_id"`
+	Degree         int      `json:"degree"`
 }
 
 // NodeCreateRequest represents a request to create a new node.
@@ -34,11 +36,13 @@ type NodeUpdateRequest struct {
 
 // Community represents a community in the graph.
 type Community struct {
-	ID     int    `json:"id"`
-	Name   string `json:"name"`
-	Color  string `json:"color"`
-	Level  int    `json:"level"`
-	Domain string `json:"domain"`
+	ID        int      `json:"id"`
+	Name      string   `json:"name"`
+	Color     string   `json:"color"`
+	Level     int      `json:"level"`
+	Domain    string   `json:"domain"`
+	NodeIDs   []string `json:"node_ids,omitempty"`
+	NodeCount int      `json:"node_count"`
 }
 
 // CommunityCreateRequest represents a request to create a new community.
@@ -75,6 +79,26 @@ type NodesListResponse struct {
 // CommunitiesListResponse is the response for listing communities.
 type CommunitiesListResponse struct {
 	Communities []Community `json:"communities"`
+}
+
+// HierarchicalCommunity represents a community in a nested/hierarchical structure.
+type HierarchicalCommunity struct {
+	ID        int                   `json:"id"`
+	ParentID  *int                  `json:"parent_id,omitempty"`
+	Name      string                `json:"name"`
+	Color     string                `json:"color"`
+	Level     int                   `json:"level"`
+	NodeIDs   []string              `json:"node_ids"`
+	NodeCount int                   `json:"node_count"`
+	Children  []HierarchicalCommunity `json:"children,omitempty"`
+}
+
+// Edge represents a relationship between two nodes.
+type Edge struct {
+	Source   string  `json:"source"`
+	Target   string  `json:"target"`
+	Weight   float64 `json:"weight"`
+	Relation string  `json:"relation"`
 }
 
 // ErrorResponse is the standard error response format.

@@ -141,6 +141,54 @@ func (r *CommunityRepository) Exists(ctx context.Context, id int) (bool, error) 
 	return count > 0, nil
 }
 
+// ClearAll removes all Community nodes and BELONGS_TO relationships.
+func (r *CommunityRepository) ClearAll(ctx context.Context) error {
+	cypher := `
+		MATCH (c:Community)
+		OPTIONAL MATCH (c)<-[b:BELONGS_TO]-(:Concept)
+		DELETE b, c
+	`
+	return r.neo.Execute(ctx, cypher, nil)
+}
+
+// CreateBatch creates multiple Community nodes in a single transaction.
+func (r *CommunityRepository) CreateBatch(ctx context.Context, communities []model.Community) error {
+	cypher := `
+		UNWIND $communities AS comm
+		CREATE (c:Community {
+			id: comm.id,
+			name: comm.name,
+			color: comm.color,
+			level: comm.level,
+			domain: comm.domain
+		})
+	`
+	params := make([]map[string]any, 0, len(communities))
+	for _, comm := range communities {
+		params = append(params, map[string]any{
+			"id":     comm.ID,
+			"name":   comm.Name,
+			"color":  comm.Color,
+			"level":  comm.Level,
+			"domain": comm.Domain,
+		})
+	}
+	return r.neo.Execute(ctx, cypher, map[string]any{"communities": params})
+}
+
+// AssignNodesBatch creates BELONGS_TO relationships between Concepts and Communities.
+func (r *CommunityRepository) AssignNodesBatch(ctx context.Context, assignments []struct {
+	NodeID      string `json:"node_id"`
+	CommunityID int    `json:"community_id"`
+}) error {
+	cypher := `
+		UNWIND $assignments AS a
+		MATCH (n:Concept {id: a.node_id}), (c:Community {id: a.community_id})
+		MERGE (n)-[:BELONGS_TO]->(c)
+	`
+	return r.neo.Execute(ctx, cypher, map[string]any{"assignments": assignments})
+}
+
 func recordToCommunity(rec *neo4j.Record) model.Community {
 	return model.Community{
 		ID:     int(valueOrDefault(rec, "id", int64(0))),

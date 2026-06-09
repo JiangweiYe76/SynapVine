@@ -12,12 +12,13 @@ import (
 
 // CommunityHandler handles HTTP requests for community operations.
 type CommunityHandler struct {
-	svc *service.CommunityService
+	svc      *service.CommunityService
+	detector *service.CommunityDetectorService
 }
 
 // NewCommunityHandler creates a new CommunityHandler.
-func NewCommunityHandler(svc *service.CommunityService) *CommunityHandler {
-	return &CommunityHandler{svc: svc}
+func NewCommunityHandler(svc *service.CommunityService, detector *service.CommunityDetectorService) *CommunityHandler {
+	return &CommunityHandler{svc: svc, detector: detector}
 }
 
 // List handles GET /api/communities.
@@ -155,4 +156,26 @@ func (h *CommunityHandler) Delete(c *fiber.Ctx) error {
 
 	slog.Info("community_deleted", slog.Int("id", id))
 	return c.SendStatus(204)
+}
+
+// Detect triggers community detection and writes results back to Neo4j.
+func (h *CommunityHandler) Detect(c *fiber.Ctx) error {
+	if h.detector == nil {
+		return c.Status(500).JSON(model.ErrorResponse{
+			Error:   "not_configured",
+			Message: "Community detector is not configured",
+		})
+	}
+
+	if err := h.detector.DetectAndStore(c.Context()); err != nil {
+		slog.Error("community_detect_failed", slog.Any("error", err))
+		return c.Status(500).JSON(model.ErrorResponse{
+			Error:   "detect_failed",
+			Message: "Failed to run community detection",
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"status": "ok",
+	})
 }

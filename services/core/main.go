@@ -44,9 +44,10 @@ func main() {
 
 	nodeSvc := service.NewNodeService(nodeRepo)
 	commSvc := service.NewCommunityService(commRepo)
+	detectorSvc := service.NewCommunityDetectorService(nodeRepo, commRepo)
 
 	nodeHandler := handler.NewNodeHandler(nodeSvc)
-	commHandler := handler.NewCommunityHandler(commSvc)
+	commHandler := handler.NewCommunityHandler(commSvc, detectorSvc)
 	healthHandler := handler.NewHealthHandler()
 
 	app := fiber.New(fiber.Config{
@@ -73,6 +74,7 @@ func main() {
 	app.Post("/api/communities", commHandler.Create)
 	app.Put("/api/communities/:id", commHandler.Update)
 	app.Delete("/api/communities/:id", commHandler.Delete)
+	app.Post("/api/communities/detect", commHandler.Detect)
 
 	slog.Info("core_server_starting", slog.String("port", cfg.Port))
 
