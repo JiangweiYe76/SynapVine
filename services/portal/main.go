@@ -7,8 +7,10 @@ import (
 	"time"
 
 	"ai-graph-server/internal/config"
+	"ai-graph-server/internal/coreclient"
 	"ai-graph-server/internal/handler"
 	"ai-graph-server/internal/loader"
+	"ai-graph-server/internal/model"
 	"ai-graph-server/internal/middleware"
 	"ai-graph-server/internal/security"
 	"ai-graph-server/internal/service"
@@ -31,13 +33,27 @@ func main() {
 		slog.String("port", cfg.Port),
 		slog.String("data_path", cfg.DataPath),
 		slog.String("allowed_origin", cfg.AllowedOrigin),
+		slog.String("core_url", cfg.CoreURL),
 	)
 
-	// Load graph data from JSON file
-	graphData, err := loader.LoadGraphData(cfg.DataPath)
+	// Try to load graph data from core service first
+	var graphData *model.GraphData
+	core := coreclient.New(cfg.CoreURL)
+	graphData, err := core.FetchGraphData()
 	if err != nil {
-		slog.Error("failed_to_load_graph_data", slog.String("path", cfg.DataPath), slog.Any("error", err))
-		os.Exit(1)
+		slog.Warn("core_fetch_failed", slog.String("url", cfg.CoreURL), slog.Any("error", err))
+		slog.Info("falling_back_to_local_data", slog.String("path", cfg.DataPath))
+		graphData, err = loader.LoadGraphData(cfg.DataPath)
+		if err != nil {
+			slog.Error("failed_to_load_graph_data", slog.String("path", cfg.DataPath), slog.Any("error", err))
+			os.Exit(1)
+		}
+	} else {
+		slog.Info("graph_data_loaded_from_core",
+			slog.String("url", cfg.CoreURL),
+			slog.Int("nodes", len(graphData.Nodes)),
+			slog.Int("edges", len(graphData.Edges)),
+		)
 	}
 
 	// Initialize service and handler
@@ -138,7 +154,6 @@ func main() {
 		slog.String("port", cfg.Port),
 		slog.Int("nodes", len(graphData.Nodes)),
 		slog.Int("edges", len(graphData.Edges)),
-
 	)
 
 	// Start HTTP server

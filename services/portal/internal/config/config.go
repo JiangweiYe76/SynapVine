@@ -7,8 +7,9 @@ import (
 // Config holds the application configuration settings
 type Config struct {
 	Port          string // HTTP server port
-	DataPath      string // Path to the graph data JSON file
+	DataPath      string // Path to the graph data JSON file (fallback)
 	AllowedOrigin string // Allowed CORS origin
+	CoreURL       string // URL of the core service
 }
 
 // Load reads configuration from environment variables with fallback defaults
@@ -32,9 +33,16 @@ func Load() *Config {
 		allowedOrigin = "http://localhost:5173"
 	}
 
+	// Core service URL (default: http://localhost:8001)
+	coreURL := os.Getenv("CORE_URL")
+	if coreURL == "" {
+		coreURL = "http://localhost:8001"
+	}
+
 	return &Config{
 		Port:          port,
 		DataPath:      dataPath,
 		AllowedOrigin: allowedOrigin,
+		CoreURL:       coreURL,
 	}
 }
