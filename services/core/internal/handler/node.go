@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"log/slog"
 	"strconv"
 
@@ -10,13 +11,27 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
+// Compile-time check that *service.NodeService satisfies NodeService.
+var _ NodeService = (*service.NodeService)(nil)
+
+// NodeService is the subset of *service.NodeService used by NodeHandler.
+// It is declared as an interface to enable stubbing in unit tests.
+type NodeService interface {
+	List(ctx context.Context, offset, limit int, search string) (*model.NodesListResponse, error)
+	Get(ctx context.Context, id string) (*model.Node, error)
+	Create(ctx context.Context, req model.NodeCreateRequest) (*model.Node, error)
+	Update(ctx context.Context, id string, req model.NodeUpdateRequest) (*model.Node, error)
+	Delete(ctx context.Context, id string) error
+	GetAll(ctx context.Context) ([]model.Node, []model.Edge, error)
+}
+
 // NodeHandler handles HTTP requests for node operations.
 type NodeHandler struct {
-	svc *service.NodeService
+	svc NodeService
 }
 
 // NewNodeHandler creates a new NodeHandler.
-func NewNodeHandler(svc *service.NodeService) *NodeHandler {
+func NewNodeHandler(svc NodeService) *NodeHandler {
 	return &NodeHandler{svc: svc}
 }
 
