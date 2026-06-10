@@ -1,12 +1,13 @@
-# Data
-data/
-
 # Dependencies
 node_modules/
 
 # Build output
 clients/*/dist/
 server/ai-graph-*
+
+# Dev orchestration runtime state
+.dev-pids/
+_neo4j/
 
 # IDE
 .vscode/

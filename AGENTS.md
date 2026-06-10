@@ -52,7 +52,9 @@ go run main.go
 
 - Server starts on `http://localhost:8000`
 - Uses `slog` with JSON output
-- Loads static data from `DATA_PATH` (default `../data/graph.json`)
+- Loads graph data from the core service (via `CORE_URL`, default
+  `http://localhost:8001`). The portal requires core to be reachable;
+  there is no local fallback.
 
 ### Backend — Core
 
@@ -74,7 +76,7 @@ go mod tidy
 go run main.go
 ```
 
-- Server starts on `http://localhost:8001`
+- Server starts on `http://localhost:8002`
 - Provides JWT-based authentication (`/api/auth/login`, `/api/me`)
 
 ### Frontend — Portal
@@ -105,7 +107,7 @@ bun run dev
 ```
 
 - Dev server starts on `http://localhost:5174`
-- Vite proxies `/api` to `http://localhost:8001`
+- Vite proxies `/api` to `http://localhost:8002`
 
 ### Infrastructure (Neo4j)
 
@@ -125,8 +127,8 @@ docker-compose up -d
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PORT` | `8000` | Server port |
-| `DATA_PATH` | `../data/graph.json` | Static graph data file path |
 | `ALLOWED_ORIGIN` | `http://localhost:5173` | CORS allowed origin |
+| `CORE_URL` | `http://localhost:8001` | Base URL of the core service. The portal requires core to be reachable. |
 
 ### `services/core`
 
@@ -141,7 +143,7 @@ docker-compose up -d
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PORT` | `8001` | Server port |
+| `PORT` | `8002` | Server port |
 | `ALLOWED_ORIGIN` | `http://localhost:5174` | CORS allowed origin |
 | `JWT_SECRET` | *(dev key)* | JWT signing secret |
 
@@ -222,8 +224,9 @@ HMAC request signing and AES-GCM response encryption modules exist in `services/
 
 ### Data Model
 
-- Current source of truth for Portal: `data/graph.json` (or path specified by `DATA_PATH`).
-- Core service targets Neo4j as the long-term source of truth (work in progress).
+- The core service (which fronts Neo4j) is the authoritative source of
+  truth for nodes, edges, and statistics. Portal and console both proxy
+  through core.
 - If you change the JSON schema, update all of the following:
   - `services/portal/internal/model/graph.go`
   - `clients/portal/src/types/graph.ts`
@@ -233,26 +236,9 @@ HMAC request signing and AES-GCM response encryption modules exist in `services/
 
 ## API Endpoints
 
-### Portal (Public Graph API)
-
-| Method | Path | Auth Required | Description |
-|--------|------|---------------|-------------|
-| GET | `/api/token` | No | Obtain a temporary access token |
-| GET | `/api/graph/summary` | Yes | Communities, stats, top 20 nodes |
-| GET | `/api/graph/nodes` | Yes | Paginated node list with filters |
-| GET | `/api/graph/nodes/:id` | Yes | Node detail + neighbors |
-| GET | `/api/graph/nodes/:id/edges` | Yes | Edges connected to a node |
-| GET | `/api/graph/search` | Yes | Fuzzy search by name/description |
-| GET | `/api/graph/expand` | Yes | Expand graph by loading neighbors |
-
-All `/api/graph/*` endpoints require a valid token (`?token=xxx`).
-
-### Console (Auth)
-
-| Method | Path | Auth Required | Description |
-|--------|------|---------------|-------------|
-| POST | `/api/auth/login` | No | User login |
-| GET | `/api/me` | JWT | Current user profile |
+For the authoritative, up-to-date list of HTTP endpoints, run the services
+and inspect the live routes (each Fiber app prints them at startup). Inline
+endpoint tables are intentionally not maintained in this document.
 
 ---
 
@@ -271,7 +257,6 @@ All `/api/graph/*` endpoints require a valid token (`?token=xxx`).
 |------|------|
 | `clients/portal/src/mock/` | Dev-only. Never import mock data into production components or API layer. |
 | `services/portal/internal/security/` | Crypto/signature logic. Changes require coordinated frontend updates. |
-| `data/graph.json` | Static data source. Schema changes must be reflected in Go models, TS types, and mock data. |
 | `clients/portal/src/locales/` | Always keep `en-US.json` and `zh-CN.json` in sync. Do not hardcode strings in components. |
 
 ---

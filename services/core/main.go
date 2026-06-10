@@ -24,6 +24,7 @@ func main() {
 	cfg := config.Load()
 	slog.Info("configuration_loaded",
 		slog.String("port", cfg.Port),
+		slog.String("allowed_origin", cfg.AllowedOrigin),
 		slog.String("neo4j_uri", cfg.Neo4jURI),
 	)
 
@@ -55,7 +56,7 @@ func main() {
 	})
 
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     "*",
+		AllowOrigins:     cfg.AllowedOrigin,
 		AllowMethods:     "GET, POST, PUT, DELETE, OPTIONS",
 		AllowHeaders:     "Content-Type, Authorization",
 		AllowCredentials: true,
