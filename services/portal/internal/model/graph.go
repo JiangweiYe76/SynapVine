@@ -9,7 +9,7 @@ type Node struct {
 	InfluenceScore float64  `json:"influence_score"` // Influence/popularity score (0-10)
 	CommunityID    int      `json:"community_id"`    // ID of the community this node belongs to
 	Degree         int      `json:"degree"`          // Number of connected edges
-	FirstAppeared  int      `json:"first_appeared"`  // Year first appeared
+	FirstAppeared  string   `json:"first_appeared"`  // Year and month first appeared (YYYY-MM)
 	Milestones     []string `json:"milestones,omitempty"` // Key milestones
 }
 

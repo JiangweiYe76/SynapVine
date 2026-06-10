@@ -97,7 +97,7 @@ const columns = [
       h('span', { class: 'block text-right' }, info.getValue().toFixed(1)),
   }),
   columnHelper.accessor('first_appeared', {
-    header: () => h('span', { class: 'block text-right' }, 'Year'),
+    header: () => h('span', { class: 'block text-right' }, 'First Appeared'),
     cell: (info) =>
       h('span', { class: 'block text-right' }, String(info.getValue())),
   }),

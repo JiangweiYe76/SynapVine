@@ -58,7 +58,7 @@ const form = ref({
   category: '',
   description: '',
   influence_score: 5,
-  first_appeared: 2024,
+  first_appeared: '2024-01',
 })
 
 const saving = ref(false)
@@ -83,7 +83,7 @@ watch(() => props.open, (isOpen) => {
         category: '',
         description: '',
         influence_score: 5,
-        first_appeared: 2024,
+        first_appeared: '2024-01',
       }
     }
   }
@@ -198,10 +198,9 @@ async function handleSave() {
             <Label for="node-year">First Appeared</Label>
             <Input
               id="node-year"
-              v-model.number="form.first_appeared"
-              type="number"
-              min="1900"
-              max="2030"
+              v-model="form.first_appeared"
+              type="text"
+              placeholder="YYYY-MM"
             />
           </div>
         </div>

@@ -4,7 +4,7 @@ export interface Node {
   category: string
   description: string
   influence_score: number
-  first_appeared: number
+  first_appeared: string
   milestones?: string[]
 }
 
@@ -33,7 +33,7 @@ export interface NodeCreateRequest {
   category: string
   description: string
   influence_score: number
-  first_appeared: number
+  first_appeared: string
   milestones?: string[]
 }
 
@@ -42,7 +42,7 @@ export interface NodeUpdateRequest {
   category?: string
   description?: string
   influence_score?: number
-  first_appeared?: number
+  first_appeared?: string
   milestones?: string[]
 }
 

@@ -256,7 +256,7 @@ func recordToNode(rec *neo4j.Record) model.Node {
 		Category:       valueOrEmpty[string](rec, "category"),
 		Description:    valueOrEmpty[string](rec, "description"),
 		InfluenceScore: valueOrDefault(rec, "influence_score", 0.0),
-		FirstAppeared:  int(valueOrDefault(rec, "first_appeared", int64(0))),
+		FirstAppeared:  valueOrDefault(rec, "first_appeared", ""),
 	}
 	if milestones, ok := rec.Get("milestones"); ok && milestones != nil {
 		if arr, ok := milestones.([]any); ok {

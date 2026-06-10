@@ -20,7 +20,7 @@ export const mockNodes: Node[] = [
     category: 'dl_arch',
     description: "一种基于自注意力机制的神经网络架构",
     influence_score: 9.8,
-    first_appeared: 2017,
+    first_appeared: '2017-01',
   },
   {
     id: 'attention',
@@ -28,7 +28,7 @@ export const mockNodes: Node[] = [
     category: 'dl_mechanism',
     description: "允许模型聚焦于输入序列中重要部分的机制",
     influence_score: 9.5,
-    first_appeared: 2014,
+    first_appeared: '2014-01',
   },
   {
     id: 'self_attention',
@@ -36,7 +36,7 @@ export const mockNodes: Node[] = [
     category: 'dl_mechanism',
     description: "序列内部元素之间的注意力计算",
     influence_score: 9.3,
-    first_appeared: 2017,
+    first_appeared: '2017-01',
   },
   {
     id: 'multi_head_attention',
@@ -44,7 +44,7 @@ export const mockNodes: Node[] = [
     category: 'dl_mechanism',
     description: "并行多组注意力头，捕获不同子空间的特征",
     influence_score: 9.0,
-    first_appeared: 2017,
+    first_appeared: '2017-01',
   },
   {
     id: 'bert',
@@ -52,7 +52,7 @@ export const mockNodes: Node[] = [
     category: 'nlp_model',
     description: "基于Transformer的双向编码器表示模型",
     influence_score: 9.6,
-    first_appeared: 2018,
+    first_appeared: '2018-01',
   },
   {
     id: 'gpt',
@@ -60,7 +60,7 @@ export const mockNodes: Node[] = [
     category: 'nlp_model',
     description: "基于Transformer的自回归生成预训练模型",
     influence_score: 9.7,
-    first_appeared: 2018,
+    first_appeared: '2018-01',
   },
   {
     id: 'gpt4',
@@ -68,7 +68,7 @@ export const mockNodes: Node[] = [
     category: 'nlp_model',
     description: "OpenAI的大规模多模态语言模型",
     influence_score: 9.9,
-    first_appeared: 2023,
+    first_appeared: '2023-01',
   },
   {
     id: 'llama',
@@ -76,7 +76,7 @@ export const mockNodes: Node[] = [
     category: 'nlp_model',
     description: "Meta开源的大语言模型系列",
     influence_score: 9.2,
-    first_appeared: 2023,
+    first_appeared: '2023-01',
   },
   {
     id: 't5',
@@ -84,7 +84,7 @@ export const mockNodes: Node[] = [
     category: 'nlp_model',
     description: "Text-to-Text Transfer Transformer",
     influence_score: 8.8,
-    first_appeared: 2019,
+    first_appeared: '2019-01',
   },
   {
     id: 'roberta',
@@ -92,7 +92,7 @@ export const mockNodes: Node[] = [
     category: 'nlp_model',
     description: "BERT的优化版本，更鲁棒的预训练方法",
     influence_score: 8.5,
-    first_appeared: 2019,
+    first_appeared: '2019-01',
   },
   {
     id: 'whisper',
@@ -100,7 +100,7 @@ export const mockNodes: Node[] = [
     category: 'speech_model',
     description: "OpenAI的通用语音识别模型",
     influence_score: 8.3,
-    first_appeared: 2022,
+    first_appeared: '2022-01',
   },
   {
     id: 'wav2vec',
@@ -108,7 +108,7 @@ export const mockNodes: Node[] = [
     category: 'speech_model',
     description: "自监督语音表示学习框架",
     influence_score: 8.0,
-    first_appeared: 2020,
+    first_appeared: '2020-01',
   },
   {
     id: 'vit',
@@ -116,7 +116,7 @@ export const mockNodes: Node[] = [
     category: 'cv_model',
     description: "Vision Transformer，将Transformer应用于图像分类",
     influence_score: 9.1,
-    first_appeared: 2020,
+    first_appeared: '2020-01',
   },
   {
     id: 'detr',
@@ -124,7 +124,7 @@ export const mockNodes: Node[] = [
     category: 'cv_model',
     description: "基于Transformer的端到端目标检测模型",
     influence_score: 8.2,
-    first_appeared: 2020,
+    first_appeared: '2020-01',
   },
   {
     id: 'stable_diffusion',
@@ -132,7 +132,7 @@ export const mockNodes: Node[] = [
     category: 'gen_model',
     description: "基于扩散模型的文本到图像生成模型",
     influence_score: 9.4,
-    first_appeared: 2022,
+    first_appeared: '2022-01',
   },
   {
     id: 'ddpm',
@@ -140,7 +140,7 @@ export const mockNodes: Node[] = [
     category: 'gen_model',
     description: "去噪扩散概率模型",
     influence_score: 8.7,
-    first_appeared: 2020,
+    first_appeared: '2020-01',
   },
   {
     id: 'gan',
@@ -148,7 +148,7 @@ export const mockNodes: Node[] = [
     category: 'gen_model',
     description: "生成对抗网络",
     influence_score: 8.9,
-    first_appeared: 2014,
+    first_appeared: '2014-01',
   },
   {
     id: 'vae',
@@ -156,7 +156,7 @@ export const mockNodes: Node[] = [
     category: 'gen_model',
     description: "变分自编码器",
     influence_score: 8.1,
-    first_appeared: 2013,
+    first_appeared: '2013-01',
   },
   {
     id: 'clip',
@@ -164,7 +164,7 @@ export const mockNodes: Node[] = [
     category: 'multimodal',
     description: "对比语言-图像预训练模型",
     influence_score: 9.0,
-    first_appeared: 2021,
+    first_appeared: '2021-01',
   },
   {
     id: 'dalle',
@@ -172,7 +172,7 @@ export const mockNodes: Node[] = [
     category: 'multimodal',
     description: "文本到图像生成模型",
     influence_score: 9.2,
-    first_appeared: 2021,
+    first_appeared: '2021-01',
   },
   {
     id: 'blip',
@@ -180,7 +180,7 @@ export const mockNodes: Node[] = [
     category: 'multimodal',
     description: "引导语言图像预训练模型",
     influence_score: 8.4,
-    first_appeared: 2022,
+    first_appeared: '2022-01',
   },
   {
     id: 'flamingo',
@@ -188,7 +188,7 @@ export const mockNodes: Node[] = [
     category: 'multimodal',
     description: "DeepMind的视觉语言模型",
     influence_score: 7.8,
-    first_appeared: 2022,
+    first_appeared: '2022-01',
   },
   {
     id: 'resnet',
@@ -196,7 +196,7 @@ export const mockNodes: Node[] = [
     category: 'cv_model',
     description: "残差网络，解决深度网络退化问题",
     influence_score: 9.3,
-    first_appeared: 2015,
+    first_appeared: '2015-01',
   },
   {
     id: 'cnn',
@@ -204,7 +204,7 @@ export const mockNodes: Node[] = [
     category: 'dl_arch',
     description: "卷积神经网络",
     influence_score: 9.0,
-    first_appeared: 1989,
+    first_appeared: '1989-01',
   },
   {
     id: 'rnn',
@@ -212,7 +212,7 @@ export const mockNodes: Node[] = [
     category: 'dl_arch',
     description: "循环神经网络",
     influence_score: 8.2,
-    first_appeared: 1986,
+    first_appeared: '1986-01',
   },
   {
     id: 'lstm',
@@ -220,7 +220,7 @@ export const mockNodes: Node[] = [
     category: 'dl_arch',
     description: "长短期记忆网络",
     influence_score: 8.5,
-    first_appeared: 1997,
+    first_appeared: '1997-01',
   },
   {
     id: 'gru',
@@ -228,7 +228,7 @@ export const mockNodes: Node[] = [
     category: 'dl_arch',
     description: "门控循环单元",
     influence_score: 7.6,
-    first_appeared: 2014,
+    first_appeared: '2014-01',
   },
   {
     id: 'mlp',
@@ -236,7 +236,7 @@ export const mockNodes: Node[] = [
     category: 'dl_arch',
     description: "多层感知机",
     influence_score: 7.5,
-    first_appeared: 1957,
+    first_appeared: '1957-01',
   },
   {
     id: 'autoencoder',
@@ -244,7 +244,7 @@ export const mockNodes: Node[] = [
     category: 'dl_arch',
     description: "自编码器，无监督特征学习",
     influence_score: 7.8,
-    first_appeared: 1986,
+    first_appeared: '1986-01',
   },
   {
     id: 'dropout',
@@ -252,7 +252,7 @@ export const mockNodes: Node[] = [
     category: 'dl_technique',
     description: "随机失活正则化技术",
     influence_score: 8.0,
-    first_appeared: 2012,
+    first_appeared: '2012-01',
   },
   {
     id: 'batch_norm',
@@ -260,7 +260,7 @@ export const mockNodes: Node[] = [
     category: 'dl_technique',
     description: "批归一化，加速训练和稳定网络",
     influence_score: 8.3,
-    first_appeared: 2015,
+    first_appeared: '2015-01',
   },
   {
     id: 'layer_norm',
@@ -268,7 +268,7 @@ export const mockNodes: Node[] = [
     category: 'dl_technique',
     description: "层归一化，Transformer中的标准归一化",
     influence_score: 8.1,
-    first_appeared: 2016,
+    first_appeared: '2016-01',
   },
   {
     id: 'residual_connection',
@@ -276,7 +276,7 @@ export const mockNodes: Node[] = [
     category: 'dl_technique',
     description: "残差连接，解决梯度消失",
     influence_score: 8.6,
-    first_appeared: 2015,
+    first_appeared: '2015-01',
   },
   {
     id: 'positional_encoding',
@@ -284,7 +284,7 @@ export const mockNodes: Node[] = [
     category: 'dl_technique',
     description: "位置编码，为Transformer注入序列位置信息",
     influence_score: 8.4,
-    first_appeared: 2017,
+    first_appeared: '2017-01',
   },
   {
     id: 'softmax',
@@ -292,7 +292,7 @@ export const mockNodes: Node[] = [
     category: 'dl_technique',
     description: "将输出转化为概率分布的激活函数",
     influence_score: 7.9,
-    first_appeared: 1989,
+    first_appeared: '1989-01',
   },
   {
     id: 'cross_entropy',
@@ -300,7 +300,7 @@ export const mockNodes: Node[] = [
     category: 'dl_technique',
     description: "交叉熵损失函数",
     influence_score: 7.7,
-    first_appeared: 1948,
+    first_appeared: '1948-01',
   },
   {
     id: 'adam',
@@ -308,7 +308,7 @@ export const mockNodes: Node[] = [
     category: 'optimizer',
     description: "自适应矩估计优化器",
     influence_score: 8.5,
-    first_appeared: 2014,
+    first_appeared: '2014-01',
   },
   {
     id: 'sgd',
@@ -316,7 +316,7 @@ export const mockNodes: Node[] = [
     category: 'optimizer',
     description: "随机梯度下降优化器",
     influence_score: 7.8,
-    first_appeared: 1951,
+    first_appeared: '1951-01',
   },
   {
     id: 'learning_rate',
@@ -324,7 +324,7 @@ export const mockNodes: Node[] = [
     category: 'optimizer',
     description: "学习率，控制参数更新步长",
     influence_score: 7.6,
-    first_appeared: 1951,
+    first_appeared: '1951-01',
   },
   {
     id: 'rlhf',
@@ -332,7 +332,7 @@ export const mockNodes: Node[] = [
     category: 'alignment',
     description: "基于人类反馈的强化学习",
     influence_score: 9.1,
-    first_appeared: 2017,
+    first_appeared: '2017-01',
   },
   {
     id: 'ppo',
@@ -340,7 +340,7 @@ export const mockNodes: Node[] = [
     category: 'rl_algorithm',
     description: "近端策略优化算法",
     influence_score: 8.3,
-    first_appeared: 2017,
+    first_appeared: '2017-01',
   },
   {
     id: 'dqn',
@@ -348,7 +348,7 @@ export const mockNodes: Node[] = [
     category: 'rl_algorithm',
     description: "深度Q网络",
     influence_score: 8.0,
-    first_appeared: 2013,
+    first_appeared: '2013-01',
   },
   {
     id: 'sac',
@@ -356,7 +356,7 @@ export const mockNodes: Node[] = [
     category: 'rl_algorithm',
     description: "软演员-评论家算法",
     influence_score: 7.5,
-    first_appeared: 2018,
+    first_appeared: '2018-01',
   },
   {
     id: 'td3',
@@ -364,7 +364,7 @@ export const mockNodes: Node[] = [
     category: 'rl_algorithm',
     description: "双延迟深度确定性策略梯度",
     influence_score: 7.2,
-    first_appeared: 2018,
+    first_appeared: '2018-01',
   },
   {
     id: 'q_learning',
@@ -372,7 +372,7 @@ export const mockNodes: Node[] = [
     category: 'rl_algorithm',
     description: "基于值函数的强化学习算法",
     influence_score: 7.8,
-    first_appeared: 1989,
+    first_appeared: '1989-01',
   },
   {
     id: 'policy_gradient',
@@ -380,7 +380,7 @@ export const mockNodes: Node[] = [
     category: 'rl_algorithm',
     description: "策略梯度方法",
     influence_score: 7.6,
-    first_appeared: 1992,
+    first_appeared: '1992-01',
   },
   {
     id: 'gcn',
@@ -388,7 +388,7 @@ export const mockNodes: Node[] = [
     category: 'gnn',
     description: "图卷积网络",
     influence_score: 8.4,
-    first_appeared: 2016,
+    first_appeared: '2016-01',
   },
   {
     id: 'gat',
@@ -396,7 +396,7 @@ export const mockNodes: Node[] = [
     category: 'gnn',
     description: "图注意力网络",
     influence_score: 8.2,
-    first_appeared: 2017,
+    first_appeared: '2017-01',
   },
   {
     id: 'graphsage',
@@ -404,7 +404,7 @@ export const mockNodes: Node[] = [
     category: 'gnn',
     description: "归纳式图表示学习",
     influence_score: 7.9,
-    first_appeared: 2017,
+    first_appeared: '2017-01',
   },
   {
     id: 'gin',
@@ -412,7 +412,7 @@ export const mockNodes: Node[] = [
     category: 'gnn',
     description: "图同构网络",
     influence_score: 7.3,
-    first_appeared: 2018,
+    first_appeared: '2018-01',
   },
   {
     id: 'node2vec',
@@ -420,7 +420,7 @@ export const mockNodes: Node[] = [
     category: 'gnn',
     description: "图节点嵌入算法",
     influence_score: 7.5,
-    first_appeared: 2016,
+    first_appeared: '2016-01',
   },
   {
     id: 'word2vec',
@@ -428,7 +428,7 @@ export const mockNodes: Node[] = [
     category: 'nlp_technique',
     description: "词向量表示学习",
     influence_score: 8.6,
-    first_appeared: 2013,
+    first_appeared: '2013-01',
   },
   {
     id: 'glove',
@@ -436,7 +436,7 @@ export const mockNodes: Node[] = [
     category: 'nlp_technique',
     description: "全局向量词表示",
     influence_score: 7.8,
-    first_appeared: 2014,
+    first_appeared: '2014-01',
   },
   {
     id: 'fasttext',
@@ -444,7 +444,7 @@ export const mockNodes: Node[] = [
     category: 'nlp_technique',
     description: "Facebook的文本分类和词表示库",
     influence_score: 7.4,
-    first_appeared: 2016,
+    first_appeared: '2016-01',
   },
   {
     id: 'tokenization',
@@ -452,7 +452,7 @@ export const mockNodes: Node[] = [
     category: 'nlp_technique',
     description: "文本分词技术",
     influence_score: 7.6,
-    first_appeared: 1990,
+    first_appeared: '1990-01',
   },
   {
     id: 'bpe',
@@ -460,7 +460,7 @@ export const mockNodes: Node[] = [
     category: 'nlp_technique',
     description: "字节对编码，子词分词算法",
     influence_score: 8.0,
-    first_appeared: 2016,
+    first_appeared: '2016-01',
   },
   {
     id: 'embedding',
@@ -468,7 +468,7 @@ export const mockNodes: Node[] = [
     category: 'dl_technique',
     description: "将离散符号映射到连续向量空间",
     influence_score: 8.7,
-    first_appeared: 2013,
+    first_appeared: '2013-01',
   },
   {
     id: 'fine_tuning',
@@ -476,7 +476,7 @@ export const mockNodes: Node[] = [
     category: 'dl_technique',
     description: "在预训练模型基础上微调",
     influence_score: 8.5,
-    first_appeared: 2018,
+    first_appeared: '2018-01',
   },
   {
     id: 'transfer_learning',
@@ -484,7 +484,7 @@ export const mockNodes: Node[] = [
     category: 'dl_technique',
     description: "迁移学习，将知识从一个任务迁移到另一个",
     influence_score: 8.4,
-    first_appeared: 2010,
+    first_appeared: '2010-01',
   },
   {
     id: 'prompt_engineering',
@@ -492,7 +492,7 @@ export const mockNodes: Node[] = [
     category: 'nlp_technique',
     description: "提示工程，优化模型输入以改善输出",
     influence_score: 8.8,
-    first_appeared: 2020,
+    first_appeared: '2020-01',
   },
   {
     id: 'chain_of_thought',
@@ -500,7 +500,7 @@ export const mockNodes: Node[] = [
     category: 'nlp_technique',
     description: "思维链提示，引导模型逐步推理",
     influence_score: 8.9,
-    first_appeared: 2022,
+    first_appeared: '2022-01',
   },
   {
     id: 'rag',
@@ -508,7 +508,7 @@ export const mockNodes: Node[] = [
     category: 'nlp_technique',
     description: "检索增强生成",
     influence_score: 9.0,
-    first_appeared: 2023,
+    first_appeared: '2023-01',
   },
   {
     id: 'yolo',
@@ -516,7 +516,7 @@ export const mockNodes: Node[] = [
     category: 'cv_model',
     description: "实时目标检测模型系列",
     influence_score: 8.7,
-    first_appeared: 2015,
+    first_appeared: '2015-01',
   },
   {
     id: 'faster_rcnn',
@@ -524,7 +524,7 @@ export const mockNodes: Node[] = [
     category: 'cv_model',
     description: "基于区域提议网络的快速目标检测",
     influence_score: 8.3,
-    first_appeared: 2015,
+    first_appeared: '2015-01',
   },
   {
     id: 'mask_rcnn',
@@ -532,7 +532,7 @@ export const mockNodes: Node[] = [
     category: 'cv_model',
     description: "实例分割模型",
     influence_score: 8.1,
-    first_appeared: 2017,
+    first_appeared: '2017-01',
   },
   {
     id: 'unet',
@@ -540,7 +540,7 @@ export const mockNodes: Node[] = [
     category: 'cv_model',
     description: "编码器-解码器结构的语义分割网络",
     influence_score: 8.5,
-    first_appeared: 2015,
+    first_appeared: '2015-01',
   },
   {
     id: 'segment_anything',
@@ -548,7 +548,7 @@ export const mockNodes: Node[] = [
     category: 'cv_model',
     description: "Segment Anything Model，通用图像分割",
     influence_score: 8.8,
-    first_appeared: 2023,
+    first_appeared: '2023-01',
   },
   {
     id: 'stylegan',
@@ -556,7 +556,7 @@ export const mockNodes: Node[] = [
     category: 'gen_model',
     description: "基于风格的生成对抗网络",
     influence_score: 8.6,
-    first_appeared: 2018,
+    first_appeared: '2018-01',
   },
   {
     id: 'neRF',
@@ -564,7 +564,7 @@ export const mockNodes: Node[] = [
     category: 'cv_model',
     description: "神经辐射场，3D场景重建",
     influence_score: 8.4,
-    first_appeared: 2020,
+    first_appeared: '2020-01',
   },
   {
     id: 'diffusion_model',
@@ -572,7 +572,7 @@ export const mockNodes: Node[] = [
     category: 'gen_model',
     description: "扩散模型，通过逐步去噪生成数据",
     influence_score: 9.2,
-    first_appeared: 2015,
+    first_appeared: '2015-01',
   },
   {
     id: 'flow_matching',
@@ -580,7 +580,7 @@ export const mockNodes: Node[] = [
     category: 'gen_model',
     description: "流匹配生成模型",
     influence_score: 7.6,
-    first_appeared: 2023,
+    first_appeared: '2023-01',
   },
   {
     id: 'normalizing_flow',
@@ -588,7 +588,7 @@ export const mockNodes: Node[] = [
     category: 'gen_model',
     description: "标准化流，可逆密度估计",
     influence_score: 7.3,
-    first_appeared: 2014,
+    first_appeared: '2014-01',
   },
   {
     id: 'energy_model',
@@ -596,7 +596,7 @@ export const mockNodes: Node[] = [
     category: 'gen_model',
     description: "基于能量的模型",
     influence_score: 7.1,
-    first_appeared: 2003,
+    first_appeared: '2003-01',
   },
   {
     id: 'backpropagation',
@@ -604,7 +604,7 @@ export const mockNodes: Node[] = [
     category: 'dl_technique',
     description: "反向传播算法",
     influence_score: 9.0,
-    first_appeared: 1986,
+    first_appeared: '1986-01',
   },
   {
     id: 'gradient_descent',
@@ -612,7 +612,7 @@ export const mockNodes: Node[] = [
     category: 'optimizer',
     description: "梯度下降优化方法",
     influence_score: 8.8,
-    first_appeared: 1951,
+    first_appeared: '1951-01',
   },
   {
     id: 'weight_decay',
@@ -620,7 +620,7 @@ export const mockNodes: Node[] = [
     category: 'dl_technique',
     description: "权重衰减正则化",
     influence_score: 7.4,
-    first_appeared: 1986,
+    first_appeared: '1986-01',
   },
   {
     id: 'data_augmentation',
@@ -628,7 +628,7 @@ export const mockNodes: Node[] = [
     category: 'dl_technique',
     description: "数据增强技术",
     influence_score: 7.9,
-    first_appeared: 2010,
+    first_appeared: '2010-01',
   },
   {
     id: 'contrastive_learning',
@@ -636,7 +636,7 @@ export const mockNodes: Node[] = [
     category: 'dl_technique',
     description: "对比学习，自监督表示学习范式",
     influence_score: 8.6,
-    first_appeared: 2020,
+    first_appeared: '2020-01',
   },
   {
     id: 'simclr',
@@ -644,7 +644,7 @@ export const mockNodes: Node[] = [
     category: 'dl_technique',
     description: "简单框架对比学习",
     influence_score: 7.8,
-    first_appeared: 2020,
+    first_appeared: '2020-01',
   },
   {
     id: 'moco',
@@ -652,7 +652,7 @@ export const mockNodes: Node[] = [
     category: 'dl_technique',
     description: "动量对比学习",
     influence_score: 7.6,
-    first_appeared: 2020,
+    first_appeared: '2020-01',
   },
   {
     id: 'byol',
@@ -660,7 +660,7 @@ export const mockNodes: Node[] = [
     category: 'dl_technique',
     description: "无需负样本的自监督学习方法",
     influence_score: 7.4,
-    first_appeared: 2020,
+    first_appeared: '2020-01',
   },
   {
     id: 'knowledge_distillation',
@@ -668,7 +668,7 @@ export const mockNodes: Node[] = [
     category: 'dl_technique',
     description: "知识蒸馏，模型压缩技术",
     influence_score: 8.0,
-    first_appeared: 2015,
+    first_appeared: '2015-01',
   },
   {
     id: 'pruning',
@@ -676,7 +676,7 @@ export const mockNodes: Node[] = [
     category: 'dl_technique',
     description: "模型剪枝，减少参数量",
     influence_score: 7.5,
-    first_appeared: 2015,
+    first_appeared: '2015-01',
   },
   {
     id: 'quantization',
@@ -684,7 +684,7 @@ export const mockNodes: Node[] = [
     category: 'dl_technique',
     description: "模型量化，降低精度以加速推理",
     influence_score: 8.2,
-    first_appeared: 2018,
+    first_appeared: '2018-01',
   },
   {
     id: 'lora',
@@ -692,7 +692,7 @@ export const mockNodes: Node[] = [
     category: 'dl_technique',
     description: "低秩适配，高效微调大模型",
     influence_score: 9.0,
-    first_appeared: 2021,
+    first_appeared: '2021-01',
   },
   {
     id: 'moe',
@@ -700,7 +700,7 @@ export const mockNodes: Node[] = [
     category: 'dl_arch',
     description: "混合专家模型",
     influence_score: 8.5,
-    first_appeared: 2017,
+    first_appeared: '2017-01',
   },
   {
     id: 'flash_attention',
@@ -708,7 +708,7 @@ export const mockNodes: Node[] = [
     category: 'dl_technique',
     description: "高效注意力计算，减少内存访问",
     influence_score: 8.8,
-    first_appeared: 2022,
+    first_appeared: '2022-01',
   },
   {
     id: 'kv_cache',
@@ -716,7 +716,7 @@ export const mockNodes: Node[] = [
     category: 'dl_technique',
     description: "键值缓存，加速自回归推理",
     influence_score: 7.9,
-    first_appeared: 2018,
+    first_appeared: '2018-01',
   },
   {
     id: 'speculative_decoding',
@@ -724,7 +724,7 @@ export const mockNodes: Node[] = [
     category: 'dl_technique',
     description: "推测解码，加速LLM推理",
     influence_score: 7.7,
-    first_appeared: 2023,
+    first_appeared: '2023-01',
   },
   {
     id: 'reinforcement_learning',
@@ -732,7 +732,7 @@ export const mockNodes: Node[] = [
     category: 'rl_algorithm',
     description: "强化学习，通过奖励信号学习策略",
     influence_score: 8.8,
-    first_appeared: 1989,
+    first_appeared: '1989-01',
   },
   {
     id: 'imitation_learning',
@@ -740,7 +740,7 @@ export const mockNodes: Node[] = [
     category: 'rl_algorithm',
     description: "模仿学习，从专家演示中学习",
     influence_score: 7.4,
-    first_appeared: 2009,
+    first_appeared: '2009-01',
   },
   {
     id: 'world_model',
@@ -748,7 +748,7 @@ export const mockNodes: Node[] = [
     category: 'rl_algorithm',
     description: "世界模型，学习环境动态",
     influence_score: 7.6,
-    first_appeared: 2018,
+    first_appeared: '2018-01',
   },
   {
     id: 'decision_transformer',
@@ -756,7 +756,7 @@ export const mockNodes: Node[] = [
     category: 'rl_algorithm',
     description: "将RL建模为序列预测问题",
     influence_score: 7.3,
-    first_appeared: 2021,
+    first_appeared: '2021-01',
   },
   {
     id: 'sora',
@@ -764,7 +764,7 @@ export const mockNodes: Node[] = [
     category: 'multimodal',
     description: "OpenAI的文本到视频生成模型",
     influence_score: 9.0,
-    first_appeared: 2024,
+    first_appeared: '2024-01',
   },
   {
     id: 'midjourney',
@@ -772,7 +772,7 @@ export const mockNodes: Node[] = [
     category: 'gen_model',
     description: "AI图像生成工具",
     influence_score: 8.5,
-    first_appeared: 2022,
+    first_appeared: '2022-01',
   },
   {
     id: 'copilot',
@@ -780,7 +780,7 @@ export const mockNodes: Node[] = [
     category: 'application',
     description: "AI编程助手",
     influence_score: 8.7,
-    first_appeared: 2021,
+    first_appeared: '2021-01',
   },
   {
     id: 'chatgpt',
@@ -788,7 +788,7 @@ export const mockNodes: Node[] = [
     category: 'application',
     description: "OpenAI的对话式AI助手",
     influence_score: 9.8,
-    first_appeared: 2022,
+    first_appeared: '2022-01',
   },
   {
     id: 'langchain',
@@ -796,7 +796,7 @@ export const mockNodes: Node[] = [
     category: 'framework',
     description: "LLM应用开发框架",
     influence_score: 8.3,
-    first_appeared: 2022,
+    first_appeared: '2022-01',
   },
   {
     id: 'vector_database',
@@ -804,7 +804,7 @@ export const mockNodes: Node[] = [
     category: 'infrastructure',
     description: "向量数据库，存储和检索嵌入",
     influence_score: 8.1,
-    first_appeared: 2017,
+    first_appeared: '2017-01',
   },
   {
     id: 'faiss',
@@ -812,7 +812,7 @@ export const mockNodes: Node[] = [
     category: 'infrastructure',
     description: "Facebook的向量相似性搜索库",
     influence_score: 8.0,
-    first_appeared: 2017,
+    first_appeared: '2017-01',
   },
   {
     id: 'onnx',
@@ -820,7 +820,7 @@ export const mockNodes: Node[] = [
     category: 'infrastructure',
     description: "开放神经网络交换格式",
     influence_score: 7.8,
-    first_appeared: 2017,
+    first_appeared: '2017-01',
   },
   {
     id: 'tensorrt',
@@ -828,7 +828,7 @@ export const mockNodes: Node[] = [
     category: 'infrastructure',
     description: "NVIDIA的高性能推理优化器",
     influence_score: 7.9,
-    first_appeared: 2017,
+    first_appeared: '2017-01',
   },
   {
     id: 'cuda',
@@ -836,7 +836,7 @@ export const mockNodes: Node[] = [
     category: 'infrastructure',
     description: "NVIDIA的并行计算平台",
     influence_score: 8.6,
-    first_appeared: 2007,
+    first_appeared: '2007-01',
   },
   {
     id: 'tpu',
@@ -844,7 +844,7 @@ export const mockNodes: Node[] = [
     category: 'infrastructure',
     description: "Google的张量处理单元",
     influence_score: 7.7,
-    first_appeared: 2016,
+    first_appeared: '2016-01',
   },
   {
     id: 'pytorch',
@@ -852,7 +852,7 @@ export const mockNodes: Node[] = [
     category: 'framework',
     description: "Meta的深度学习框架",
     influence_score: 9.5,
-    first_appeared: 2016,
+    first_appeared: '2016-01',
   },
   {
     id: 'tensorflow',
@@ -860,7 +860,7 @@ export const mockNodes: Node[] = [
     category: 'framework',
     description: "Google的深度学习框架",
     influence_score: 8.8,
-    first_appeared: 2015,
+    first_appeared: '2015-01',
   },
   {
     id: 'jax',
@@ -868,7 +868,7 @@ export const mockNodes: Node[] = [
     category: 'framework',
     description: "Google的高性能数值计算库",
     influence_score: 8.2,
-    first_appeared: 2018,
+    first_appeared: '2018-01',
   },
   {
     id: 'huggingface',
@@ -876,7 +876,7 @@ export const mockNodes: Node[] = [
     category: 'platform',
     description: "模型和数据集共享平台",
     influence_score: 9.3,
-    first_appeared: 2016,
+    first_appeared: '2016-01',
   },
   {
     id: 'deepspeed',
@@ -884,7 +884,7 @@ export const mockNodes: Node[] = [
     category: 'infrastructure',
     description: "微软的分布式训练加速库",
     influence_score: 8.1,
-    first_appeared: 2020,
+    first_appeared: '2020-01',
   },
   {
     id: 'megatron',
@@ -892,7 +892,7 @@ export const mockNodes: Node[] = [
     category: 'infrastructure',
     description: "NVIDIA的大模型训练框架",
     influence_score: 7.9,
-    first_appeared: 2019,
+    first_appeared: '2019-01',
   },
   {
     id: 'vllm',
@@ -900,7 +900,7 @@ export const mockNodes: Node[] = [
     category: 'infrastructure',
     description: "高效LLM推理引擎",
     influence_score: 8.3,
-    first_appeared: 2023,
+    first_appeared: '2023-01',
   },
   {
     id: 'agent',
@@ -908,7 +908,7 @@ export const mockNodes: Node[] = [
     category: 'application',
     description: "能够自主执行任务的AI代理",
     influence_score: 9.2,
-    first_appeared: 2023,
+    first_appeared: '2023-01',
   },
   {
     id: 'function_calling',
@@ -916,7 +916,7 @@ export const mockNodes: Node[] = [
     category: 'nlp_technique',
     description: "LLM调用外部工具的能力",
     influence_score: 8.5,
-    first_appeared: 2023,
+    first_appeared: '2023-01',
   },
   {
     id: 'tool_use',
@@ -924,7 +924,7 @@ export const mockNodes: Node[] = [
     category: 'nlp_technique',
     description: "AI使用外部工具增强能力",
     influence_score: 8.3,
-    first_appeared: 2023,
+    first_appeared: '2023-01',
   },
   {
     id: 'planning',
@@ -932,7 +932,7 @@ export const mockNodes: Node[] = [
     category: 'rl_algorithm',
     description: "AI规划能力，分解复杂任务",
     influence_score: 7.8,
-    first_appeared: 1971,
+    first_appeared: '1971-01',
   },
   {
     id: 'memory',
@@ -940,7 +940,7 @@ export const mockNodes: Node[] = [
     category: 'dl_technique',
     description: "AI系统的记忆机制",
     influence_score: 7.6,
-    first_appeared: 1990,
+    first_appeared: '1990-01',
   },
   {
     id: 'hallucination',
@@ -948,7 +948,7 @@ export const mockNodes: Node[] = [
     category: 'nlp_technique',
     description: "LLM生成不准确或虚构内容的现象",
     influence_score: 8.4,
-    first_appeared: 2020,
+    first_appeared: '2020-01',
   },
   {
     id: 'alignment',
@@ -956,7 +956,7 @@ export const mockNodes: Node[] = [
     category: 'alignment',
     description: "使AI行为与人类意图对齐",
     influence_score: 9.0,
-    first_appeared: 2020,
+    first_appeared: '2020-01',
   },
   {
     id: 'safety',
@@ -964,7 +964,7 @@ export const mockNodes: Node[] = [
     category: 'alignment',
     description: "AI安全，确保AI系统可靠可控",
     influence_score: 8.8,
-    first_appeared: 2016,
+    first_appeared: '2016-01',
   },
   {
     id: 'red_teaming',
@@ -972,7 +972,7 @@ export const mockNodes: Node[] = [
     category: 'alignment',
     description: "对抗性测试AI系统安全性",
     influence_score: 7.9,
-    first_appeared: 2016,
+    first_appeared: '2016-01',
   },
   {
     id: 'constitutional_ai',
@@ -980,7 +980,7 @@ export const mockNodes: Node[] = [
     category: 'alignment',
     description: "Anthropic的AI对齐方法",
     influence_score: 8.0,
-    first_appeared: 2022,
+    first_appeared: '2022-01',
   },
   {
     id: 'dpo',
@@ -988,7 +988,7 @@ export const mockNodes: Node[] = [
     category: 'alignment',
     description: "直接偏好优化",
     influence_score: 8.5,
-    first_appeared: 2023,
+    first_appeared: '2023-01',
   },
   {
     id: 'reward_model',
@@ -996,7 +996,7 @@ export const mockNodes: Node[] = [
     category: 'alignment',
     description: "学习人类偏好的奖励模型",
     influence_score: 8.2,
-    first_appeared: 2017,
+    first_appeared: '2017-01',
   },
   {
     id: 'scaling_law',
@@ -1004,7 +1004,7 @@ export const mockNodes: Node[] = [
     category: 'dl_technique',
     description: "模型性能随规模增长的规律",
     influence_score: 8.7,
-    first_appeared: 2020,
+    first_appeared: '2020-01',
   },
   {
     id: 'emergent_ability',
@@ -1012,7 +1012,7 @@ export const mockNodes: Node[] = [
     category: 'dl_technique',
     description: "大模型涌现能力",
     influence_score: 8.3,
-    first_appeared: 2020,
+    first_appeared: '2020-01',
   },
   {
     id: 'in_context_learning',
@@ -1020,7 +1020,7 @@ export const mockNodes: Node[] = [
     category: 'nlp_technique',
     description: "上下文学习，无需参数更新",
     influence_score: 8.9,
-    first_appeared: 2020,
+    first_appeared: '2020-01',
   },
   {
     id: 'few_shot',
@@ -1028,7 +1028,7 @@ export const mockNodes: Node[] = [
     category: 'dl_technique',
     description: "少样本学习",
     influence_score: 8.1,
-    first_appeared: 2019,
+    first_appeared: '2019-01',
   },
   {
     id: 'zero_shot',
@@ -1036,7 +1036,7 @@ export const mockNodes: Node[] = [
     category: 'dl_technique',
     description: "零样本学习",
     influence_score: 7.9,
-    first_appeared: 2018,
+    first_appeared: '2018-01',
   },
   {
     id: 'multimodal',
@@ -1044,7 +1044,7 @@ export const mockNodes: Node[] = [
     category: 'multimodal',
     description: "多模态AI，处理多种输入类型",
     influence_score: 9.1,
-    first_appeared: 2020,
+    first_appeared: '2020-01',
   },
   {
     id: 'vision_language',
@@ -1052,7 +1052,7 @@ export const mockNodes: Node[] = [
     category: 'multimodal',
     description: "视觉-语言模型",
     influence_score: 8.6,
-    first_appeared: 2021,
+    first_appeared: '2021-01',
   },
   {
     id: 'ocr',
@@ -1060,7 +1060,7 @@ export const mockNodes: Node[] = [
     category: 'cv_model',
     description: "光学字符识别",
     influence_score: 7.5,
-    first_appeared: 1990,
+    first_appeared: '1990-01',
   },
   {
     id: 'text_to_speech',
@@ -1068,7 +1068,7 @@ export const mockNodes: Node[] = [
     category: 'speech_model',
     description: "文本到语音合成",
     influence_score: 7.8,
-    first_appeared: 2006,
+    first_appeared: '2006-01',
   },
   {
     id: 'speech_recognition',
@@ -1076,7 +1076,7 @@ export const mockNodes: Node[] = [
     category: 'speech_model',
     description: "自动语音识别",
     influence_score: 7.9,
-    first_appeared: 2006,
+    first_appeared: '2006-01',
   },
   {
     id: 'protein_folding',
@@ -1084,7 +1084,7 @@ export const mockNodes: Node[] = [
     category: 'application',
     description: "蛋白质结构预测",
     influence_score: 8.5,
-    first_appeared: 1972,
+    first_appeared: '1972-01',
   },
   {
     id: 'alphafold',
@@ -1092,7 +1092,7 @@ export const mockNodes: Node[] = [
     category: 'application',
     description: "DeepMind的蛋白质结构预测模型",
     influence_score: 9.0,
-    first_appeared: 2018,
+    first_appeared: '2018-01',
   },
   {
     id: 'autonomous_driving',
@@ -1100,7 +1100,7 @@ export const mockNodes: Node[] = [
     category: 'application',
     description: "自动驾驶技术",
     influence_score: 8.4,
-    first_appeared: 1986,
+    first_appeared: '1986-01',
   },
   {
     id: 'robotics',
@@ -1108,7 +1108,7 @@ export const mockNodes: Node[] = [
     category: 'application',
     description: "机器人技术",
     influence_score: 8.0,
-    first_appeared: 1961,
+    first_appeared: '1961-01',
   },
   {
     id: 'recommendation_system',
@@ -1116,7 +1116,7 @@ export const mockNodes: Node[] = [
     category: 'application',
     description: "推荐系统",
     influence_score: 7.8,
-    first_appeared: 2010,
+    first_appeared: '2010-01',
   },
   {
     id: 'anomaly_detection',
@@ -1124,7 +1124,7 @@ export const mockNodes: Node[] = [
     category: 'application',
     description: "异常检测",
     influence_score: 7.3,
-    first_appeared: 2000,
+    first_appeared: '2000-01',
   },
   {
     id: 'federated_learning',
@@ -1132,7 +1132,7 @@ export const mockNodes: Node[] = [
     category: 'dl_technique',
     description: "联邦学习，隐私保护分布式训练",
     influence_score: 7.7,
-    first_appeared: 2016,
+    first_appeared: '2016-01',
   },
   {
     id: 'differential_privacy',
@@ -1140,7 +1140,7 @@ export const mockNodes: Node[] = [
     category: 'dl_technique',
     description: "差分隐私",
     influence_score: 7.4,
-    first_appeared: 2006,
+    first_appeared: '2006-01',
   },
   {
     id: 'neural_architecture_search',
@@ -1148,7 +1148,7 @@ export const mockNodes: Node[] = [
     category: 'dl_technique',
     description: "神经架构搜索",
     influence_score: 7.5,
-    first_appeared: 2016,
+    first_appeared: '2016-01',
   },
   {
     id: 'hyperparameter',
@@ -1156,7 +1156,7 @@ export const mockNodes: Node[] = [
     category: 'optimizer',
     description: "超参数调优",
     influence_score: 7.3,
-    first_appeared: 1950,
+    first_appeared: '1950-01',
   },
   {
     id: 'early_stopping',
@@ -1164,7 +1164,7 @@ export const mockNodes: Node[] = [
     category: 'dl_technique',
     description: "早停法，防止过拟合",
     influence_score: 7.2,
-    first_appeared: 1990,
+    first_appeared: '1990-01',
   },
   {
     id: 'overfitting',
@@ -1172,7 +1172,7 @@ export const mockNodes: Node[] = [
     category: 'dl_technique',
     description: "过拟合问题",
     influence_score: 7.6,
-    first_appeared: 1990,
+    first_appeared: '1990-01',
   },
   {
     id: 'regularization',
@@ -1180,7 +1180,7 @@ export const mockNodes: Node[] = [
     category: 'dl_technique',
     description: "正则化技术",
     influence_score: 7.8,
-    first_appeared: 1990,
+    first_appeared: '1990-01',
   },
   {
     id: 'attention_mechanism',
@@ -1188,7 +1188,7 @@ export const mockNodes: Node[] = [
     category: 'dl_mechanism',
     description: "注意力机制，选择性关注输入",
     influence_score: 9.2,
-    first_appeared: 2014,
+    first_appeared: '2014-01',
   },
   {
     id: 'encoder_decoder',
@@ -1196,7 +1196,7 @@ export const mockNodes: Node[] = [
     category: 'dl_arch',
     description: "编码器-解码器架构",
     influence_score: 8.4,
-    first_appeared: 2014,
+    first_appeared: '2014-01',
   },
   {
     id: 'seq2seq',
@@ -1204,7 +1204,7 @@ export const mockNodes: Node[] = [
     category: 'dl_arch',
     description: "序列到序列模型",
     influence_score: 8.0,
-    first_appeared: 2014,
+    first_appeared: '2014-01',
   },
   {
     id: 'beam_search',
@@ -1212,7 +1212,7 @@ export const mockNodes: Node[] = [
     category: 'nlp_technique',
     description: "束搜索解码策略",
     influence_score: 7.5,
-    first_appeared: 2014,
+    first_appeared: '2014-01',
   },
   {
     id: 'temperature',
@@ -1220,7 +1220,7 @@ export const mockNodes: Node[] = [
     category: 'nlp_technique',
     description: "温度参数，控制生成多样性",
     influence_score: 7.7,
-    first_appeared: 2018,
+    first_appeared: '2018-01',
   },
   {
     id: 'top_k',
@@ -1228,7 +1228,7 @@ export const mockNodes: Node[] = [
     category: 'nlp_technique',
     description: "Top-K采样策略",
     influence_score: 7.4,
-    first_appeared: 2018,
+    first_appeared: '2018-01',
   },
   {
     id: 'top_p',
@@ -1236,7 +1236,7 @@ export const mockNodes: Node[] = [
     category: 'nlp_technique',
     description: "核采样策略",
     influence_score: 7.5,
-    first_appeared: 2019,
+    first_appeared: '2019-01',
   },
   {
     id: 'watermark',
@@ -1244,7 +1244,7 @@ export const mockNodes: Node[] = [
     category: 'alignment',
     description: "AI生成内容水印",
     influence_score: 7.2,
-    first_appeared: 2018,
+    first_appeared: '2018-01',
   },
   {
     id: 'mamba',
@@ -1252,7 +1252,7 @@ export const mockNodes: Node[] = [
     category: 'dl_arch',
     description: "状态空间模型架构",
     influence_score: 8.2,
-    first_appeared: 2023,
+    first_appeared: '2023-01',
   },
   {
     id: 'ssm',
@@ -1260,7 +1260,7 @@ export const mockNodes: Node[] = [
     category: 'dl_arch',
     description: "状态空间模型",
     influence_score: 7.8,
-    first_appeared: 2021,
+    first_appeared: '2021-01',
   },
   {
     id: 'rwkv',
@@ -1268,7 +1268,7 @@ export const mockNodes: Node[] = [
     category: 'dl_arch',
     description: "线性RNN架构，兼具Transformer性能和RNN效率",
     influence_score: 7.5,
-    first_appeared: 2022,
+    first_appeared: '2022-01',
   },
   {
     id: 'mixture_of_experts',
@@ -1276,7 +1276,7 @@ export const mockNodes: Node[] = [
     category: 'dl_arch',
     description: "混合专家架构",
     influence_score: 8.3,
-    first_appeared: 2017,
+    first_appeared: '2017-01',
   },
   {
     id: 'grok',
@@ -1284,7 +1284,7 @@ export const mockNodes: Node[] = [
     category: 'nlp_model',
     description: "xAI的大语言模型",
     influence_score: 8.0,
-    first_appeared: 2023,
+    first_appeared: '2023-01',
   },
   {
     id: 'gemini',
@@ -1292,7 +1292,7 @@ export const mockNodes: Node[] = [
     category: 'nlp_model',
     description: "Google的多模态大模型",
     influence_score: 9.1,
-    first_appeared: 2023,
+    first_appeared: '2023-01',
   },
   {
     id: 'claude',
@@ -1300,7 +1300,7 @@ export const mockNodes: Node[] = [
     category: 'nlp_model',
     description: "Anthropic的AI助手",
     influence_score: 9.0,
-    first_appeared: 2023,
+    first_appeared: '2023-01',
   },
   {
     id: 'mistral',
@@ -1308,7 +1308,7 @@ export const mockNodes: Node[] = [
     category: 'nlp_model',
     description: "Mistral AI的开源大模型",
     influence_score: 8.6,
-    first_appeared: 2023,
+    first_appeared: '2023-01',
   },
   {
     id: 'qwen',
@@ -1316,7 +1316,7 @@ export const mockNodes: Node[] = [
     category: 'nlp_model',
     description: "阿里通义千问大模型",
     influence_score: 8.4,
-    first_appeared: 2023,
+    first_appeared: '2023-01',
   },
   {
     id: 'deepseek',
@@ -1324,7 +1324,7 @@ export const mockNodes: Node[] = [
     category: 'nlp_model',
     description: "深度求索大模型",
     influence_score: 8.5,
-    first_appeared: 2024,
+    first_appeared: '2024-01',
   },
   {
     id: 'yi',
@@ -1332,7 +1332,7 @@ export const mockNodes: Node[] = [
     category: 'nlp_model',
     description: "零一万物大模型",
     influence_score: 7.8,
-    first_appeared: 2023,
+    first_appeared: '2023-01',
   },
   {
     id: 'gnn',
@@ -1340,7 +1340,7 @@ export const mockNodes: Node[] = [
     category: 'gnn',
     description: "图神经网络，处理图结构数据的深度学习模型",
     influence_score: 8.6,
-    first_appeared: 2016,
+    first_appeared: '2016-01',
   },
   {
     id: 'patch_embedding',
@@ -1348,7 +1348,7 @@ export const mockNodes: Node[] = [
     category: 'dl_technique',
     description: "将图像分割为固定大小块并嵌入为向量",
     influence_score: 7.8,
-    first_appeared: 2020,
+    first_appeared: '2020-01',
   },
   {
     id: 'object_detection',
@@ -1356,7 +1356,7 @@ export const mockNodes: Node[] = [
     category: 'cv_task',
     description: "目标检测，识别图像中物体的类别和位置",
     influence_score: 8.2,
-    first_appeared: 2012,
+    first_appeared: '2012-01',
   },
   {
     id: 'llm',
@@ -1364,7 +1364,7 @@ export const mockNodes: Node[] = [
     category: 'nlp_model',
     description: "大语言模型，大规模参数的预训练语言模型",
     influence_score: 9.5,
-    first_appeared: 2020,
+    first_appeared: '2020-01',
   },
   {
     id: 'score_matching',
@@ -1372,7 +1372,7 @@ export const mockNodes: Node[] = [
     category: 'dl_technique',
     description: "分数匹配，扩散模型的理论基础之一",
     influence_score: 7.5,
-    first_appeared: 2015,
+    first_appeared: '2015-01',
   },
   {
     id: 'google',
@@ -1380,7 +1380,7 @@ export const mockNodes: Node[] = [
     category: 'organization',
     description: "Google，AI研究的重要推动者",
     influence_score: 8.8,
-    first_appeared: 1998,
+    first_appeared: '1998-01',
   },
   {
     id: 'code_generation',
@@ -1388,7 +1388,7 @@ export const mockNodes: Node[] = [
     category: 'application',
     description: "代码生成，AI辅助编程",
     influence_score: 8.5,
-    first_appeared: 2018,
+    first_appeared: '2018-01',
   },
 ]
 

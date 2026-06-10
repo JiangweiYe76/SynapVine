@@ -43,7 +43,7 @@ type GraphData struct {
 		Category       string  `json:"category"`
 		Description    string  `json:"description"`
 		InfluenceScore float64 `json:"influence_score"`
-		FirstAppeared  int     `json:"first_appeared"`
+		FirstAppeared  string  `json:"first_appeared"`
 	} `json:"nodes"`
 	Edges []struct {
 		Source   string  `json:"source"`
@@ -115,7 +115,7 @@ func seedConcepts(ctx context.Context, neo *db.Neo4j, nodes []struct {
 	Category       string  `json:"category"`
 	Description    string  `json:"description"`
 	InfluenceScore float64 `json:"influence_score"`
-	FirstAppeared  int     `json:"first_appeared"`
+	FirstAppeared  string  `json:"first_appeared"`
 }) error {
 	cypher := `
 		UNWIND $nodes AS node

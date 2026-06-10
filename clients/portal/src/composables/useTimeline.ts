@@ -34,9 +34,10 @@ export function useTimeline(
   let playInterval: ReturnType<typeof setInterval> | null = null
 
   const visibleNodes = computed(() => {
-    return allNodes.value.filter(n => 
-      (n.first_appeared || 3000) <= currentYear.value
-    )
+    return allNodes.value.filter(n => {
+      const year = n.first_appeared ? parseInt(n.first_appeared.split('-')[0], 10) : 3000
+      return year <= currentYear.value
+    })
   })
 
   const visibleEdges = computed(() => {
