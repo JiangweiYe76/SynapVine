@@ -60,7 +60,7 @@ func TestListNodes_Success(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 		_ = json.NewEncoder(w).Encode(model.NodesListResponse{
 			Nodes: []model.Node{
-				{ID: "bert", Name: "BERT", Category: "nlp", Description: "d", InfluenceScore: 9.6, FirstAppeared: 2018},
+				{ID: "bert", Name: "BERT", Category: "nlp", Description: "d", InfluenceScore: 9.6, FirstAppeared: "2018-01"},
 			},
 			Pagination: model.Pagination{Offset: 0, Limit: 20, Total: 1, HasMore: false},
 		})
@@ -152,7 +152,7 @@ func TestCreateNode_Success(t *testing.T) {
 	defer server.Close()
 
 	node, err := c.CreateNode(context.Background(), model.NodeCreateRequest{
-		ID: "vit", Name: "ViT", Category: "cv", Description: "Vision", InfluenceScore: 9.1, FirstAppeared: 2020,
+		ID: "vit", Name: "ViT", Category: "cv", Description: "Vision", InfluenceScore: 9.1, FirstAppeared: "2020-01",
 	})
 	if err != nil {
 		t.Fatalf("CreateNode failed: %v", err)
@@ -243,7 +243,7 @@ func TestGraphData_Success(t *testing.T) {
 		}
 		w.WriteHeader(http.StatusOK)
 		_ = json.NewEncoder(w).Encode(model.GraphData{
-			Nodes: []model.Node{{ID: "n1", Name: "N1", Category: "c", Description: "d", InfluenceScore: 1.5, FirstAppeared: 2020}},
+			Nodes: []model.Node{{ID: "n1", Name: "N1", Category: "c", Description: "d", InfluenceScore: 1.5, FirstAppeared: "2020-01"}},
 			Edges: []model.Edge{{Source: "n1", Target: "n2", Weight: 0.8, Relation: "based_on"}},
 		})
 	})

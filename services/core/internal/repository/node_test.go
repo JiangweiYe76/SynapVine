@@ -19,7 +19,7 @@ func TestNodeRepository_CreateAndGet(t *testing.T) {
 		Category:       "dl_arch",
 		Description:    "Attention is all you need",
 		InfluenceScore: 9.5,
-		FirstAppeared:  2017,
+		FirstAppeared:  "2017-06",
 		Milestones:     []string{"2017-06"},
 	}
 
@@ -49,9 +49,9 @@ func TestNodeRepository_List(t *testing.T) {
 	testutil.CleanupAllData(t, neo)
 
 	for _, n := range []model.NodeCreateRequest{
-		{ID: "node-a", Name: "Alpha", Category: "cat1", Description: "First node", InfluenceScore: 1.0, FirstAppeared: 2000},
-		{ID: "node-b", Name: "Beta", Category: "cat2", Description: "Second node", InfluenceScore: 2.0, FirstAppeared: 2001},
-		{ID: "node-c", Name: "Gamma", Category: "cat1", Description: "Third node", InfluenceScore: 3.0, FirstAppeared: 2002},
+		{ID: "node-a", Name: "Alpha", Category: "cat1", Description: "First node", InfluenceScore: 1.0, FirstAppeared: "2000-01"},
+		{ID: "node-b", Name: "Beta", Category: "cat2", Description: "Second node", InfluenceScore: 2.0, FirstAppeared: "2001-01"},
+		{ID: "node-c", Name: "Gamma", Category: "cat1", Description: "Third node", InfluenceScore: 3.0, FirstAppeared: "2002-01"},
 	} {
 		if err := repo.Create(t.Context(), n); err != nil {
 			t.Fatalf("create node failed: %v", err)
@@ -89,8 +89,8 @@ func TestNodeRepository_Search(t *testing.T) {
 	testutil.CleanupAllData(t, neo)
 
 	for _, n := range []model.NodeCreateRequest{
-		{ID: "search-a", Name: "Alpha Search", Category: "cat1", Description: "desc a", InfluenceScore: 1.0, FirstAppeared: 2000},
-		{ID: "search-b", Name: "Beta", Category: "cat2", Description: "desc beta", InfluenceScore: 2.0, FirstAppeared: 2001},
+		{ID: "search-a", Name: "Alpha Search", Category: "cat1", Description: "desc a", InfluenceScore: 1.0, FirstAppeared: "2000-01"},
+		{ID: "search-b", Name: "Beta", Category: "cat2", Description: "desc beta", InfluenceScore: 2.0, FirstAppeared: "2001-01"},
 	} {
 		if err := repo.Create(t.Context(), n); err != nil {
 			t.Fatalf("create node failed: %v", err)
@@ -121,7 +121,7 @@ func TestNodeRepository_Update(t *testing.T) {
 		Category:       "cat",
 		Description:    "original desc",
 		InfluenceScore: 5.0,
-		FirstAppeared:  2000,
+		FirstAppeared:  "2000-01",
 	}
 	if err := repo.Create(t.Context(), req); err != nil {
 		t.Fatalf("create node failed: %v", err)
@@ -158,7 +158,7 @@ func TestNodeRepository_Delete(t *testing.T) {
 		Category:       "cat",
 		Description:    "delete me",
 		InfluenceScore: 1.0,
-		FirstAppeared:  2000,
+		FirstAppeared:  "2000-01",
 	}
 	if err := repo.Create(t.Context(), req); err != nil {
 		t.Fatalf("create node failed: %v", err)
@@ -201,7 +201,7 @@ func TestNodeRepository_Exists(t *testing.T) {
 		Category:       "cat",
 		Description:    "exists",
 		InfluenceScore: 1.0,
-		FirstAppeared:  2000,
+		FirstAppeared:  "2000-01",
 	}
 	if err := repo.Create(t.Context(), req); err != nil {
 		t.Fatalf("create node failed: %v", err)

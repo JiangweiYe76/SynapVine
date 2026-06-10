@@ -11,7 +11,7 @@ func TestFetchGraphData_Success(t *testing.T) {
 	body := `{
 		"nodes": [
 			{"id": "n1", "name": "Node One", "category": "cat", "description": "d",
-			 "influence_score": 1.5, "community_id": 1, "degree": 2, "first_appeared": 2020}
+			 "influence_score": 1.5, "community_id": 1, "degree": 2, "first_appeared": "2020-01"}
 		],
 		"edges": [
 			{"source": "n1", "target": "n2", "weight": 0.8, "relation": "based_on"}

@@ -7,7 +7,7 @@ type Node struct {
 	Category       string   `json:"category"`
 	Description    string   `json:"description"`
 	InfluenceScore float64  `json:"influence_score"`
-	FirstAppeared  int      `json:"first_appeared"`
+	FirstAppeared  string   `json:"first_appeared"`
 	Milestones     []string `json:"milestones,omitempty"`
 	CommunityID    int      `json:"community_id"`
 	Degree         int      `json:"degree"`
@@ -20,7 +20,7 @@ type NodeCreateRequest struct {
 	Category       string   `json:"category"`
 	Description    string   `json:"description"`
 	InfluenceScore float64  `json:"influence_score"`
-	FirstAppeared  int      `json:"first_appeared"`
+	FirstAppeared  string   `json:"first_appeared"`
 	Milestones     []string `json:"milestones,omitempty"`
 }
 
@@ -30,7 +30,7 @@ type NodeUpdateRequest struct {
 	Category       *string   `json:"category,omitempty"`
 	Description    *string   `json:"description,omitempty"`
 	InfluenceScore *float64  `json:"influence_score,omitempty"`
-	FirstAppeared  *int      `json:"first_appeared,omitempty"`
+	FirstAppeared  *string   `json:"first_appeared,omitempty"`
 	Milestones     *[]string `json:"milestones,omitempty"`
 }
 
