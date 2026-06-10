@@ -21,7 +21,7 @@ type Config struct {
 func Load() *Config {
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8001"
+		port = "8002"
 	}
 
 	allowedOrigin := os.Getenv("ALLOWED_ORIGIN")

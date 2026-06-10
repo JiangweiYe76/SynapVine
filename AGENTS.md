@@ -74,7 +74,7 @@ go mod tidy
 go run main.go
 ```
 
-- Server starts on `http://localhost:8001`
+- Server starts on `http://localhost:8002`
 - Provides JWT-based authentication (`/api/auth/login`, `/api/me`)
 
 ### Frontend — Portal
@@ -105,7 +105,7 @@ bun run dev
 ```
 
 - Dev server starts on `http://localhost:5174`
-- Vite proxies `/api` to `http://localhost:8001`
+- Vite proxies `/api` to `http://localhost:8002`
 
 ### Infrastructure (Neo4j)
 
@@ -141,7 +141,7 @@ docker-compose up -d
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PORT` | `8001` | Server port |
+| `PORT` | `8002` | Server port |
 | `ALLOWED_ORIGIN` | `http://localhost:5174` | CORS allowed origin |
 | `JWT_SECRET` | *(dev key)* | JWT signing secret |
 
