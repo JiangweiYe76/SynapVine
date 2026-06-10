@@ -9,11 +9,15 @@ type Config struct {
 	Port          string // HTTP server port
 	AllowedOrigin string // Allowed CORS origin
 	JWTSecret     string // Secret key for JWT signing
-	DataPath      string // Path to graph.json data file
+	CoreURL       string // URL of the core service (required)
 }
 
 // Load reads configuration from environment variables with fallback defaults
-// Returns a Config struct with all settings
+// Returns a Config struct with all settings.
+//
+// CORE_URL has no default: when unset the application must fail fast at
+// startup, since the core service is the authoritative source of node data
+// and statistics.
 func Load() *Config {
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -30,15 +34,13 @@ func Load() *Config {
 		jwtSecret = "console-dev-secret-key-change-in-production"
 	}
 
-	dataPath := os.Getenv("DATA_PATH")
-	if dataPath == "" {
-		dataPath = "../../data/graph.json"
-	}
+	coreURL := os.Getenv("CORE_URL")
+	// Intentionally no default: core is mandatory.
 
 	return &Config{
 		Port:          port,
 		AllowedOrigin: allowedOrigin,
 		JWTSecret:     jwtSecret,
-		DataPath:      dataPath,
+		CoreURL:       coreURL,
 	}
 }

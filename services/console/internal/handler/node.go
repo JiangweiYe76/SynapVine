@@ -1,23 +1,24 @@
 package handler
 
 import (
+	"errors"
 	"log/slog"
 	"strconv"
 
-	"console/internal/loader"
+	"console/internal/coreclient"
 	"console/internal/model"
 
 	"github.com/gofiber/fiber/v2"
 )
 
-// NodeHandler handles node-related HTTP requests
+// NodeHandler proxies node-related HTTP requests to the core service.
 type NodeHandler struct {
-	store *loader.GraphStore
+	core *coreclient.Client
 }
 
-// NewNodeHandler creates a new NodeHandler
-func NewNodeHandler(store *loader.GraphStore) *NodeHandler {
-	return &NodeHandler{store: store}
+// NewNodeHandler creates a new NodeHandler backed by the given core client.
+func NewNodeHandler(core *coreclient.Client) *NodeHandler {
+	return &NodeHandler{core: core}
 }
 
 // List handles GET /api/nodes
@@ -33,37 +34,35 @@ func (h *NodeHandler) List(c *fiber.Ctx) error {
 		offset = 0
 	}
 
-	var nodes []model.Node
-	var total int
-	if search != "" {
-		nodes, total = h.store.SearchNodes(search, offset, limit)
-	} else {
-		nodes, total = h.store.ListNodes(offset, limit)
+	resp, err := h.core.ListNodes(c.Context(), offset, limit, search)
+	if err != nil {
+		slog.Error("node_list_core_failed", slog.Any("error", err))
+		return c.Status(502).JSON(model.ErrorResponse{
+			Error:   "core_unavailable",
+			Message: "Failed to fetch nodes from core service",
+		})
 	}
-
-	return c.JSON(model.NodesListResponse{
-		Nodes: nodes,
-		Pagination: model.Pagination{
-			Offset:  offset,
-			Limit:   limit,
-			Total:   total,
-			HasMore: offset+limit < total,
-		},
-	})
+	return c.JSON(resp)
 }
 
 // Get handles GET /api/nodes/:id
 func (h *NodeHandler) Get(c *fiber.Ctx) error {
 	id := c.Params("id")
 
-	node := h.store.GetNode(id)
+	node, err := h.core.GetNode(c.Context(), id)
+	if err != nil {
+		slog.Error("node_get_core_failed", slog.String("id", id), slog.Any("error", err))
+		return c.Status(502).JSON(model.ErrorResponse{
+			Error:   "core_unavailable",
+			Message: "Failed to fetch node from core service",
+		})
+	}
 	if node == nil {
 		return c.Status(404).JSON(model.ErrorResponse{
 			Error:   "node_not_found",
 			Message: "Node with the specified ID not found",
 		})
 	}
-
 	return c.JSON(node)
 }
 
@@ -85,33 +84,23 @@ func (h *NodeHandler) Create(c *fiber.Ctx) error {
 		})
 	}
 
-	if h.store.NodeExists(req.ID) {
-		return c.Status(409).JSON(model.ErrorResponse{
-			Error:   "node_exists",
-			Message: "A node with this ID already exists",
-		})
-	}
-
-	node := model.Node{
-		ID:             req.ID,
-		Name:           req.Name,
-		Category:       req.Category,
-		Description:    req.Description,
-		InfluenceScore: req.InfluenceScore,
-		FirstAppeared:  req.FirstAppeared,
-		Milestones:     req.Milestones,
-	}
-
-	if err := h.store.CreateNode(node); err != nil {
-		slog.Error("node_create_save_error", slog.Any("error", err))
-		return c.Status(500).JSON(model.ErrorResponse{
-			Error:   "save_failed",
-			Message: "Failed to save node",
+	node, err := h.core.CreateNode(c.Context(), req)
+	if err != nil {
+		var httpErr *coreclient.HTTPStatusError
+		if errors.As(err, &httpErr) && httpErr.StatusCode == 409 {
+			return c.Status(409).JSON(model.ErrorResponse{
+				Error:   "node_exists",
+				Message: "A node with this ID already exists",
+			})
+		}
+		slog.Error("node_create_core_failed", slog.Any("error", err))
+		return c.Status(502).JSON(model.ErrorResponse{
+			Error:   "core_unavailable",
+			Message: "Failed to create node in core service",
 		})
 	}
 
 	slog.Info("node_created", slog.String("id", node.ID), slog.String("name", node.Name))
-
 	return c.Status(201).JSON(node)
 }
 
@@ -128,12 +117,12 @@ func (h *NodeHandler) Update(c *fiber.Ctx) error {
 		})
 	}
 
-	node, err := h.store.UpdateNode(id, req)
+	node, err := h.core.UpdateNode(c.Context(), id, req)
 	if err != nil {
-		slog.Error("node_update_save_error", slog.Any("error", err))
-		return c.Status(500).JSON(model.ErrorResponse{
-			Error:   "save_failed",
-			Message: "Failed to update node",
+		slog.Error("node_update_core_failed", slog.String("id", id), slog.Any("error", err))
+		return c.Status(502).JSON(model.ErrorResponse{
+			Error:   "core_unavailable",
+			Message: "Failed to update node in core service",
 		})
 	}
 	if node == nil {
@@ -144,7 +133,6 @@ func (h *NodeHandler) Update(c *fiber.Ctx) error {
 	}
 
 	slog.Info("node_updated", slog.String("id", node.ID))
-
 	return c.JSON(node)
 }
 
@@ -152,7 +140,15 @@ func (h *NodeHandler) Update(c *fiber.Ctx) error {
 func (h *NodeHandler) Delete(c *fiber.Ctx) error {
 	id := c.Params("id")
 
-	if !h.store.DeleteNode(id) {
+	ok, err := h.core.DeleteNode(c.Context(), id)
+	if err != nil {
+		slog.Error("node_delete_core_failed", slog.String("id", id), slog.Any("error", err))
+		return c.Status(502).JSON(model.ErrorResponse{
+			Error:   "core_unavailable",
+			Message: "Failed to delete node in core service",
+		})
+	}
+	if !ok {
 		return c.Status(404).JSON(model.ErrorResponse{
 			Error:   "node_not_found",
 			Message: "Node with the specified ID not found",
@@ -160,12 +156,44 @@ func (h *NodeHandler) Delete(c *fiber.Ctx) error {
 	}
 
 	slog.Info("node_deleted", slog.String("id", id))
-
 	return c.SendStatus(204)
 }
 
 // Stats handles GET /api/stats
 func (h *NodeHandler) Stats(c *fiber.Ctx) error {
-	stats := h.store.Stats()
-	return c.JSON(stats)
+	// Stats are derived from the authoritative graph snapshot in core.
+	// Local edges are added on top since edge CRUD still lives in console.
+	graph, err := h.core.GraphData(c.Context())
+	if err != nil {
+		slog.Error("graph_data_core_failed", slog.Any("error", err))
+		return c.Status(502).JSON(model.ErrorResponse{
+			Error:   "core_unavailable",
+			Message: "Failed to load graph data from core service",
+		})
+	}
+	return c.JSON(computeStats(graph))
+}
+
+// computeStats derives the dashboard stats response from a graph snapshot.
+func computeStats(graph *model.GraphData) model.StatsResponse {
+	categories := make(map[string]int)
+	var totalInfluence float64
+
+	for _, n := range graph.Nodes {
+		categories[n.Category]++
+		totalInfluence += n.InfluenceScore
+	}
+
+	var avgInfluence float64
+	if len(graph.Nodes) > 0 {
+		avgInfluence = totalInfluence / float64(len(graph.Nodes))
+	}
+
+	return model.StatsResponse{
+		TotalNodes:    len(graph.Nodes),
+		TotalEdges:    len(graph.Edges),
+		CategoryCount: len(categories),
+		Categories:    categories,
+		AvgInfluence:  avgInfluence,
+	}
 }

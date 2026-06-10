@@ -1,12 +1,13 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 	"os"
 
 	"console/internal/config"
+	"console/internal/coreclient"
 	"console/internal/handler"
-	"console/internal/loader"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -22,15 +23,27 @@ func main() {
 	slog.Info("configuration_loaded",
 		slog.String("port", cfg.Port),
 		slog.String("allowed_origin", cfg.AllowedOrigin),
-		slog.String("data_path", cfg.DataPath),
+		slog.String("core_url", cfg.CoreURL),
 	)
 
-	store, err := loader.NewGraphStore(cfg.DataPath)
-	if err != nil {
-		slog.Error("failed_to_load_graph_data", slog.Any("error", err))
+	// Core service is mandatory: fail fast when CORE_URL is missing.
+	if cfg.CoreURL == "" {
+		slog.Error("core_url_required",
+			slog.String("hint", "Set the CORE_URL environment variable to the core service base URL"),
+		)
 		os.Exit(1)
 	}
-	slog.Info("graph_data_loaded", slog.String("path", cfg.DataPath))
+
+	core := coreclient.New(cfg.CoreURL)
+	if err := core.Health(context.Background()); err != nil {
+		slog.Error("core_health_check_failed", slog.Any("error", err))
+		os.Exit(1)
+	}
+	slog.Info("core_health_check_passed")
+
+	authHandler := handler.NewAuthHandler(cfg.JWTSecret)
+	nodeHandler := handler.NewNodeHandler(core)
+	edgeHandler := handler.NewEdgeHandler(core)
 
 	app := fiber.New(fiber.Config{
 		AppName: "AI-Graph Console Server",
@@ -42,10 +55,6 @@ func main() {
 		AllowHeaders:     "Content-Type, Authorization",
 		AllowCredentials: true,
 	}))
-
-	authHandler := handler.NewAuthHandler(cfg.JWTSecret)
-	nodeHandler := handler.NewNodeHandler(store)
-	edgeHandler := handler.NewEdgeHandler(store)
 
 	app.Post("/api/auth/login", authHandler.Login)
 
