@@ -133,6 +133,77 @@ func (c *Client) GraphData(ctx context.Context) (*model.GraphData, error) {
 	return &data, nil
 }
 
+// ListCommunities returns the flat list of communities from the core service.
+func (c *Client) ListCommunities(ctx context.Context) (*model.CommunitiesListResponse, error) {
+	var resp model.CommunitiesListResponse
+	if err := c.doJSON(ctx, http.MethodGet, "/api/communities", nil, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// GetCommunityTree returns the communities assembled as a tree.
+func (c *Client) GetCommunityTree(ctx context.Context) (*model.CommunitiesTreeResponse, error) {
+	var resp model.CommunitiesTreeResponse
+	if err := c.doJSON(ctx, http.MethodGet, "/api/communities/tree", nil, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// GetCommunity fetches a single community by ID.
+// It returns (nil, nil) when core responds with 404.
+func (c *Client) GetCommunity(ctx context.Context, id string) (*model.Community, error) {
+	var comm model.Community
+	err := c.doJSON(ctx, http.MethodGet, fmt.Sprintf("/api/communities/%s", id), nil, &comm)
+	if err != nil {
+		var httpErr *HTTPStatusError
+		if errors.As(err, &httpErr) && httpErr.StatusCode == http.StatusNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &comm, nil
+}
+
+// CreateCommunity creates a new community and returns the created resource.
+func (c *Client) CreateCommunity(ctx context.Context, req model.CommunityCreateRequest) (*model.Community, error) {
+	var comm model.Community
+	if err := c.doJSON(ctx, http.MethodPost, "/api/communities", req, &comm); err != nil {
+		return nil, err
+	}
+	return &comm, nil
+}
+
+// UpdateCommunity updates an existing community and returns the updated resource.
+// It returns (nil, nil) when core responds with 404.
+func (c *Client) UpdateCommunity(ctx context.Context, id string, req model.CommunityUpdateRequest) (*model.Community, error) {
+	var comm model.Community
+	err := c.doJSON(ctx, http.MethodPut, fmt.Sprintf("/api/communities/%s", id), req, &comm)
+	if err != nil {
+		var httpErr *HTTPStatusError
+		if errors.As(err, &httpErr) && httpErr.StatusCode == http.StatusNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &comm, nil
+}
+
+// DeleteCommunity removes a community by ID.
+// It returns (false, nil) when core responds with 404.
+func (c *Client) DeleteCommunity(ctx context.Context, id string) (bool, error) {
+	err := c.doJSON(ctx, http.MethodDelete, fmt.Sprintf("/api/communities/%s", id), nil, nil)
+	if err != nil {
+		var httpErr *HTTPStatusError
+		if errors.As(err, &httpErr) && httpErr.StatusCode == http.StatusNotFound {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
 // --- HTTP helpers ---
 
 // HTTPStatusError carries the HTTP status code returned by the core service

@@ -4,7 +4,6 @@ package model
 type Node struct {
 	ID             string   `json:"id"`              // Unique identifier for the node
 	Name           string   `json:"name"`            // Display name of the node
-	Category       string   `json:"category"`        // Category/type of the node
 	Description    string   `json:"description"`     // Brief description of the node
 	InfluenceScore float64  `json:"influence_score"` // Influence/popularity score (0-10)
 	CommunityID    int      `json:"community_id"`    // ID of the community this node belongs to

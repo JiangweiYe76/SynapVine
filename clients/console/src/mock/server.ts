@@ -41,7 +41,6 @@ export function createMockServer() {
           (n) =>
             n.id.toLowerCase().includes(q) ||
             n.name.toLowerCase().includes(q) ||
-            n.category.toLowerCase().includes(q) ||
             n.description.toLowerCase().includes(q)
         )
       }
@@ -65,17 +64,20 @@ export function createMockServer() {
     },
 
     createNode(data: NodeCreateRequest): Node {
-      if (nodes.some((n) => n.id === data.id)) {
+      // Mirror the core service: when no id is supplied the mock mints a
+      // fresh one too, so the frontend never has to fabricate an id.
+      const id = data.id && data.id.length > 0 ? data.id : cryptoRandomId()
+      if (nodes.some((n) => n.id === id)) {
         throw new Error('Node already exists')
       }
       const node: Node = {
-        id: data.id,
+        id,
         name: data.name,
-        category: data.category,
         description: data.description,
         influence_score: data.influence_score,
         first_appeared: data.first_appeared,
         milestones: data.milestones,
+        community_id: data.community_id ?? null,
       }
       nodes.push(node)
       return node
@@ -160,19 +162,26 @@ export function createMockServer() {
     },
 
     getStats(): StatsResponse {
-      const categories: Record<string, number> = {}
       let totalInfluence = 0
       for (const n of nodes) {
-        categories[n.category] = (categories[n.category] ?? 0) + 1
         totalInfluence += n.influence_score
       }
       return {
         total_nodes: nodes.length,
         total_edges: edges.length,
-        category_count: Object.keys(categories).length,
-        categories,
         avg_influence: nodes.length > 0 ? totalInfluence / nodes.length : 0,
       }
     },
   }
+}
+
+// cryptoRandomId generates a UUID-shaped string. The mock layer does not
+// have access to crypto.randomUUID in every test environment, so we
+// roll our own using Math.random and assert the v4 layout.
+function cryptoRandomId(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0
+    const v = c === 'x' ? r : (r & 0x3) | 0x8
+    return v.toString(16)
+  })
 }

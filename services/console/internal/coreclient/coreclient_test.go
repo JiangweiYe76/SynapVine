@@ -60,7 +60,7 @@ func TestListNodes_Success(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 		_ = json.NewEncoder(w).Encode(model.NodesListResponse{
 			Nodes: []model.Node{
-				{ID: "bert", Name: "BERT", Category: "nlp", Description: "d", InfluenceScore: 9.6, FirstAppeared: "2018-01"},
+				{ID: "bert", Name: "BERT", Description: "d", InfluenceScore: 9.6, FirstAppeared: "2018-01"},
 			},
 			Pagination: model.Pagination{Offset: 0, Limit: 20, Total: 1, HasMore: false},
 		})
@@ -102,7 +102,7 @@ func TestGetNode_Success(t *testing.T) {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
 		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(model.Node{ID: "bert", Name: "BERT", Category: "nlp"})
+		_ = json.NewEncoder(w).Encode(model.Node{ID: "bert", Name: "BERT"})
 	})
 	defer server.Close()
 
@@ -147,12 +147,12 @@ func TestCreateNode_Success(t *testing.T) {
 			t.Errorf("expected id=vit, got %s", body.ID)
 		}
 		w.WriteHeader(http.StatusCreated)
-		_ = json.NewEncoder(w).Encode(model.Node{ID: "vit", Name: "ViT", Category: "cv"})
+		_ = json.NewEncoder(w).Encode(model.Node{ID: "vit", Name: "ViT"})
 	})
 	defer server.Close()
 
 	node, err := c.CreateNode(context.Background(), model.NodeCreateRequest{
-		ID: "vit", Name: "ViT", Category: "cv", Description: "Vision", InfluenceScore: 9.1, FirstAppeared: "2020-01",
+		ID: "vit", Name: "ViT", Description: "Vision", InfluenceScore: 9.1, FirstAppeared: "2020-01",
 	})
 	if err != nil {
 		t.Fatalf("CreateNode failed: %v", err)
@@ -243,7 +243,7 @@ func TestGraphData_Success(t *testing.T) {
 		}
 		w.WriteHeader(http.StatusOK)
 		_ = json.NewEncoder(w).Encode(model.GraphData{
-			Nodes: []model.Node{{ID: "n1", Name: "N1", Category: "c", Description: "d", InfluenceScore: 1.5, FirstAppeared: "2020-01"}},
+			Nodes: []model.Node{{ID: "n1", Name: "N1", Description: "d", InfluenceScore: 1.5, FirstAppeared: "2020-01"}},
 			Edges: []model.Edge{{Source: "n1", Target: "n2", Weight: 0.8, Relation: "based_on"}},
 		})
 	})

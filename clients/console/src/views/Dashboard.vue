@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import Layout from '../components/Layout.vue'
-import { Network, Link2, Tag, Activity, ChevronRight } from '@lucide/vue'
+import { Network, Link2, Activity, ChevronRight } from '@lucide/vue'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { statsAPI } from '@/api/stats'
@@ -14,16 +14,8 @@ const error = ref<string | null>(null)
 const statCards = computed(() => [
   { name: 'Total Nodes', value: stats.value?.total_nodes ?? 0, icon: Network },
   { name: 'Total Edges', value: stats.value?.total_edges ?? 0, icon: Link2 },
-  { name: 'Categories', value: stats.value?.category_count ?? 0, icon: Tag },
   { name: 'Avg Influence', value: (stats.value?.avg_influence ?? 0).toFixed(1), icon: Activity },
 ])
-
-const topCategories = computed(() => {
-  if (!stats.value?.categories) return []
-  return Object.entries(stats.value.categories)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 8)
-})
 
 const quickActions = [
   { name: 'Manage Nodes', description: 'View and edit knowledge graph nodes', path: '/nodes' },
@@ -67,7 +59,7 @@ onMounted(fetchStats)
 
       <template v-else>
         <!-- Stats Grid -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <Card v-for="stat in statCards" :key="stat.name">
             <CardContent class="flex items-center gap-4 pt-6">
               <div class="p-2 rounded-md bg-primary/10 text-primary">
@@ -80,23 +72,6 @@ onMounted(fetchStats)
             </CardContent>
           </Card>
         </div>
-
-        <!-- Top Categories -->
-        <Card v-if="topCategories.length > 0">
-          <CardHeader>
-            <CardTitle>Top Categories</CardTitle>
-          </CardHeader>
-          <CardContent class="flex flex-wrap gap-2">
-            <Badge
-              v-for="[name, count] in topCategories"
-              :key="name"
-              variant="outline"
-              class="px-3 py-1"
-            >
-              {{ name }} <span class="ml-1 text-muted-foreground">{{ count }}</span>
-            </Badge>
-          </CardContent>
-        </Card>
       </template>
 
       <!-- Quick Actions -->

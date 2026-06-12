@@ -11,7 +11,6 @@ import { CircleDot, Search, ChevronLeft, ChevronRight, Pencil, Trash2 } from '@l
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
 import {
   Table,
   TableBody,
@@ -38,22 +37,6 @@ const deleteDialogOpen = ref(false)
 const selectedNode = ref<Node | null>(null)
 
 const totalPages = computed(() => Math.ceil(totalNodes.value / pageSize))
-
-const categoryColors: Record<string, string> = {
-  dl_arch: 'bg-blue-500/10 text-blue-700 dark:text-blue-300',
-  nlp_model: 'bg-green-500/10 text-green-700 dark:text-green-300',
-  cv_model: 'bg-purple-500/10 text-purple-700 dark:text-purple-300',
-  gen_model: 'bg-pink-500/10 text-pink-700 dark:text-pink-300',
-  multimodal: 'bg-orange-500/10 text-orange-700 dark:text-orange-300',
-  dl_technique: 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-300',
-  dl_mechanism: 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-300',
-  optimizer: 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-300',
-  rl_algorithm: 'bg-red-500/10 text-red-700 dark:text-red-300',
-  gnn: 'bg-teal-500/10 text-teal-700 dark:text-teal-300',
-  nlp_technique: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
-  alignment: 'bg-rose-500/10 text-rose-700 dark:text-rose-300',
-  speech_model: 'bg-violet-500/10 text-violet-700 dark:text-violet-300',
-}
 
 function openCreateDialog() {
   selectedNode.value = null
@@ -83,12 +66,11 @@ const columns = [
     cell: (info) =>
       h('span', { class: 'font-medium' }, info.getValue()),
   }),
-  columnHelper.accessor('category', {
-    header: 'Category',
+  columnHelper.accessor('community_id', {
+    header: 'Community',
     cell: (info) => {
       const value = info.getValue()
-      const colorClass = categoryColors[value] ?? 'bg-gray-500/10 text-gray-700 dark:text-gray-300'
-      return h(Badge, { variant: 'outline', class: colorClass }, () => value)
+      return h('span', { class: 'font-mono text-xs text-muted-foreground' }, value ?? '—')
     },
   }),
   columnHelper.accessor('influence_score', {
