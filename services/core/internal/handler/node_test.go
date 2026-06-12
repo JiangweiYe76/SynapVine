@@ -58,8 +58,8 @@ func newGraphDataApp(svc NodeService) *fiber.App {
 func TestNodeHandler_GraphData_Success(t *testing.T) {
 	svc := &graphDataStub{
 		nodes: []model.Node{
-			{ID: "n1", Name: "Alpha", Category: "cat", Description: "d", InfluenceScore: 8.5, FirstAppeared: "2020-01"},
-			{ID: "n2", Name: "Beta", Category: "cat", Description: "d", InfluenceScore: 7.0, FirstAppeared: "2021-01"},
+			{ID: "n1", Name: "Alpha", Description: "d", InfluenceScore: 8.5, FirstAppeared: "2020-01"},
+			{ID: "n2", Name: "Beta", Description: "d", InfluenceScore: 7.0, FirstAppeared: "2021-01"},
 		},
 		edges: []model.Edge{
 			{Source: "n1", Target: "n2", Weight: 0.9, Relation: "based_on"},

@@ -5,170 +5,170 @@ export const rawNodes: (Omit<GraphNode, 'community_id' | 'degree'> & { first_app
   // ══════════════════════════════════════════════
   // 深度学习基础架构
   // ══════════════════════════════════════════════
-  { id: 'mlp', name: 'MLP', category: 'dl_arch', description: '多层感知机，神经网络的基本形态', influence_score: 8.0, first_appeared: '1957-01' },
-  { id: 'cnn', name: 'CNN', category: 'dl_arch', description: '卷积神经网络，计算机视觉的基石', influence_score: 9.3, first_appeared: '1989-01' },
-  { id: 'rnn', name: 'RNN', category: 'dl_arch', description: '循环神经网络，处理序列数据的基础架构', influence_score: 8.0, first_appeared: '1986-01' },
-  { id: 'lstm', name: 'LSTM', category: 'dl_arch', description: '长短期记忆网络，解决长期依赖问题', influence_score: 8.5, first_appeared: '1997-01' },
-  { id: 'autoencoder', name: 'Autoencoder', category: 'dl_arch', description: '自编码器，无监督表示学习经典架构', influence_score: 7.8, first_appeared: '1986-01' },
-  { id: 'gru', name: 'GRU', category: 'dl_arch', description: '门控循环单元，LSTM的简化高效变体', influence_score: 7.5, first_appeared: '2014-01' },
-  { id: 'encoder_decoder', name: 'Encoder-Decoder', category: 'dl_arch', description: '编码器-解码器架构，序列转换的基础范式', influence_score: 8.4, first_appeared: '2014-01' },
-  { id: 'seq2seq', name: 'Seq2Seq', category: 'dl_arch', description: '序列到序列模型，机器翻译等任务的核心', influence_score: 8.0, first_appeared: '2014-01' },
+  { id: 'mlp', name: 'MLP', description: '多层感知机，神经网络的基本形态', influence_score: 8.0, first_appeared: '1957-01' },
+  { id: 'cnn', name: 'CNN', description: '卷积神经网络，计算机视觉的基石', influence_score: 9.3, first_appeared: '1989-01' },
+  { id: 'rnn', name: 'RNN', description: '循环神经网络，处理序列数据的基础架构', influence_score: 8.0, first_appeared: '1986-01' },
+  { id: 'lstm', name: 'LSTM', description: '长短期记忆网络，解决长期依赖问题', influence_score: 8.5, first_appeared: '1997-01' },
+  { id: 'autoencoder', name: 'Autoencoder', description: '自编码器，无监督表示学习经典架构', influence_score: 7.8, first_appeared: '1986-01' },
+  { id: 'gru', name: 'GRU', description: '门控循环单元，LSTM的简化高效变体', influence_score: 7.5, first_appeared: '2014-01' },
+  { id: 'encoder_decoder', name: 'Encoder-Decoder', description: '编码器-解码器架构，序列转换的基础范式', influence_score: 8.4, first_appeared: '2014-01' },
+  { id: 'seq2seq', name: 'Seq2Seq', description: '序列到序列模型，机器翻译等任务的核心', influence_score: 8.0, first_appeared: '2014-01' },
 
   // ══════════════════════════════════════════════
   // Transformer 生态
   // ══════════════════════════════════════════════
-  { id: 'transformer', name: 'Transformer', category: 'dl_arch', description: '基于自注意力的架构，彻底改变整个AI格局，论文引用超14万次', influence_score: 9.9, first_appeared: '2017-01' },
-  { id: 'attention', name: 'Attention', category: 'dl_mechanism', description: '注意力机制，让模型学会选择性聚焦', influence_score: 9.5, first_appeared: '2014-01' },
-  { id: 'self_attention', name: 'Self-Attention', category: 'dl_mechanism', description: '自注意力，序列内部元素之间的注意力计算', influence_score: 9.3, first_appeared: '2017-01' },
-  { id: 'multi_head_attention', name: 'Multi-Head Attention', category: 'dl_mechanism', description: '多头注意力，并行捕获不同子空间特征', influence_score: 9.0, first_appeared: '2017-01' },
-  { id: 'attention_mechanism', name: 'Attention Mechanism', category: 'dl_mechanism', description: '注意力机制的理论框架，选择性关注输入', influence_score: 9.2, first_appeared: '2014-01' },
-  { id: 'positional_encoding', name: 'Positional Encoding', category: 'dl_technique', description: '位置编码，为Transformer注入序列位置信息', influence_score: 8.4, first_appeared: '2017-01' },
-  { id: 'rope', name: 'RoPE', category: 'dl_technique', description: '旋转位置编码，LLaMA等主流模型采用的位置编码方案', influence_score: 8.2, first_appeared: '2021-01' },
-  { id: 'gqa', name: 'Grouped Query Attention', category: 'dl_technique', description: '分组查询注意力，减少KV缓存内存占用', influence_score: 7.8, first_appeared: '2023-01' },
-  { id: 'flash_attention', name: 'Flash Attention', category: 'dl_technique', description: '高效注意力计算，减少内存访问，加速大模型训练推理', influence_score: 8.6, first_appeared: '2022-01' },
-  { id: 'kv_cache', name: 'KV Cache', category: 'dl_technique', description: '键值缓存，加速自回归推理', influence_score: 7.9, first_appeared: '2018-01' },
-  { id: 'speculative_decoding', name: 'Speculative Decoding', category: 'dl_technique', description: '推测解码，用小模型加速大模型推理', influence_score: 7.5, first_appeared: '2023-01' },
+  { id: 'transformer', name: 'Transformer', description: '基于自注意力的架构，彻底改变整个AI格局，论文引用超14万次', influence_score: 9.9, first_appeared: '2017-01' },
+  { id: 'attention', name: 'Attention', description: '注意力机制，让模型学会选择性聚焦', influence_score: 9.5, first_appeared: '2014-01' },
+  { id: 'self_attention', name: 'Self-Attention', description: '自注意力，序列内部元素之间的注意力计算', influence_score: 9.3, first_appeared: '2017-01' },
+  { id: 'multi_head_attention', name: 'Multi-Head Attention', description: '多头注意力，并行捕获不同子空间特征', influence_score: 9.0, first_appeared: '2017-01' },
+  { id: 'attention_mechanism', name: 'Attention Mechanism', description: '注意力机制的理论框架，选择性关注输入', influence_score: 9.2, first_appeared: '2014-01' },
+  { id: 'positional_encoding', name: 'Positional Encoding', description: '位置编码，为Transformer注入序列位置信息', influence_score: 8.4, first_appeared: '2017-01' },
+  { id: 'rope', name: 'RoPE', description: '旋转位置编码，LLaMA等主流模型采用的位置编码方案', influence_score: 8.2, first_appeared: '2021-01' },
+  { id: 'gqa', name: 'Grouped Query Attention', description: '分组查询注意力，减少KV缓存内存占用', influence_score: 7.8, first_appeared: '2023-01' },
+  { id: 'flash_attention', name: 'Flash Attention', description: '高效注意力计算，减少内存访问，加速大模型训练推理', influence_score: 8.6, first_appeared: '2022-01' },
+  { id: 'kv_cache', name: 'KV Cache', description: '键值缓存，加速自回归推理', influence_score: 7.9, first_appeared: '2018-01' },
+  { id: 'speculative_decoding', name: 'Speculative Decoding', description: '推测解码，用小模型加速大模型推理', influence_score: 7.5, first_appeared: '2023-01' },
 
   // ══════════════════════════════════════════════
   // 经典 NLP 模型
   // ══════════════════════════════════════════════
-  { id: 'bert', name: 'BERT', category: 'nlp_model', description: '双向编码器表示模型，开启预训练微调范式', influence_score: 9.5, first_appeared: '2018-01' },
-  { id: 'roberta', name: 'RoBERTa', category: 'nlp_model', description: 'BERT的优化版本，更鲁棒的预训练方法', influence_score: 8.5, first_appeared: '2019-01' },
-  { id: 't5', name: 'T5', category: 'nlp_model', description: 'Text-to-Text Transfer Transformer统一框架', influence_score: 8.8, first_appeared: '2019-01' },
+  { id: 'bert', name: 'BERT', description: '双向编码器表示模型，开启预训练微调范式', influence_score: 9.5, first_appeared: '2018-01' },
+  { id: 'roberta', name: 'RoBERTa', description: 'BERT的优化版本，更鲁棒的预训练方法', influence_score: 8.5, first_appeared: '2019-01' },
+  { id: 't5', name: 'T5', description: 'Text-to-Text Transfer Transformer统一框架', influence_score: 8.8, first_appeared: '2019-01' },
 
   // ══════════════════════════════════════════════
   // 大语言模型
   // ══════════════════════════════════════════════
-  { id: 'llm', name: 'LLM', category: 'nlp_model', description: '大语言模型，大规模参数的预训练语言模型', influence_score: 9.6, first_appeared: '2020-01' },
-  { id: 'gpt', name: 'GPT', category: 'nlp_model', description: '生成式预训练Transformer，开创大模型时代', influence_score: 9.4, first_appeared: '2018-01' },
-  { id: 'gpt2', name: 'GPT-2', category: 'nlp_model', description: '15亿参数生成模型，因效果惊人一度不敢开源', influence_score: 8.7, first_appeared: '2019-01' },
-  { id: 'gpt3', name: 'GPT-3', category: 'nlp_model', description: '1750亿参数大模型，展示涌现能力', influence_score: 9.3, first_appeared: '2020-01' },
-  { id: 'gpt4', name: 'GPT-4', category: 'nlp_model', description: '多模态大语言模型，接近人类水平', influence_score: 9.7, first_appeared: '2023-01' },
-  { id: 'chatgpt', name: 'ChatGPT', category: 'application', description: 'OpenAI对话式AI助手，两个月用户破亿', influence_score: 9.8, first_appeared: '2022-01' },
-  { id: 'llama', name: 'LLaMA', category: 'nlp_model', description: 'Meta开源大语言模型，开启开源LLM浪潮', influence_score: 9.0, first_appeared: '2023-01' },
-  { id: 'gemini', name: 'Gemini', category: 'nlp_model', description: 'Google的多模态大模型', influence_score: 9.0, first_appeared: '2023-01' },
-  { id: 'claude', name: 'Claude', category: 'nlp_model', description: 'Anthropic的AI助手，以安全对齐著称', influence_score: 8.8, first_appeared: '2023-01' },
-  { id: 'mistral', name: 'Mistral', category: 'nlp_model', description: 'Mistral AI的开源大模型', influence_score: 8.5, first_appeared: '2023-01' },
-  { id: 'deepseek', name: 'DeepSeek', category: 'nlp_model', description: '深度求索大模型，高效开源模型', influence_score: 8.6, first_appeared: '2024-01' },
-  { id: 'qwen', name: 'Qwen', category: 'nlp_model', description: '阿里通义千问大模型系列', influence_score: 8.3, first_appeared: '2023-01' },
-  { id: 'grok', name: 'Grok', category: 'nlp_model', description: 'xAI的大语言模型', influence_score: 7.8, first_appeared: '2023-01' },
-  { id: 'phi', name: 'Phi', category: 'nlp_model', description: '微软小参数高性能语言模型', influence_score: 8.0, first_appeared: '2023-01' },
-  { id: 'yi', name: 'Yi', category: 'nlp_model', description: '零一万物大模型', influence_score: 7.8, first_appeared: '2023-01' },
+  { id: 'llm', name: 'LLM', description: '大语言模型，大规模参数的预训练语言模型', influence_score: 9.6, first_appeared: '2020-01' },
+  { id: 'gpt', name: 'GPT', description: '生成式预训练Transformer，开创大模型时代', influence_score: 9.4, first_appeared: '2018-01' },
+  { id: 'gpt2', name: 'GPT-2', description: '15亿参数生成模型，因效果惊人一度不敢开源', influence_score: 8.7, first_appeared: '2019-01' },
+  { id: 'gpt3', name: 'GPT-3', description: '1750亿参数大模型，展示涌现能力', influence_score: 9.3, first_appeared: '2020-01' },
+  { id: 'gpt4', name: 'GPT-4', description: '多模态大语言模型，接近人类水平', influence_score: 9.7, first_appeared: '2023-01' },
+  { id: 'chatgpt', name: 'ChatGPT', description: 'OpenAI对话式AI助手，两个月用户破亿', influence_score: 9.8, first_appeared: '2022-01' },
+  { id: 'llama', name: 'LLaMA', description: 'Meta开源大语言模型，开启开源LLM浪潮', influence_score: 9.0, first_appeared: '2023-01' },
+  { id: 'gemini', name: 'Gemini', description: 'Google的多模态大模型', influence_score: 9.0, first_appeared: '2023-01' },
+  { id: 'claude', name: 'Claude', description: 'Anthropic的AI助手，以安全对齐著称', influence_score: 8.8, first_appeared: '2023-01' },
+  { id: 'mistral', name: 'Mistral', description: 'Mistral AI的开源大模型', influence_score: 8.5, first_appeared: '2023-01' },
+  { id: 'deepseek', name: 'DeepSeek', description: '深度求索大模型，高效开源模型', influence_score: 8.6, first_appeared: '2024-01' },
+  { id: 'qwen', name: 'Qwen', description: '阿里通义千问大模型系列', influence_score: 8.3, first_appeared: '2023-01' },
+  { id: 'grok', name: 'Grok', description: 'xAI的大语言模型', influence_score: 7.8, first_appeared: '2023-01' },
+  { id: 'phi', name: 'Phi', description: '微软小参数高性能语言模型', influence_score: 8.0, first_appeared: '2023-01' },
+  { id: 'yi', name: 'Yi', description: '零一万物大模型', influence_score: 7.8, first_appeared: '2023-01' },
 
   // ══════════════════════════════════════════════
   // NLP 技术
   // ══════════════════════════════════════════════
-  { id: 'word2vec', name: 'Word2Vec', category: 'nlp_technique', description: '词向量表示学习，推动NLP表示革命', influence_score: 8.6, first_appeared: '2013-01' },
-  { id: 'glove', name: 'GloVe', category: 'nlp_technique', description: '全局向量词表示', influence_score: 7.8, first_appeared: '2014-01' },
-  { id: 'fasttext', name: 'fastText', category: 'nlp_technique', description: 'Facebook的文本分类和子词词表示库', influence_score: 7.4, first_appeared: '2016-01' },
-  { id: 'tokenization', name: 'Tokenization', category: 'nlp_technique', description: '文本分词技术，将文本切分为模型输入单元', influence_score: 7.6, first_appeared: '1990-01' },
-  { id: 'bpe', name: 'BPE', category: 'nlp_technique', description: '字节对编码，子词分词算法', influence_score: 8.0, first_appeared: '2016-01' },
-  { id: 'embedding', name: 'Embedding', category: 'dl_technique', description: '将离散符号映射到连续向量空间', influence_score: 8.7, first_appeared: '2013-01' },
-  { id: 'prompt_engineering', name: 'Prompt Engineering', category: 'nlp_technique', description: '提示工程，优化模型输入以改善输出', influence_score: 8.8, first_appeared: '2020-01' },
-  { id: 'chain_of_thought', name: 'Chain-of-Thought', category: 'nlp_technique', description: '思维链提示，引导模型逐步推理', influence_score: 9.0, first_appeared: '2022-01' },
-  { id: 'rag', name: 'RAG', category: 'nlp_technique', description: '检索增强生成，让LLM获取外部知识', influence_score: 9.0, first_appeared: '2023-01' },
-  { id: 'in_context_learning', name: 'In-Context Learning', category: 'nlp_technique', description: '上下文学习，无需参数更新的适应能力', influence_score: 8.9, first_appeared: '2020-01' },
-  { id: 'function_calling', name: 'Function Calling', category: 'nlp_technique', description: 'LLM调用外部工具/API的能力', influence_score: 8.4, first_appeared: '2023-01' },
-  { id: 'tool_use', name: 'Tool Use', category: 'nlp_technique', description: 'AI使用外部工具增强能力的范式', influence_score: 8.2, first_appeared: '2023-01' },
-  { id: 'instruction_tuning', name: 'Instruction Tuning', category: 'nlp_technique', description: '指令微调，让模型学会遵循人类指令', influence_score: 8.6, first_appeared: '2021-01' },
-  { id: 'beam_search', name: 'Beam Search', category: 'nlp_technique', description: '束搜索解码策略，生成更优序列', influence_score: 7.5, first_appeared: '2014-01' },
-  { id: 'temperature', name: 'Temperature', category: 'nlp_technique', description: '温度参数，控制生成输出的随机性和多样性', influence_score: 7.7, first_appeared: '2018-01' },
-  { id: 'top_k', name: 'Top-K Sampling', category: 'nlp_technique', description: 'Top-K采样策略，限制候选词范围', influence_score: 7.4, first_appeared: '2018-01' },
-  { id: 'top_p', name: 'Top-P Sampling', category: 'nlp_technique', description: '核采样策略，动态调整候选词集', influence_score: 7.5, first_appeared: '2019-01' },
-  { id: 'hallucination', name: 'Hallucination', category: 'nlp_technique', description: 'LLM生成不准确或虚构内容的现象与研究', influence_score: 8.4, first_appeared: '2020-01' },
-  { id: 'softmax', name: 'Softmax', category: 'dl_technique', description: '将输出转化为概率分布的激活函数', influence_score: 8.2, first_appeared: '1989-01' },
-  { id: 'cross_entropy', name: 'Cross Entropy', category: 'dl_technique', description: '交叉熵损失函数，分类任务的标准损失', influence_score: 8.0, first_appeared: '1948-01' },
+  { id: 'word2vec', name: 'Word2Vec', description: '词向量表示学习，推动NLP表示革命', influence_score: 8.6, first_appeared: '2013-01' },
+  { id: 'glove', name: 'GloVe', description: '全局向量词表示', influence_score: 7.8, first_appeared: '2014-01' },
+  { id: 'fasttext', name: 'fastText', description: 'Facebook的文本分类和子词词表示库', influence_score: 7.4, first_appeared: '2016-01' },
+  { id: 'tokenization', name: 'Tokenization', description: '文本分词技术，将文本切分为模型输入单元', influence_score: 7.6, first_appeared: '1990-01' },
+  { id: 'bpe', name: 'BPE', description: '字节对编码，子词分词算法', influence_score: 8.0, first_appeared: '2016-01' },
+  { id: 'embedding', name: 'Embedding', description: '将离散符号映射到连续向量空间', influence_score: 8.7, first_appeared: '2013-01' },
+  { id: 'prompt_engineering', name: 'Prompt Engineering', description: '提示工程，优化模型输入以改善输出', influence_score: 8.8, first_appeared: '2020-01' },
+  { id: 'chain_of_thought', name: 'Chain-of-Thought', description: '思维链提示，引导模型逐步推理', influence_score: 9.0, first_appeared: '2022-01' },
+  { id: 'rag', name: 'RAG', description: '检索增强生成，让LLM获取外部知识', influence_score: 9.0, first_appeared: '2023-01' },
+  { id: 'in_context_learning', name: 'In-Context Learning', description: '上下文学习，无需参数更新的适应能力', influence_score: 8.9, first_appeared: '2020-01' },
+  { id: 'function_calling', name: 'Function Calling', description: 'LLM调用外部工具/API的能力', influence_score: 8.4, first_appeared: '2023-01' },
+  { id: 'tool_use', name: 'Tool Use', description: 'AI使用外部工具增强能力的范式', influence_score: 8.2, first_appeared: '2023-01' },
+  { id: 'instruction_tuning', name: 'Instruction Tuning', description: '指令微调，让模型学会遵循人类指令', influence_score: 8.6, first_appeared: '2021-01' },
+  { id: 'beam_search', name: 'Beam Search', description: '束搜索解码策略，生成更优序列', influence_score: 7.5, first_appeared: '2014-01' },
+  { id: 'temperature', name: 'Temperature', description: '温度参数，控制生成输出的随机性和多样性', influence_score: 7.7, first_appeared: '2018-01' },
+  { id: 'top_k', name: 'Top-K Sampling', description: 'Top-K采样策略，限制候选词范围', influence_score: 7.4, first_appeared: '2018-01' },
+  { id: 'top_p', name: 'Top-P Sampling', description: '核采样策略，动态调整候选词集', influence_score: 7.5, first_appeared: '2019-01' },
+  { id: 'hallucination', name: 'Hallucination', description: 'LLM生成不准确或虚构内容的现象与研究', influence_score: 8.4, first_appeared: '2020-01' },
+  { id: 'softmax', name: 'Softmax', description: '将输出转化为概率分布的激活函数', influence_score: 8.2, first_appeared: '1989-01' },
+  { id: 'cross_entropy', name: 'Cross Entropy', description: '交叉熵损失函数，分类任务的标准损失', influence_score: 8.0, first_appeared: '1948-01' },
 
   // ══════════════════════════════════════════════
   // 计算机视觉
   // ══════════════════════════════════════════════
-  { id: 'resnet', name: 'ResNet', category: 'cv_model', description: '残差网络，解决深度网络退化问题', influence_score: 9.3, first_appeared: '2015-01' },
-  { id: 'vit', name: 'ViT', category: 'cv_model', description: '视觉Transformer，将Transformer应用于图像', influence_score: 9.1, first_appeared: '2020-01' },
-  { id: 'yolo', name: 'YOLO', category: 'cv_model', description: '实时目标检测模型系列', influence_score: 8.7, first_appeared: '2015-01' },
-  { id: 'faster_rcnn', name: 'Faster R-CNN', category: 'cv_model', description: '基于区域提议网络的快速目标检测', influence_score: 8.3, first_appeared: '2015-01' },
-  { id: 'mask_rcnn', name: 'Mask R-CNN', category: 'cv_model', description: '实例分割模型，兼顾检测与分割', influence_score: 8.1, first_appeared: '2017-01' },
-  { id: 'unet', name: 'U-Net', category: 'cv_model', description: '编码器-解码器结构的语义分割网络', influence_score: 8.5, first_appeared: '2015-01' },
-  { id: 'sam', name: 'SAM', category: 'cv_model', description: 'Segment Anything Model，通用图像分割', influence_score: 8.8, first_appeared: '2023-01' },
-  { id: 'detr', name: 'DETR', category: 'cv_model', description: '基于Transformer的端到端目标检测模型', influence_score: 8.2, first_appeared: '2020-01' },
-  { id: 'neRF', name: 'NeRF', category: 'cv_model', description: '神经辐射场，3D场景重建', influence_score: 8.4, first_appeared: '2020-01' },
-  { id: 'object_detection', name: 'Object Detection', category: 'cv_model', description: '目标检测任务，识别图像中物体的类别和位置', influence_score: 8.2, first_appeared: '2012-01' },
-  { id: 'image_segmentation', name: 'Image Segmentation', category: 'cv_model', description: '图像分割，像素级分类', influence_score: 8.0, first_appeared: '2012-01' },
-  { id: 'image_classification', name: 'Image Classification', category: 'cv_model', description: '图像分类，判断图像所属类别', influence_score: 8.0, first_appeared: '2012-01' },
-  { id: 'ocr', name: 'OCR', category: 'cv_model', description: '光学字符识别', influence_score: 7.5, first_appeared: '1990-01' },
-  { id: 'patch_embedding', name: 'Patch Embedding', category: 'dl_technique', description: '将图像分割为固定大小块并嵌入为向量', influence_score: 7.8, first_appeared: '2020-01' },
-  { id: 'super_resolution', name: 'Super Resolution', category: 'cv_model', description: '图像超分辨率重建', influence_score: 7.7, first_appeared: '2014-01' },
-  { id: 'style_transfer', name: 'Style Transfer', category: 'cv_model', description: '风格迁移，将艺术风格应用到图像', influence_score: 7.5, first_appeared: '2015-01' },
+  { id: 'resnet', name: 'ResNet', description: '残差网络，解决深度网络退化问题', influence_score: 9.3, first_appeared: '2015-01' },
+  { id: 'vit', name: 'ViT', description: '视觉Transformer，将Transformer应用于图像', influence_score: 9.1, first_appeared: '2020-01' },
+  { id: 'yolo', name: 'YOLO', description: '实时目标检测模型系列', influence_score: 8.7, first_appeared: '2015-01' },
+  { id: 'faster_rcnn', name: 'Faster R-CNN', description: '基于区域提议网络的快速目标检测', influence_score: 8.3, first_appeared: '2015-01' },
+  { id: 'mask_rcnn', name: 'Mask R-CNN', description: '实例分割模型，兼顾检测与分割', influence_score: 8.1, first_appeared: '2017-01' },
+  { id: 'unet', name: 'U-Net', description: '编码器-解码器结构的语义分割网络', influence_score: 8.5, first_appeared: '2015-01' },
+  { id: 'sam', name: 'SAM', description: 'Segment Anything Model，通用图像分割', influence_score: 8.8, first_appeared: '2023-01' },
+  { id: 'detr', name: 'DETR', description: '基于Transformer的端到端目标检测模型', influence_score: 8.2, first_appeared: '2020-01' },
+  { id: 'neRF', name: 'NeRF', description: '神经辐射场，3D场景重建', influence_score: 8.4, first_appeared: '2020-01' },
+  { id: 'object_detection', name: 'Object Detection', description: '目标检测任务，识别图像中物体的类别和位置', influence_score: 8.2, first_appeared: '2012-01' },
+  { id: 'image_segmentation', name: 'Image Segmentation', description: '图像分割，像素级分类', influence_score: 8.0, first_appeared: '2012-01' },
+  { id: 'image_classification', name: 'Image Classification', description: '图像分类，判断图像所属类别', influence_score: 8.0, first_appeared: '2012-01' },
+  { id: 'ocr', name: 'OCR', description: '光学字符识别', influence_score: 7.5, first_appeared: '1990-01' },
+  { id: 'patch_embedding', name: 'Patch Embedding', description: '将图像分割为固定大小块并嵌入为向量', influence_score: 7.8, first_appeared: '2020-01' },
+  { id: 'super_resolution', name: 'Super Resolution', description: '图像超分辨率重建', influence_score: 7.7, first_appeared: '2014-01' },
+  { id: 'style_transfer', name: 'Style Transfer', description: '风格迁移，将艺术风格应用到图像', influence_score: 7.5, first_appeared: '2015-01' },
 
   // ══════════════════════════════════════════════
   // 生成模型
   // ══════════════════════════════════════════════
-  { id: 'gan', name: 'GAN', category: 'gen_model', description: '生成对抗网络，开创生成式AI新范式', influence_score: 9.0, first_appeared: '2014-01' },
-  { id: 'vae', name: 'VAE', category: 'gen_model', description: '变分自编码器，概率生成建模', influence_score: 8.1, first_appeared: '2013-01' },
-  { id: 'diffusion_model', name: 'Diffusion Model', category: 'gen_model', description: '扩散生成模型，逐步去噪生成高质量数据', influence_score: 9.2, first_appeared: '2015-01' },
-  { id: 'ddpm', name: 'DDPM', category: 'gen_model', description: '去噪扩散概率模型，扩散模型的基础算法', influence_score: 8.7, first_appeared: '2020-01' },
-  { id: 'stable_diffusion', name: 'Stable Diffusion', category: 'gen_model', description: '开源图像生成模型，推动AI创作民主化', influence_score: 9.4, first_appeared: '2022-01' },
-  { id: 'stylegan', name: 'StyleGAN', category: 'gen_model', description: '基于风格的生成对抗网络，高质量图像生成', influence_score: 8.6, first_appeared: '2018-01' },
-  { id: 'midjourney', name: 'Midjourney', category: 'gen_model', description: 'AI图像生成工具，美学质量领先', influence_score: 8.5, first_appeared: '2022-01' },
-  { id: 'sora', name: 'Sora', category: 'gen_model', description: 'OpenAI的文本到视频生成模型', influence_score: 9.0, first_appeared: '2024-01' },
-  { id: 'dalle', name: 'DALL-E', category: 'gen_model', description: '文本到图像生成模型', influence_score: 9.2, first_appeared: '2021-01' },
-  { id: 'text_to_image', name: 'Text-to-Image', category: 'gen_model', description: '文本到图像生成技术', influence_score: 8.8, first_appeared: '2021-01' },
-  { id: 'image_inpainting', name: 'Image Inpainting', category: 'gen_model', description: '图像修复，填充缺失区域', influence_score: 7.4, first_appeared: '2016-01' },
-  { id: 'flow_matching', name: 'Flow Matching', category: 'gen_model', description: '流匹配生成模型，扩散模型的替代方案', influence_score: 7.6, first_appeared: '2023-01' },
-  { id: 'score_matching', name: 'Score Matching', category: 'dl_technique', description: '分数匹配，扩散模型的理论基础', influence_score: 7.5, first_appeared: '2015-01' },
+  { id: 'gan', name: 'GAN', description: '生成对抗网络，开创生成式AI新范式', influence_score: 9.0, first_appeared: '2014-01' },
+  { id: 'vae', name: 'VAE', description: '变分自编码器，概率生成建模', influence_score: 8.1, first_appeared: '2013-01' },
+  { id: 'diffusion_model', name: 'Diffusion Model', description: '扩散生成模型，逐步去噪生成高质量数据', influence_score: 9.2, first_appeared: '2015-01' },
+  { id: 'ddpm', name: 'DDPM', description: '去噪扩散概率模型，扩散模型的基础算法', influence_score: 8.7, first_appeared: '2020-01' },
+  { id: 'stable_diffusion', name: 'Stable Diffusion', description: '开源图像生成模型，推动AI创作民主化', influence_score: 9.4, first_appeared: '2022-01' },
+  { id: 'stylegan', name: 'StyleGAN', description: '基于风格的生成对抗网络，高质量图像生成', influence_score: 8.6, first_appeared: '2018-01' },
+  { id: 'midjourney', name: 'Midjourney', description: 'AI图像生成工具，美学质量领先', influence_score: 8.5, first_appeared: '2022-01' },
+  { id: 'sora', name: 'Sora', description: 'OpenAI的文本到视频生成模型', influence_score: 9.0, first_appeared: '2024-01' },
+  { id: 'dalle', name: 'DALL-E', description: '文本到图像生成模型', influence_score: 9.2, first_appeared: '2021-01' },
+  { id: 'text_to_image', name: 'Text-to-Image', description: '文本到图像生成技术', influence_score: 8.8, first_appeared: '2021-01' },
+  { id: 'image_inpainting', name: 'Image Inpainting', description: '图像修复，填充缺失区域', influence_score: 7.4, first_appeared: '2016-01' },
+  { id: 'flow_matching', name: 'Flow Matching', description: '流匹配生成模型，扩散模型的替代方案', influence_score: 7.6, first_appeared: '2023-01' },
+  { id: 'score_matching', name: 'Score Matching', description: '分数匹配，扩散模型的理论基础', influence_score: 7.5, first_appeared: '2015-01' },
 
   // ══════════════════════════════════════════════
   // 多模态
   // ══════════════════════════════════════════════
-  { id: 'multimodal', name: 'Multimodal', category: 'multimodal', description: '多模态AI，处理文本、图像、音频等多种输入', influence_score: 9.1, first_appeared: '2020-01' },
-  { id: 'clip', name: 'CLIP', category: 'multimodal', description: '对比语言-图像预训练模型', influence_score: 9.1, first_appeared: '2021-01' },
-  { id: 'blip', name: 'BLIP', category: 'multimodal', description: '引导语言图像预训练模型', influence_score: 8.4, first_appeared: '2022-01' },
-  { id: 'flamingo', name: 'Flamingo', category: 'multimodal', description: 'DeepMind的视觉语言模型', influence_score: 7.8, first_appeared: '2022-01' },
-  { id: 'vision_language', name: 'Vision-Language', category: 'multimodal', description: '视觉-语言模型，多模态子领域', influence_score: 8.6, first_appeared: '2021-01' },
+  { id: 'multimodal', name: 'Multimodal', description: '多模态AI，处理文本、图像、音频等多种输入', influence_score: 9.1, first_appeared: '2020-01' },
+  { id: 'clip', name: 'CLIP', description: '对比语言-图像预训练模型', influence_score: 9.1, first_appeared: '2021-01' },
+  { id: 'blip', name: 'BLIP', description: '引导语言图像预训练模型', influence_score: 8.4, first_appeared: '2022-01' },
+  { id: 'flamingo', name: 'Flamingo', description: 'DeepMind的视觉语言模型', influence_score: 7.8, first_appeared: '2022-01' },
+  { id: 'vision_language', name: 'Vision-Language', description: '视觉-语言模型，多模态子领域', influence_score: 8.6, first_appeared: '2021-01' },
 
   // ══════════════════════════════════════════════
   // 语音处理
   // ══════════════════════════════════════════════
-  { id: 'whisper', name: 'Whisper', category: 'speech_model', description: 'OpenAI的通用语音识别模型', influence_score: 8.3, first_appeared: '2022-01' },
-  { id: 'wav2vec', name: 'wav2vec 2.0', category: 'speech_model', description: '自监督语音表示学习框架', influence_score: 8.0, first_appeared: '2020-01' },
-  { id: 'tts', name: 'TTS', category: 'speech_model', description: '文本到语音合成', influence_score: 7.8, first_appeared: '2016-01' },
-  { id: 'asr', name: 'ASR', category: 'speech_model', description: '自动语音识别', influence_score: 7.9, first_appeared: '2006-01' },
-  { id: 'music_generation', name: 'Music Generation', category: 'speech_model', description: 'AI音乐生成', influence_score: 7.6, first_appeared: '2016-01' },
+  { id: 'whisper', name: 'Whisper', description: 'OpenAI的通用语音识别模型', influence_score: 8.3, first_appeared: '2022-01' },
+  { id: 'wav2vec', name: 'wav2vec 2.0', description: '自监督语音表示学习框架', influence_score: 8.0, first_appeared: '2020-01' },
+  { id: 'tts', name: 'TTS', description: '文本到语音合成', influence_score: 7.8, first_appeared: '2016-01' },
+  { id: 'asr', name: 'ASR', description: '自动语音识别', influence_score: 7.9, first_appeared: '2006-01' },
+  { id: 'music_generation', name: 'Music Generation', description: 'AI音乐生成', influence_score: 7.6, first_appeared: '2016-01' },
 
   // ══════════════════════════════════════════════
   // 强化学习
   // ══════════════════════════════════════════════
-  { id: 'reinforcement_learning', name: 'Reinforcement Learning', category: 'rl_algorithm', description: '强化学习，通过奖励信号学习最优策略', influence_score: 8.8, first_appeared: '1989-01' },
-  { id: 'dqn', name: 'DQN', category: 'rl_algorithm', description: '深度Q网络，将深度学习引入强化学习', influence_score: 8.0, first_appeared: '2013-01' },
-  { id: 'ppo', name: 'PPO', category: 'rl_algorithm', description: '近端策略优化，稳定高效的策略梯度方法', influence_score: 8.3, first_appeared: '2017-01' },
-  { id: 'alphago', name: 'AlphaGo', category: 'rl_algorithm', description: '围棋AI，击败人类世界冠军', influence_score: 9.0, first_appeared: '2016-01' },
-  { id: 'q_learning', name: 'Q-Learning', category: 'rl_algorithm', description: '基于值函数的经典强化学习算法', influence_score: 7.8, first_appeared: '1989-01' },
-  { id: 'policy_gradient', name: 'Policy Gradient', category: 'rl_algorithm', description: '策略梯度方法，直接优化策略', influence_score: 7.6, first_appeared: '1992-01' },
-  { id: 'world_model', name: 'World Model', category: 'rl_algorithm', description: '世界模型，学习并模拟环境动态', influence_score: 7.6, first_appeared: '2018-01' },
-  { id: 'imitation_learning', name: 'Imitation Learning', category: 'rl_algorithm', description: '模仿学习，从专家演示中学习', influence_score: 7.4, first_appeared: '2009-01' },
-  { id: 'sac', name: 'SAC', category: 'rl_algorithm', description: '软演员-评论家算法，最大化策略熵', influence_score: 7.5, first_appeared: '2018-01' },
-  { id: 'planning', name: 'Planning', category: 'rl_algorithm', description: 'AI规划能力，分解和解决复杂任务', influence_score: 7.8, first_appeared: '1971-01' },
+  { id: 'reinforcement_learning', name: 'Reinforcement Learning', description: '强化学习，通过奖励信号学习最优策略', influence_score: 8.8, first_appeared: '1989-01' },
+  { id: 'dqn', name: 'DQN', description: '深度Q网络，将深度学习引入强化学习', influence_score: 8.0, first_appeared: '2013-01' },
+  { id: 'ppo', name: 'PPO', description: '近端策略优化，稳定高效的策略梯度方法', influence_score: 8.3, first_appeared: '2017-01' },
+  { id: 'alphago', name: 'AlphaGo', description: '围棋AI，击败人类世界冠军', influence_score: 9.0, first_appeared: '2016-01' },
+  { id: 'q_learning', name: 'Q-Learning', description: '基于值函数的经典强化学习算法', influence_score: 7.8, first_appeared: '1989-01' },
+  { id: 'policy_gradient', name: 'Policy Gradient', description: '策略梯度方法，直接优化策略', influence_score: 7.6, first_appeared: '1992-01' },
+  { id: 'world_model', name: 'World Model', description: '世界模型，学习并模拟环境动态', influence_score: 7.6, first_appeared: '2018-01' },
+  { id: 'imitation_learning', name: 'Imitation Learning', description: '模仿学习，从专家演示中学习', influence_score: 7.4, first_appeared: '2009-01' },
+  { id: 'sac', name: 'SAC', description: '软演员-评论家算法，最大化策略熵', influence_score: 7.5, first_appeared: '2018-01' },
+  { id: 'planning', name: 'Planning', description: 'AI规划能力，分解和解决复杂任务', influence_score: 7.8, first_appeared: '1971-01' },
 
   // ══════════════════════════════════════════════
   // 学习范式
   // ══════════════════════════════════════════════
-  { id: 'supervised_learning', name: 'Supervised Learning', category: 'dl_technique', description: '监督学习，从标注数据中学习', influence_score: 8.5, first_appeared: '1959-01' },
-  { id: 'unsupervised_learning', name: 'Unsupervised Learning', category: 'dl_technique', description: '无监督学习，从无标注数据中学习', influence_score: 8.0, first_appeared: '1980-01' },
-  { id: 'self_supervised', name: 'Self-Supervised', category: 'dl_technique', description: '自监督学习，从数据自身构造监督信号', influence_score: 8.7, first_appeared: '2019-01' },
-  { id: 'few_shot', name: 'Few-Shot', category: 'dl_technique', description: '少样本学习，仅需少量示例即可适应', influence_score: 8.1, first_appeared: '2019-01' },
-  { id: 'zero_shot', name: 'Zero-Shot', category: 'dl_technique', description: '零样本学习，无需示例即可识别', influence_score: 7.9, first_appeared: '2018-01' },
-  { id: 'contrastive_learning', name: 'Contrastive Learning', category: 'dl_technique', description: '对比学习，自监督表示学习重要范式', influence_score: 8.6, first_appeared: '2020-01' },
-  { id: 'curriculum_learning', name: 'Curriculum Learning', category: 'dl_technique', description: '课程学习，从简单到困难逐步训练', influence_score: 7.3, first_appeared: '2009-01' },
-  { id: 'meta_learning', name: 'Meta-Learning', category: 'dl_technique', description: '元学习，学会如何学习', influence_score: 7.6, first_appeared: '2017-01' },
+  { id: 'supervised_learning', name: 'Supervised Learning', description: '监督学习，从标注数据中学习', influence_score: 8.5, first_appeared: '1959-01' },
+  { id: 'unsupervised_learning', name: 'Unsupervised Learning', description: '无监督学习，从无标注数据中学习', influence_score: 8.0, first_appeared: '1980-01' },
+  { id: 'self_supervised', name: 'Self-Supervised', description: '自监督学习，从数据自身构造监督信号', influence_score: 8.7, first_appeared: '2019-01' },
+  { id: 'few_shot', name: 'Few-Shot', description: '少样本学习，仅需少量示例即可适应', influence_score: 8.1, first_appeared: '2019-01' },
+  { id: 'zero_shot', name: 'Zero-Shot', description: '零样本学习，无需示例即可识别', influence_score: 7.9, first_appeared: '2018-01' },
+  { id: 'contrastive_learning', name: 'Contrastive Learning', description: '对比学习，自监督表示学习重要范式', influence_score: 8.6, first_appeared: '2020-01' },
+  { id: 'curriculum_learning', name: 'Curriculum Learning', description: '课程学习，从简单到困难逐步训练', influence_score: 7.3, first_appeared: '2009-01' },
+  { id: 'meta_learning', name: 'Meta-Learning', description: '元学习，学会如何学习', influence_score: 7.6, first_appeared: '2017-01' },
 
   // ══════════════════════════════════════════════
   // 训练与优化
   // ══════════════════════════════════════════════
-  { id: 'backpropagation', name: 'Backpropagation', category: 'optimization', description: '反向传播算法，训练所有深度神经网络的核心', influence_score: 9.8, first_appeared: '1986-01' },
-  { id: 'adam', name: 'Adam', category: 'optimization', description: '自适应优化器，最广泛使用的深度学习优化器', influence_score: 9.0, first_appeared: '2014-01' },
-  { id: 'sgd', name: 'SGD', category: 'optimization', description: '随机梯度下降，经典优化方法', influence_score: 8.2, first_appeared: '1951-01' },
-  { id: 'gradient_descent', name: 'Gradient Descent', category: 'optimization', description: '梯度下降优化方法，一切优化算法的基础', influence_score: 8.8, first_appeared: '1951-01' },
-  { id: 'learning_rate', name: 'Learning Rate', category: 'optimization', description: '学习率，控制参数更新步长的关键超参数', influence_score: 7.8, first_appeared: '1951-01' },
-  { id: 'dropout', name: 'Dropout', category: 'regularization', description: '随机失活正则化，简单有效的防过拟合技术', influence_score: 8.5, first_appeared: '2012-01' },
+  { id: 'backpropagation', name: 'Backpropagation', description: '反向传播算法，训练所有深度神经网络的核心', influence_score: 9.8, first_appeared: '1986-01' },
+  { id: 'adam', name: 'Adam', description: '自适应优化器，最广泛使用的深度学习优化器', influence_score: 9.0, first_appeared: '2014-01' },
+  { id: 'sgd', name: 'SGD', description: '随机梯度下降，经典优化方法', influence_score: 8.2, first_appeared: '1951-01' },
+  { id: 'gradient_descent', name: 'Gradient Descent', description: '梯度下降优化方法，一切优化算法的基础', influence_score: 8.8, first_appeared: '1951-01' },
+  { id: 'learning_rate', name: 'Learning Rate', description: '学习率，控制参数更新步长的关键超参数', influence_score: 7.8, first_appeared: '1951-01' },
+  { id: 'dropout', name: 'Dropout', description: '随机失活正则化，简单有效的防过拟合技术', influence_score: 8.5, first_appeared: '2012-01' },
 ];
 
 export function getTimelineRange(): TimelineRange {
@@ -179,21 +179,10 @@ export function getTimelineRange(): TimelineRange {
   }
 }
 
-const categoryToCommunity: Record<string, number> = {
-  dl_arch: 11,
-  dl_mechanism: 12,
-  dl_technique: 13,
-  optimization: 13,
-  regularization: 13,
-  nlp_model: 21,
-  nlp_technique: 22,
-  cv_model: 31,
-  gen_model: 41,
-  multimodal: 42,
-  rl_algorithm: 51,
-  speech_model: 61,
-  application: 71,
-}
+// Default community id for the mock data. The raw nodes are bucketed
+// into a single community; the real portal uses Louvain over the
+// returned graph structure to derive meaningful communities.
+const DEFAULT_COMMUNITY_ID = 13
 
 export function generateMockData(): {
   nodes: GraphNode[]
@@ -204,7 +193,7 @@ export function generateMockData(): {
 } {
   const nodes: GraphNode[] = rawNodes.map((n) => ({
     ...n,
-    community_id: categoryToCommunity[n.category] ?? 13,
+    community_id: DEFAULT_COMMUNITY_ID,
     degree: 3 + Math.floor(Math.random() * 8),
   }))
 

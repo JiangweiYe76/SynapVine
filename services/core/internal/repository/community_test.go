@@ -14,15 +14,18 @@ func TestCommunityRepository_CreateAndGet(t *testing.T) {
 	testutil.CleanupAllData(t, neo)
 
 	req := model.CommunityCreateRequest{
-		ID:     99,
+		ID:     "c-test-1",
 		Name:   "Test Community",
 		Color:  "#ff0000",
-		Level:  1,
 		Domain: "ai",
 	}
 
-	if err := repo.Create(t.Context(), req); err != nil {
+	id, err := repo.Create(t.Context(), req)
+	if err != nil {
 		t.Fatalf("create community failed: %v", err)
+	}
+	if id != req.ID {
+		t.Errorf("returned id = %q, want %q", id, req.ID)
 	}
 
 	comm, err := repo.Get(t.Context(), req.ID)
@@ -47,11 +50,11 @@ func TestCommunityRepository_List(t *testing.T) {
 	testutil.CleanupAllData(t, neo)
 
 	for _, c := range []model.CommunityCreateRequest{
-		{ID: 1, Name: "Comm A", Color: "#111111", Level: 1, Domain: "ai"},
-		{ID: 2, Name: "Comm B", Color: "#222222", Level: 1, Domain: "ai"},
-		{ID: 3, Name: "Comm C", Color: "#333333", Level: 2, Domain: "ai"},
+		{ID: "c-a", Name: "Comm A", Color: "#111111", Domain: "ai"},
+		{ID: "c-b", Name: "Comm B", Color: "#222222", Domain: "ai"},
+		{ID: "c-c", Name: "Comm C", Color: "#333333", Domain: "ai"},
 	} {
-		if err := repo.Create(t.Context(), c); err != nil {
+		if _, err := repo.Create(t.Context(), c); err != nil {
 			t.Fatalf("create community failed: %v", err)
 		}
 	}
@@ -72,13 +75,12 @@ func TestCommunityRepository_Update(t *testing.T) {
 	testutil.CleanupAllData(t, neo)
 
 	req := model.CommunityCreateRequest{
-		ID:     42,
+		ID:     "c-update-1",
 		Name:   "Original",
 		Color:  "#000000",
-		Level:  1,
 		Domain: "ai",
 	}
-	if err := repo.Create(t.Context(), req); err != nil {
+	if _, err := repo.Create(t.Context(), req); err != nil {
 		t.Fatalf("create community failed: %v", err)
 	}
 
@@ -108,13 +110,12 @@ func TestCommunityRepository_Delete(t *testing.T) {
 	testutil.CleanupAllData(t, neo)
 
 	req := model.CommunityCreateRequest{
-		ID:     77,
+		ID:     "c-del-1",
 		Name:   "ToDelete",
 		Color:  "#ffffff",
-		Level:  1,
 		Domain: "ai",
 	}
-	if err := repo.Create(t.Context(), req); err != nil {
+	if _, err := repo.Create(t.Context(), req); err != nil {
 		t.Fatalf("create community failed: %v", err)
 	}
 
@@ -141,7 +142,7 @@ func TestCommunityRepository_Exists(t *testing.T) {
 
 	testutil.CleanupAllData(t, neo)
 
-	exists, err := repo.Exists(t.Context(), 9999)
+	exists, err := repo.Exists(t.Context(), "c-nonexistent")
 	if err != nil {
 		t.Fatalf("exists check failed: %v", err)
 	}
@@ -150,13 +151,12 @@ func TestCommunityRepository_Exists(t *testing.T) {
 	}
 
 	req := model.CommunityCreateRequest{
-		ID:     88,
+		ID:     "c-exist-1",
 		Name:   "Exist",
 		Color:  "#123456",
-		Level:  1,
 		Domain: "ai",
 	}
-	if err := repo.Create(t.Context(), req); err != nil {
+	if _, err := repo.Create(t.Context(), req); err != nil {
 		t.Fatalf("create community failed: %v", err)
 	}
 

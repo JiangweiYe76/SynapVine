@@ -44,6 +44,7 @@ func main() {
 	authHandler := handler.NewAuthHandler(cfg.JWTSecret)
 	nodeHandler := handler.NewNodeHandler(core)
 	edgeHandler := handler.NewEdgeHandler(core)
+	communityHandler := handler.NewCommunityHandler(core)
 
 	app := fiber.New(fiber.Config{
 		AppName: "AI-Graph Console Server",
@@ -72,6 +73,13 @@ func main() {
 	api.Post("/edges", edgeHandler.Create)
 	api.Put("/edges/:source/:target", edgeHandler.Update)
 	api.Delete("/edges/:source/:target", edgeHandler.Delete)
+
+	api.Get("/communities", communityHandler.List)
+	api.Get("/communities/tree", communityHandler.Tree)
+	api.Get("/communities/:id", communityHandler.Get)
+	api.Post("/communities", communityHandler.Create)
+	api.Put("/communities/:id", communityHandler.Update)
+	api.Delete("/communities/:id", communityHandler.Delete)
 
 	api.Get("/stats", nodeHandler.Stats)
 

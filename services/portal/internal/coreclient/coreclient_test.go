@@ -10,7 +10,7 @@ import (
 func TestFetchGraphData_Success(t *testing.T) {
 	body := `{
 		"nodes": [
-			{"id": "n1", "name": "Node One", "category": "cat", "description": "d",
+			{"id": "n1", "name": "Node One", "description": "d",
 			 "influence_score": 1.5, "community_id": 1, "degree": 2, "first_appeared": "2020-01"}
 		],
 		"edges": [

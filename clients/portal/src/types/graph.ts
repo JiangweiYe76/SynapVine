@@ -1,7 +1,6 @@
 export interface GraphNode {
   id: string
   name: string
-  category: string
   community_id: number
   influence_score: number
   description: string

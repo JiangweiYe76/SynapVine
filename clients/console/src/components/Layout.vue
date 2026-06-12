@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   CircleDot,
   GitBranch,
+  Layers,
   LogOut,
   Menu,
 } from '@lucide/vue'
@@ -33,6 +34,7 @@ const navItems = [
   { name: 'Dashboard', path: '/', icon: LayoutDashboard },
   { name: 'Nodes', path: '/nodes', icon: CircleDot },
   { name: 'Edges', path: '/edges', icon: GitBranch },
+  { name: 'Communities', path: '/communities', icon: Layers },
 ]
 
 function isActive(path: string) {

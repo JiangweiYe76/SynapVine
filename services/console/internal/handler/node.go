@@ -77,10 +77,10 @@ func (h *NodeHandler) Create(c *fiber.Ctx) error {
 		})
 	}
 
-	if req.ID == "" || req.Name == "" {
+	if req.Name == "" {
 		return c.Status(400).JSON(model.ErrorResponse{
 			Error:   "missing_fields",
-			Message: "ID and name are required",
+			Message: "Name is required",
 		})
 	}
 
@@ -176,11 +176,9 @@ func (h *NodeHandler) Stats(c *fiber.Ctx) error {
 
 // computeStats derives the dashboard stats response from a graph snapshot.
 func computeStats(graph *model.GraphData) model.StatsResponse {
-	categories := make(map[string]int)
 	var totalInfluence float64
 
 	for _, n := range graph.Nodes {
-		categories[n.Category]++
 		totalInfluence += n.InfluenceScore
 	}
 
@@ -190,10 +188,8 @@ func computeStats(graph *model.GraphData) model.StatsResponse {
 	}
 
 	return model.StatsResponse{
-		TotalNodes:    len(graph.Nodes),
-		TotalEdges:    len(graph.Edges),
-		CategoryCount: len(categories),
-		Categories:    categories,
-		AvgInfluence:  avgInfluence,
+		TotalNodes:   len(graph.Nodes),
+		TotalEdges:   len(graph.Edges),
+		AvgInfluence: avgInfluence,
 	}
 }

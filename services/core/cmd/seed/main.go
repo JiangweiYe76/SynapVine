@@ -11,36 +11,15 @@ import (
 	"core/internal/db"
 )
 
-// categoryToCommunity maps graph.json category to community ID
-type categoryToCommunity struct {
-	CommunityID   int
-	CommunityName string
-}
-
-var categoryMap = map[string]categoryToCommunity{
-	"dl_arch":           {1, "深度学习架构"},
-	"dl_mechanism":      {1, "深度学习架构"},
-	"nlp_model":         {2, "NLP模型"},
-	"cv_model":          {3, "计算机视觉"},
-	"gen_model":         {4, "生成模型"},
-	"multimodal":        {5, "多模态"},
-	"speech_model":      {6, "语音模型"},
-	"gnn":               {7, "图神经网络"},
-	"rl_algorithm":      {8, "强化学习"},
-	"dl_technique":      {9, "深度学习技术"},
-	"nlp_technique":     {10, "NLP技术"},
-	"optimizer":         {11, "优化器"},
-	"alignment":         {12, "AI对齐"},
-	"platform":          {13, "平台与基础设施"},
-	"infrastructure":    {13, "平台与基础设施"},
-	"application":       {14, "应用"},
-}
-
+// GraphData is the on-disk format consumed by this seed. Grouping
+// happens via Community membership, which is either assigned
+// explicitly via community_name or detected later by the Louvain
+// community detector at portal startup.
 type GraphData struct {
 	Nodes []struct {
 		ID             string  `json:"id"`
 		Name           string  `json:"name"`
-		Category       string  `json:"category"`
+		CommunityName  string  `json:"community_name,omitempty"`
 		Description    string  `json:"description"`
 		InfluenceScore float64 `json:"influence_score"`
 		FirstAppeared  string  `json:"first_appeared"`
@@ -109,10 +88,14 @@ func loadGraphData(path string) (*GraphData, error) {
 	return &data, nil
 }
 
+// seedConcepts creates Concept nodes. Each concept's community_name
+// (if present) is matched against an existing Community and a
+// BELONGS_TO relationship is created; otherwise the concept is left
+// unassigned and Louvain will cluster it at portal startup.
 func seedConcepts(ctx context.Context, neo *db.Neo4j, nodes []struct {
 	ID             string  `json:"id"`
 	Name           string  `json:"name"`
-	Category       string  `json:"category"`
+	CommunityName  string  `json:"community_name,omitempty"`
 	Description    string  `json:"description"`
 	InfluenceScore float64 `json:"influence_score"`
 	FirstAppeared  string  `json:"first_appeared"`
@@ -121,7 +104,6 @@ func seedConcepts(ctx context.Context, neo *db.Neo4j, nodes []struct {
 		UNWIND $nodes AS node
 		MERGE (c:Concept {id: node.id})
 		SET c.name = node.name,
-		    c.category = node.category,
 		    c.description = node.description,
 		    c.influence_score = node.influence_score,
 		    c.first_appeared = node.first_appeared,
@@ -129,25 +111,25 @@ func seedConcepts(ctx context.Context, neo *db.Neo4j, nodes []struct {
 		    c.status = 'active',
 		    c.created_at = datetime()
 		WITH c, node
-		MATCH (comm:Community {id: node.community_id})
-		MERGE (c)-[:BELONGS_TO]->(comm)
+		OPTIONAL MATCH (comm:Community {name: node.community_name})
+		FOREACH (_ IN CASE WHEN comm IS NULL THEN [] ELSE [1] END |
+			MERGE (c)-[:BELONGS_TO]->(comm)
+		)
 	`
 
-	var nodeParams []map[string]any
+	params := make([]map[string]any, 0, len(nodes))
 	for _, n := range nodes {
-		comm := categoryMap[n.Category]
-		nodeParams = append(nodeParams, map[string]any{
+		params = append(params, map[string]any{
 			"id":              n.ID,
 			"name":            n.Name,
-			"category":        n.Category,
 			"description":     n.Description,
 			"influence_score": n.InfluenceScore,
 			"first_appeared":  n.FirstAppeared,
-			"community_id":    comm.CommunityID,
+			"community_name":  n.CommunityName,
 		})
 	}
 
-	return neo.Execute(ctx, cypher, map[string]any{"nodes": nodeParams})
+	return neo.Execute(ctx, cypher, map[string]any{"nodes": params})
 }
 
 func seedEdges(ctx context.Context, neo *db.Neo4j, edges []struct {
@@ -166,7 +148,7 @@ func seedEdges(ctx context.Context, neo *db.Neo4j, edges []struct {
 		    r.created_at = datetime()
 	`
 
-	var edgeParams []map[string]any
+	edgeParams := make([]map[string]any, 0, len(edges))
 	for _, e := range edges {
 		edgeParams = append(edgeParams, map[string]any{
 			"source":   e.Source,

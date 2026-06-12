@@ -1,11 +1,11 @@
 export interface Node {
   id: string
   name: string
-  category: string
   description: string
   influence_score: number
   first_appeared: string
   milestones?: string[]
+  community_id?: string | null
 }
 
 export interface Edge {
@@ -13,6 +13,52 @@ export interface Edge {
   target: string
   weight: number
   relation: string
+}
+
+export interface Community {
+  id: string
+  name: string
+  color: string
+  level: number
+  domain: string
+  parent_id: string | null
+  node_count: number
+}
+
+export interface HierarchicalCommunity {
+  id: string
+  parent_id: string | null
+  name: string
+  color: string
+  level: number
+  domain: string
+  node_count: number
+  children?: HierarchicalCommunity[]
+}
+
+export interface CommunitiesListResponse {
+  communities: Community[]
+}
+
+export interface CommunitiesTreeResponse {
+  communities: HierarchicalCommunity[]
+}
+
+export interface CommunityCreateRequest {
+  // Optional: when omitted, the backend mints a fresh UUID and returns it
+  // as part of the created resource.
+  id?: string
+  name: string
+  color: string
+  domain: string
+  parent_id?: string | null
+}
+
+export interface CommunityUpdateRequest {
+  name?: string
+  color?: string
+  domain?: string
+  parent_id?: string | null
 }
 
 export interface Pagination {
@@ -28,22 +74,33 @@ export interface NodesListResponse {
 }
 
 export interface NodeCreateRequest {
-  id: string
+  // Optional: when omitted, the backend mints a fresh UUID and returns it
+  // as part of the created resource.
+  id?: string
   name: string
-  category: string
   description: string
   influence_score: number
   first_appeared: string
   milestones?: string[]
+  community_id?: string | null
 }
 
 export interface NodeUpdateRequest {
   name?: string
-  category?: string
   description?: string
   influence_score?: number
   first_appeared?: string
   milestones?: string[]
+  /**
+   * Community assignment using a tri-state convention:
+   * - `undefined` (field absent) -> leave the assignment unchanged
+   * - `null`                    -> remove the node from its community
+   * - `string`                  -> assign the node to the given community
+   *
+   * The console handler forwards this to the core service, which performs
+   * the actual reconciliation against the BELONGS_TO relationship.
+   */
+  community_id?: string | null | undefined
 }
 
 export interface EdgeCreateRequest {
@@ -66,7 +123,5 @@ export interface EdgesListResponse {
 export interface StatsResponse {
   total_nodes: number
   total_edges: number
-  category_count: number
-  categories: Record<string, number>
   avg_influence: number
 }

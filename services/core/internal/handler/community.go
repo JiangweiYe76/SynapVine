@@ -1,8 +1,8 @@
 package handler
 
 import (
+	"errors"
 	"log/slog"
-	"strconv"
 
 	"core/internal/model"
 	"core/internal/service"
@@ -34,19 +34,32 @@ func (h *CommunityHandler) List(c *fiber.Ctx) error {
 	return c.JSON(resp)
 }
 
+// Tree handles GET /api/communities/tree.
+func (h *CommunityHandler) Tree(c *fiber.Ctx) error {
+	tree, err := h.svc.GetTree(c.Context())
+	if err != nil {
+		slog.Error("community_tree_failed", slog.Any("error", err))
+		return c.Status(500).JSON(model.ErrorResponse{
+			Error:   "internal_error",
+			Message: "Failed to build community tree",
+		})
+	}
+	return c.JSON(fiber.Map{"communities": tree})
+}
+
 // Get handles GET /api/communities/:id.
 func (h *CommunityHandler) Get(c *fiber.Ctx) error {
-	id, err := strconv.Atoi(c.Params("id"))
-	if err != nil {
+	id := c.Params("id")
+	if id == "" {
 		return c.Status(400).JSON(model.ErrorResponse{
 			Error:   "invalid_id",
-			Message: "Community ID must be an integer",
+			Message: "Community ID is required",
 		})
 	}
 
 	comm, err := h.svc.Get(c.Context(), id)
 	if err != nil {
-		slog.Error("community_get_failed", slog.Int("id", id), slog.Any("error", err))
+		slog.Error("community_get_failed", slog.String("id", id), slog.Any("error", err))
 		return c.Status(500).JSON(model.ErrorResponse{
 			Error:   "internal_error",
 			Message: "Failed to get community",
@@ -81,10 +94,16 @@ func (h *CommunityHandler) Create(c *fiber.Ctx) error {
 
 	comm, err := h.svc.Create(c.Context(), req)
 	if err != nil {
-		if err.Error() == "community already exists" {
+		switch {
+		case errors.Is(err, service.ErrCommunityExists):
 			return c.Status(409).JSON(model.ErrorResponse{
 				Error:   "community_exists",
 				Message: "A community with this ID already exists",
+			})
+		case errors.Is(err, service.ErrParentNotFound):
+			return c.Status(400).JSON(model.ErrorResponse{
+				Error:   "parent_not_found",
+				Message: "Parent community does not exist",
 			})
 		}
 		slog.Error("community_create_failed", slog.Any("error", err))
@@ -94,17 +113,17 @@ func (h *CommunityHandler) Create(c *fiber.Ctx) error {
 		})
 	}
 
-	slog.Info("community_created", slog.Int("id", comm.ID), slog.String("name", comm.Name))
+	slog.Info("community_created", slog.String("id", comm.ID), slog.String("name", comm.Name))
 	return c.Status(201).JSON(comm)
 }
 
 // Update handles PUT /api/communities/:id.
 func (h *CommunityHandler) Update(c *fiber.Ctx) error {
-	id, err := strconv.Atoi(c.Params("id"))
-	if err != nil {
+	id := c.Params("id")
+	if id == "" {
 		return c.Status(400).JSON(model.ErrorResponse{
 			Error:   "invalid_id",
-			Message: "Community ID must be an integer",
+			Message: "Community ID is required",
 		})
 	}
 
@@ -119,7 +138,19 @@ func (h *CommunityHandler) Update(c *fiber.Ctx) error {
 
 	comm, err := h.svc.Update(c.Context(), id, req)
 	if err != nil {
-		slog.Error("community_update_failed", slog.Int("id", id), slog.Any("error", err))
+		switch {
+		case errors.Is(err, service.ErrParentNotFound):
+			return c.Status(400).JSON(model.ErrorResponse{
+				Error:   "parent_not_found",
+				Message: "Parent community does not exist",
+			})
+		case errors.Is(err, service.ErrCycle):
+			return c.Status(400).JSON(model.ErrorResponse{
+				Error:   "cycle_detected",
+				Message: "The chosen parent would create a cycle",
+			})
+		}
+		slog.Error("community_update_failed", slog.String("id", id), slog.Any("error", err))
 		return c.Status(500).JSON(model.ErrorResponse{
 			Error:   "save_failed",
 			Message: "Failed to update community",
@@ -132,29 +163,41 @@ func (h *CommunityHandler) Update(c *fiber.Ctx) error {
 		})
 	}
 
-	slog.Info("community_updated", slog.Int("id", comm.ID))
+	slog.Info("community_updated", slog.String("id", comm.ID))
 	return c.JSON(comm)
 }
 
 // Delete handles DELETE /api/communities/:id.
 func (h *CommunityHandler) Delete(c *fiber.Ctx) error {
-	id, err := strconv.Atoi(c.Params("id"))
-	if err != nil {
+	id := c.Params("id")
+	if id == "" {
 		return c.Status(400).JSON(model.ErrorResponse{
 			Error:   "invalid_id",
-			Message: "Community ID must be an integer",
+			Message: "Community ID is required",
 		})
 	}
 
 	if err := h.svc.Delete(c.Context(), id); err != nil {
-		slog.Error("community_delete_failed", slog.Int("id", id), slog.Any("error", err))
+		switch {
+		case errors.Is(err, service.ErrCommunityNotFound):
+			return c.Status(404).JSON(model.ErrorResponse{
+				Error:   "community_not_found",
+				Message: "Community with the specified ID not found",
+			})
+		case errors.Is(err, service.ErrHasChildren):
+			return c.Status(409).JSON(model.ErrorResponse{
+				Error:   "community_has_children",
+				Message: "Cannot delete a community that has child communities",
+			})
+		}
+		slog.Error("community_delete_failed", slog.String("id", id), slog.Any("error", err))
 		return c.Status(500).JSON(model.ErrorResponse{
 			Error:   "delete_failed",
 			Message: "Failed to delete community",
 		})
 	}
 
-	slog.Info("community_deleted", slog.Int("id", id))
+	slog.Info("community_deleted", slog.String("id", id))
 	return c.SendStatus(204)
 }
 

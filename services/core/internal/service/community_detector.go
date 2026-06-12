@@ -74,18 +74,19 @@ func (s *CommunityDetectorService) DetectAndStore(ctx context.Context) error {
 	// Build node-to-community assignments (leaf community ID)
 	assignments := make([]struct {
 		NodeID      string `json:"node_id"`
-		CommunityID int    `json:"community_id"`
+		CommunityID string `json:"community_id"`
 	}, 0, len(nodes))
 	for _, n := range nodes {
-		if n.CommunityID != 0 {
-			assignments = append(assignments, struct {
-				NodeID      string `json:"node_id"`
-				CommunityID int    `json:"community_id"`
-			}{
-				NodeID:      n.ID,
-				CommunityID: n.CommunityID,
-			})
+		if n.CommunityID == nil {
+			continue
 		}
+		assignments = append(assignments, struct {
+			NodeID      string `json:"node_id"`
+			CommunityID string `json:"community_id"`
+		}{
+			NodeID:      n.ID,
+			CommunityID: *n.CommunityID,
+		})
 	}
 
 	if len(assignments) > 0 {
