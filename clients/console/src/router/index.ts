@@ -28,6 +28,12 @@ const router = createRouter({
       component: () => import('../views/edges/List.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/communities',
+      name: 'Communities',
+      component: () => import('../views/communities/List.vue'),
+      meta: { requiresAuth: true },
+    },
   ],
 })
 
