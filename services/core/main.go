@@ -43,7 +43,7 @@ func main() {
 	nodeRepo := repository.NewNodeRepository(neo)
 	commRepo := repository.NewCommunityRepository(neo)
 
-	nodeSvc := service.NewNodeService(nodeRepo)
+	nodeSvc := service.NewNodeService(nodeRepo, commRepo)
 	commSvc := service.NewCommunityService(commRepo)
 	detectorSvc := service.NewCommunityDetectorService(nodeRepo, commRepo)
 
@@ -73,6 +73,7 @@ func main() {
 	app.Delete("/api/nodes/:id", nodeHandler.Delete)
 
 	app.Get("/api/communities", commHandler.List)
+	app.Get("/api/communities/tree", commHandler.Tree)
 	app.Get("/api/communities/:id", commHandler.Get)
 	app.Post("/api/communities", commHandler.Create)
 	app.Put("/api/communities/:id", commHandler.Update)

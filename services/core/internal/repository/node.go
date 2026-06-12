@@ -8,6 +8,7 @@ import (
 	"core/internal/db"
 	"core/internal/model"
 
+	"github.com/google/uuid"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 )
 
@@ -21,6 +22,15 @@ func NewNodeRepository(neo *db.Neo4j) *NodeRepository {
 	return &NodeRepository{neo: neo}
 }
 
+// nodeSelectFields is the standard RETURN clause used by all node read paths.
+// community_id is computed via the BELONGS_TO relationship to a Community.
+const nodeSelectFields = `
+		n.id AS id, n.name AS name,
+		n.description AS description, n.influence_score AS influence_score,
+		n.first_appeared AS first_appeared, n.milestones AS milestones,
+		[(n)-[:BELONGS_TO]->(c:Community) | c.id][0] AS community_id
+	`
+
 // List returns paginated nodes.
 func (r *NodeRepository) List(ctx context.Context, offset, limit int) ([]model.Node, int, error) {
 	countQuery := "MATCH (n:Concept) RETURN count(n) AS total"
@@ -30,13 +40,11 @@ func (r *NodeRepository) List(ctx context.Context, offset, limit int) ([]model.N
 	}
 	total := int(countResult[0].Values[0].(int64))
 
-	query := `
+	query := fmt.Sprintf(`
 		MATCH (n:Concept)
-		RETURN n.id AS id, n.name AS name, n.category AS category,
-		       n.description AS description, n.influence_score AS influence_score,
-		       n.first_appeared AS first_appeared, n.milestones AS milestones
+		RETURN %s
 		SKIP $offset LIMIT $limit
-	`
+	`, nodeSelectFields)
 	records, err := r.neo.Query(ctx, query, map[string]any{
 		"offset": offset,
 		"limit":  limit,
@@ -65,14 +73,12 @@ func (r *NodeRepository) Search(ctx context.Context, q string, offset, limit int
 	}
 	total := int(countResult[0].Values[0].(int64))
 
-	query := `
+	query := fmt.Sprintf(`
 		MATCH (n:Concept)
 		WHERE toLower(n.name) CONTAINS $q OR toLower(n.id) CONTAINS $q OR toLower(n.description) CONTAINS $q
-		RETURN n.id AS id, n.name AS name, n.category AS category,
-		       n.description AS description, n.influence_score AS influence_score,
-		       n.first_appeared AS first_appeared, n.milestones AS milestones
+		RETURN %s
 		SKIP $offset LIMIT $limit
-	`
+	`, nodeSelectFields)
 	records, err := r.neo.Query(ctx, query, map[string]any{
 		"q":      strings.ToLower(q),
 		"offset": offset,
@@ -91,12 +97,10 @@ func (r *NodeRepository) Search(ctx context.Context, q string, offset, limit int
 
 // Get returns a node by ID.
 func (r *NodeRepository) Get(ctx context.Context, id string) (*model.Node, error) {
-	query := `
+	query := fmt.Sprintf(`
 		MATCH (n:Concept {id: $id})
-		RETURN n.id AS id, n.name AS name, n.category AS category,
-		       n.description AS description, n.influence_score AS influence_score,
-		       n.first_appeared AS first_appeared, n.milestones AS milestones
-	`
+		RETURN %s
+	`, nodeSelectFields)
 	records, err := r.neo.Query(ctx, query, map[string]any{"id": id})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get node: %w", err)
@@ -108,13 +112,20 @@ func (r *NodeRepository) Get(ctx context.Context, id string) (*model.Node, error
 	return &node, nil
 }
 
-// Create creates a new Concept node.
-func (r *NodeRepository) Create(ctx context.Context, req model.NodeCreateRequest) error {
+// Create creates a new Concept node and optionally attaches it to a community.
+//
+// If req.ID is empty a fresh UUID is generated server-side and used as the
+// node's identifier. The repository returns the resulting id via the
+// returned string so the caller can persist/display it.
+func (r *NodeRepository) Create(ctx context.Context, req model.NodeCreateRequest) (string, error) {
+	id := req.ID
+	if id == "" {
+		id = uuid.NewString()
+	}
 	cypher := `
 		CREATE (n:Concept {
 			id: $id,
 			name: $name,
-			category: $category,
 			description: $description,
 			influence_score: $influence_score,
 			first_appeared: $first_appeared,
@@ -123,19 +134,30 @@ func (r *NodeRepository) Create(ctx context.Context, req model.NodeCreateRequest
 			status: 'active',
 			created_at: datetime()
 		})
+		WITH n
+		OPTIONAL MATCH (c:Community {id: $community_id})
+		FOREACH (_ IN CASE WHEN c IS NULL THEN [] ELSE [1] END |
+			MERGE (n)-[:BELONGS_TO]->(c)
+		)
 	`
-	return r.neo.Execute(ctx, cypher, map[string]any{
-		"id":              req.ID,
+	return id, r.neo.Execute(ctx, cypher, map[string]any{
+		"id":              id,
 		"name":            req.Name,
-		"category":        req.Category,
 		"description":     req.Description,
 		"influence_score": req.InfluenceScore,
 		"first_appeared":  req.FirstAppeared,
 		"milestones":      req.Milestones,
+		"community_id":    req.CommunityID,
 	})
 }
 
 // Update updates an existing Concept node.
+//
+// CommunityID is a tri-state pointer-to-pointer field: nil means "leave
+// unchanged", a non-nil pointer to a nil means "remove from community", and
+// a non-nil pointer to a non-nil int means "assign to the given community".
+// The tri-state is required because JSON cannot otherwise distinguish
+// "absent" from "null".
 func (r *NodeRepository) Update(ctx context.Context, id string, req model.NodeUpdateRequest) (*model.Node, error) {
 	setClauses := []string{}
 	params := map[string]any{"id": id}
@@ -143,10 +165,6 @@ func (r *NodeRepository) Update(ctx context.Context, id string, req model.NodeUp
 	if req.Name != nil {
 		setClauses = append(setClauses, "n.name = $name")
 		params["name"] = *req.Name
-	}
-	if req.Category != nil {
-		setClauses = append(setClauses, "n.category = $category")
-		params["category"] = *req.Category
 	}
 	if req.Description != nil {
 		setClauses = append(setClauses, "n.description = $description")
@@ -165,17 +183,44 @@ func (r *NodeRepository) Update(ctx context.Context, id string, req model.NodeUp
 		params["milestones"] = *req.Milestones
 	}
 
-	if len(setClauses) == 0 {
-		return r.Get(ctx, id)
+	// Build the post-update community reconciliation. We always run a MATCH
+	// so the RETURN clause can project community_id consistently.
+	communityCypher := `
+		MATCH (n:Concept {id: $id})
+		OPTIONAL MATCH (n)-[old:BELONGS_TO]->(:Community)
+		DELETE old
+		WITH n
+		OPTIONAL MATCH (c:Community {id: $new_community_id})
+		FOREACH (_ IN CASE WHEN c IS NULL THEN [] ELSE [1] END |
+			MERGE (n)-[:BELONGS_TO]->(c)
+		)
+		WITH n
+	`
+	params["new_community_id"] = nil
+	if req.CommunityID != nil {
+		if *req.CommunityID != nil {
+			params["new_community_id"] = **req.CommunityID
+		}
+		// else: explicit null -> community will be removed by the DELETE above
 	}
 
-	cypher := fmt.Sprintf(`
-		MATCH (n:Concept {id: $id})
-		SET %s
-		RETURN n.id AS id, n.name AS name, n.category AS category,
-		       n.description AS description, n.influence_score AS influence_score,
-		       n.first_appeared AS first_appeared, n.milestones AS milestones
-	`, strings.Join(setClauses, ", "))
+	returnCypher := fmt.Sprintf("RETURN %s", nodeSelectFields)
+
+	var cypher string
+	if len(setClauses) > 0 {
+		cypher = fmt.Sprintf(`
+			MATCH (n:Concept {id: $id})
+			SET %s
+			WITH n
+			%s
+			%s
+		`, strings.Join(setClauses, ", "), communityCypher, returnCypher)
+	} else {
+		cypher = fmt.Sprintf(`
+			%s
+			%s
+		`, communityCypher, returnCypher)
+	}
 
 	records, err := r.neo.QueryWrite(ctx, cypher, params)
 	if err != nil {
@@ -211,12 +256,10 @@ func (r *NodeRepository) Exists(ctx context.Context, id string) (bool, error) {
 
 // GetAll returns all nodes and edges in the graph.
 func (r *NodeRepository) GetAll(ctx context.Context) ([]model.Node, []model.Edge, error) {
-	nodeQuery := `
+	nodeQuery := fmt.Sprintf(`
 		MATCH (n:Concept)
-		RETURN n.id AS id, n.name AS name, n.category AS category,
-		       n.description AS description, n.influence_score AS influence_score,
-		       n.first_appeared AS first_appeared, n.milestones AS milestones
-	`
+		RETURN %s
+	`, nodeSelectFields)
 	nodeRecords, err := r.neo.Query(ctx, nodeQuery, nil)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get all nodes: %w", err)
@@ -253,10 +296,10 @@ func recordToNode(rec *neo4j.Record) model.Node {
 	node := model.Node{
 		ID:             valueOrEmpty[string](rec, "id"),
 		Name:           valueOrEmpty[string](rec, "name"),
-		Category:       valueOrEmpty[string](rec, "category"),
 		Description:    valueOrEmpty[string](rec, "description"),
 		InfluenceScore: valueOrDefault(rec, "influence_score", 0.0),
 		FirstAppeared:  valueOrDefault(rec, "first_appeared", ""),
+		CommunityID:    valueOrNilString(rec, "community_id"),
 	}
 	if milestones, ok := rec.Get("milestones"); ok && milestones != nil {
 		if arr, ok := milestones.([]any); ok {

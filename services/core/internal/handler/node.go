@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"strconv"
 
@@ -90,16 +91,16 @@ func (h *NodeHandler) Create(c *fiber.Ctx) error {
 		})
 	}
 
-	if req.ID == "" || req.Name == "" {
+	if req.Name == "" {
 		return c.Status(400).JSON(model.ErrorResponse{
 			Error:   "missing_fields",
-			Message: "ID and name are required",
+			Message: "Name is required",
 		})
 	}
 
 	node, err := h.svc.Create(c.Context(), req)
 	if err != nil {
-		if err.Error() == "node already exists" {
+		if errors.Is(err, service.ErrNodeExists) {
 			return c.Status(409).JSON(model.ErrorResponse{
 				Error:   "node_exists",
 				Message: "A node with this ID already exists",
@@ -131,6 +132,12 @@ func (h *NodeHandler) Update(c *fiber.Ctx) error {
 
 	node, err := h.svc.Update(c.Context(), id, req)
 	if err != nil {
+		if errors.Is(err, service.ErrNodeCommunity) {
+			return c.Status(400).JSON(model.ErrorResponse{
+				Error:   "community_not_found",
+				Message: "The specified community does not exist",
+			})
+		}
 		slog.Error("node_update_failed", slog.String("id", id), slog.Any("error", err))
 		return c.Status(500).JSON(model.ErrorResponse{
 			Error:   "save_failed",
