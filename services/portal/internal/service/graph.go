@@ -6,26 +6,62 @@ import (
 	"strconv"
 	"strings"
 
+	"ai-graph-server/internal/coreclient"
 	"ai-graph-server/internal/model"
 )
 
 // GraphService provides graph-related business logic
 type GraphService struct {
-	nodes       []model.Node
-	edges       []model.Edge
-	nodeMap     map[string]*model.Node
-	edgeIndex   map[string][]model.Edge
-	neighborMap map[string][]model.Neighbor
+	nodes        []model.Node
+	edges        []model.Edge
+	communities  []model.HierarchicalCommunity
+	maxLevel     int
+	nodeMap      map[string]*model.Node
+	edgeIndex    map[string][]model.Edge
+	neighborMap  map[string][]model.Neighbor
 }
 
-// New creates and initializes a new GraphService
-func New(nodes []model.Node, edges []model.Edge) *GraphService {
+// New creates and initializes a new GraphService from raw core data.
+// Core stores community IDs as string UUIDs; the service maps them to
+// sequential integer IDs so the portal frontend can use them directly.
+func New(coreNodes []coreclient.CoreNode, edges []model.Edge, coreCommunities []coreclient.CoreCommunity) *GraphService {
+	// Build a deterministic string -> int community ID map. Roots are listed
+	// first, then children, which keeps parent IDs lower than child IDs.
+	communityMap := buildCommunityIDMap(coreCommunities)
+
+	// Convert core nodes into portal nodes using the integer community mapping.
+	nodes := make([]model.Node, 0, len(coreNodes))
+	for _, cn := range coreNodes {
+		communityID := 0
+		if cn.CommunityID != nil {
+			if id, ok := communityMap[*cn.CommunityID]; ok {
+				communityID = id
+			}
+		}
+		nodes = append(nodes, model.Node{
+			ID:             cn.ID,
+			Name:           cn.Name,
+			Description:    cn.Description,
+			InfluenceScore: cn.InfluenceScore,
+			FirstAppeared:  cn.FirstAppeared,
+			Milestones:     cn.Milestones,
+			CommunityID:    communityID,
+			Degree:         cn.Degree,
+		})
+	}
+
+	// Convert core communities into portal hierarchical communities.
+	communities := convertCommunities(coreCommunities, communityMap)
+	maxLevel := computeMaxLevel(communities)
+
 	svc := &GraphService{
-		nodes:       nodes,
-		edges:       edges,
-		nodeMap:     make(map[string]*model.Node),
-		edgeIndex:   make(map[string][]model.Edge),
-		neighborMap: make(map[string][]model.Neighbor),
+		nodes:        nodes,
+		edges:        edges,
+		communities:  communities,
+		maxLevel:     maxLevel,
+		nodeMap:      make(map[string]*model.Node),
+		edgeIndex:    make(map[string][]model.Edge),
+		neighborMap:  make(map[string][]model.Neighbor),
 	}
 
 	// Build node map for quick lookup
@@ -86,9 +122,85 @@ func New(nodes []model.Node, edges []model.Edge) *GraphService {
 	slog.Info("graph_service_initialized",
 		slog.Int("nodes", len(nodes)),
 		slog.Int("edges", len(edges)),
+		slog.Int("communities", len(communities)),
+		slog.Int("max_level", maxLevel),
 	)
 
 	return svc
+}
+
+// buildCommunityIDMap walks the core community tree and assigns each unique
+// string community ID a sequential integer starting at 1. Unassigned nodes
+// keep the default community ID of 0.
+func buildCommunityIDMap(coreCommunities []coreclient.CoreCommunity) map[string]int {
+	mapping := make(map[string]int)
+	nextID := 1
+	var walk func(comms []coreclient.CoreCommunity)
+	walk = func(comms []coreclient.CoreCommunity) {
+		for _, c := range comms {
+			if _, exists := mapping[c.ID]; !exists {
+				mapping[c.ID] = nextID
+				nextID++
+			}
+			if len(c.Children) > 0 {
+				walk(c.Children)
+			}
+		}
+	}
+	walk(coreCommunities)
+	return mapping
+}
+
+// convertCommunities transforms core communities (string IDs) into portal
+// communities (integer IDs) using the provided mapping.
+func convertCommunities(coreCommunities []coreclient.CoreCommunity, mapping map[string]int) []model.HierarchicalCommunity {
+	result := make([]model.HierarchicalCommunity, 0, len(coreCommunities))
+	for _, c := range coreCommunities {
+		result = append(result, convertCommunity(c, mapping))
+	}
+	return result
+}
+
+func convertCommunity(c coreclient.CoreCommunity, mapping map[string]int) model.HierarchicalCommunity {
+	id := mapping[c.ID]
+	var parentID *int
+	if c.ParentID != nil {
+		if pid, ok := mapping[*c.ParentID]; ok {
+			parentID = &pid
+		}
+	}
+	children := make([]model.HierarchicalCommunity, 0, len(c.Children))
+	for _, child := range c.Children {
+		children = append(children, convertCommunity(child, mapping))
+	}
+	return model.HierarchicalCommunity{
+		ID:        id,
+		ParentID:  parentID,
+		Name:      c.Name,
+		Color:     c.Color,
+		Level:     c.Level,
+		NodeIDs:   []string{},
+		NodeCount: c.NodeCount,
+		Children:  children,
+	}
+}
+
+// computeMaxLevel returns the deepest level found in the community tree.
+func computeMaxLevel(communities []model.HierarchicalCommunity) int {
+	max := 0
+	var walk func(comms []model.HierarchicalCommunity)
+	walk = func(comms []model.HierarchicalCommunity) {
+		for _, c := range comms {
+			if c.Level > max {
+				max = c.Level
+			}
+			if len(c.Children) > 0 {
+				walk(c.Children)
+			}
+		}
+	}
+	walk(communities)
+	return max
 }
 
 // Summary returns a summary of the graph including communities and stats
@@ -108,12 +220,12 @@ func (s *GraphService) Summary(topN int) model.SummaryResponse {
 	}
 
 	return model.SummaryResponse{
-		Communities: []model.HierarchicalCommunity{},
+		Communities: s.communities,
 		Stats: model.GraphStats{
 			TotalNodes:     len(s.nodes),
 			TotalEdges:     len(s.edges),
-			CommunityCount: 0,
-			MaxLevel:       0,
+			CommunityCount: len(s.communities),
+			MaxLevel:       s.maxLevel,
 		},
 		TopNodes: top[:topN],
 	}

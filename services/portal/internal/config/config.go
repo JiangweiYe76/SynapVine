@@ -7,7 +7,6 @@ import (
 // Config holds the application configuration settings
 type Config struct {
 	Port          string // HTTP server port
-	DataPath      string // Path to the graph data JSON file (fallback)
 	AllowedOrigin string // Allowed CORS origin
 	CoreURL       string // URL of the core service
 }
@@ -19,12 +18,6 @@ func Load() *Config {
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8000"
-	}
-
-	// Path to graph data file (default: ../data/graph.json)
-	dataPath := os.Getenv("DATA_PATH")
-	if dataPath == "" {
-		dataPath = "../data/graph.json"
 	}
 
 	// Allowed CORS origin (default: http://localhost:5173)
@@ -41,7 +34,6 @@ func Load() *Config {
 
 	return &Config{
 		Port:          port,
-		DataPath:      dataPath,
 		AllowedOrigin: allowedOrigin,
 		CoreURL:       coreURL,
 	}
