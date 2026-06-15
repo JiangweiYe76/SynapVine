@@ -13,10 +13,15 @@ import (
 )
 
 // Config holds Neo4j connection settings.
+//
+// Database selects which Neo4j database (a.k.a. "catalog") the connection
+// uses. Leave empty to use the server default ("neo4j"). The test suite
+// uses a dedicated database so it cannot pollute the dev graph.
 type Config struct {
 	URI      string
 	Username string
 	Password string
+	Database string
 }
 
 // LoadConfigFromEnv reads Neo4j settings from environment variables.
@@ -37,10 +42,13 @@ func getEnv(key, fallback string) string {
 
 // Neo4j wraps the official Neo4j Go driver.
 type Neo4j struct {
-	driver neo4j.DriverWithContext
+	driver   neo4j.DriverWithContext
+	database string
 }
 
-// New creates a Neo4j connection manager.
+// New creates a Neo4j connection manager. If cfg.Database is non-empty,
+// all sessions opened by the returned client target that database;
+// otherwise the server default ("neo4j") is used.
 func New(cfg Config) (*Neo4j, error) {
 	driver, err := neo4j.NewDriverWithContext(cfg.URI, neo4j.BasicAuth(cfg.Username, cfg.Password, ""))
 	if err != nil {
@@ -53,8 +61,8 @@ func New(cfg Config) (*Neo4j, error) {
 		return nil, fmt.Errorf("neo4j connectivity check failed: %w", err)
 	}
 
-	slog.Info("neo4j_connected", slog.String("uri", cfg.URI))
-	return &Neo4j{driver: driver}, nil
+	slog.Info("neo4j_connected", slog.String("uri", cfg.URI), slog.String("database", cfg.Database))
+	return &Neo4j{driver: driver, database: cfg.Database}, nil
 }
 
 // Close shuts down the driver.
@@ -62,9 +70,18 @@ func (n *Neo4j) Close(ctx context.Context) error {
 	return n.driver.Close(ctx)
 }
 
+// sessionConfig returns the base session configuration, pre-populated
+// with the database selected at construction time. Callers override
+// AccessMode as needed.
+func (n *Neo4j) sessionConfig() neo4j.SessionConfig {
+	return neo4j.SessionConfig{
+		DatabaseName: n.database,
+	}
+}
+
 // Execute runs a write query without returning records.
 func (n *Neo4j) Execute(ctx context.Context, cypher string, params map[string]any) error {
-	session := n.driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	session := n.driver.NewSession(ctx, n.writeSessionConfig())
 	defer session.Close(ctx)
 
 	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
@@ -76,7 +93,7 @@ func (n *Neo4j) Execute(ctx context.Context, cypher string, params map[string]an
 
 // Query runs a read query and returns records.
 func (n *Neo4j) Query(ctx context.Context, cypher string, params map[string]any) ([]*neo4j.Record, error) {
-	session := n.driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
+	session := n.driver.NewSession(ctx, n.readSessionConfig())
 	defer session.Close(ctx)
 
 	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
@@ -94,7 +111,7 @@ func (n *Neo4j) Query(ctx context.Context, cypher string, params map[string]any)
 
 // QueryWrite runs a write query and returns records.
 func (n *Neo4j) QueryWrite(ctx context.Context, cypher string, params map[string]any) ([]*neo4j.Record, error) {
-	session := n.driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	session := n.driver.NewSession(ctx, n.writeSessionConfig())
 	defer session.Close(ctx)
 
 	result, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
@@ -108,6 +125,18 @@ func (n *Neo4j) QueryWrite(ctx context.Context, cypher string, params map[string
 		return nil, err
 	}
 	return result.([]*neo4j.Record), nil
+}
+
+func (n *Neo4j) readSessionConfig() neo4j.SessionConfig {
+	cfg := n.sessionConfig()
+	cfg.AccessMode = neo4j.AccessModeRead
+	return cfg
+}
+
+func (n *Neo4j) writeSessionConfig() neo4j.SessionConfig {
+	cfg := n.sessionConfig()
+	cfg.AccessMode = neo4j.AccessModeWrite
+	return cfg
 }
 
 // Migrate runs all .cypher files in the given directory in lexical order.

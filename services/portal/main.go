@@ -33,32 +33,12 @@ func main() {
 		slog.String("core_url", cfg.CoreURL),
 	)
 
-	// Load graph data and communities from core service. The portal has no
-	// local fallback; core must be reachable at startup.
+	// Core is a stateless dependency; the portal reads through it on
+	// every request, so console writes are visible without a restart.
 	core := coreclient.New(cfg.CoreURL)
-	graphData, err := core.FetchGraphData()
-	if err != nil {
-		slog.Error("core_fetch_failed", slog.String("url", cfg.CoreURL), slog.Any("error", err))
-		os.Exit(1)
-	}
-	slog.Info("graph_data_loaded_from_core",
-		slog.String("url", cfg.CoreURL),
-		slog.Int("nodes", len(graphData.Nodes)),
-		slog.Int("edges", len(graphData.Edges)),
-	)
-
-	communities, err := core.FetchCommunityTree()
-	if err != nil {
-		slog.Error("core_communities_fetch_failed", slog.String("url", cfg.CoreURL), slog.Any("error", err))
-		os.Exit(1)
-	}
-	slog.Info("communities_loaded_from_core",
-		slog.String("url", cfg.CoreURL),
-		slog.Int("communities", len(communities)),
-	)
 
 	// Initialize service and handler
-	svc := service.New(graphData.Nodes, graphData.Edges, communities)
+	svc := service.New(core)
 	gh := handler.NewGraphHandler(svc)
 
 	// Initialize token store for API authentication
@@ -151,11 +131,7 @@ func main() {
 	api.Get("/expand", gh.Expand)
 
 	// Log startup information
-	slog.Info("server_starting",
-		slog.String("port", cfg.Port),
-		slog.Int("nodes", len(graphData.Nodes)),
-		slog.Int("edges", len(graphData.Edges)),
-	)
+	slog.Info("server_starting", slog.String("port", cfg.Port))
 
 	// Start HTTP server
 	if err := app.Listen(":" + cfg.Port); err != nil {

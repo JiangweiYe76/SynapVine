@@ -1,7 +1,7 @@
 package service
 
 import (
-	"log/slog"
+	"context"
 	"sort"
 	"strconv"
 	"strings"
@@ -10,123 +10,419 @@ import (
 	"ai-graph-server/internal/model"
 )
 
-// GraphService provides graph-related business logic
+// GraphService is a stateless read-through adapter in front of the core
+// service. Every method fetches what it needs from core on each call, so
+// changes made via the console propagate to the portal immediately.
 type GraphService struct {
-	nodes        []model.Node
-	edges        []model.Edge
-	communities  []model.HierarchicalCommunity
-	maxLevel     int
-	nodeMap      map[string]*model.Node
-	edgeIndex    map[string][]model.Edge
-	neighborMap  map[string][]model.Neighbor
+	core *coreclient.Client
 }
 
-// New creates and initializes a new GraphService from raw core data.
-// Core stores community IDs as string UUIDs; the service maps them to
-// sequential integer IDs so the portal frontend can use them directly.
-func New(coreNodes []coreclient.CoreNode, edges []model.Edge, coreCommunities []coreclient.CoreCommunity) *GraphService {
-	// Build a deterministic string -> int community ID map. Roots are listed
-	// first, then children, which keeps parent IDs lower than child IDs.
-	communityMap := buildCommunityIDMap(coreCommunities)
+// New creates a GraphService that proxies reads to the given core client.
+func New(core *coreclient.Client) *GraphService {
+	return &GraphService{core: core}
+}
 
-	// Convert core nodes into portal nodes using the integer community mapping.
-	nodes := make([]model.Node, 0, len(coreNodes))
-	for _, cn := range coreNodes {
-		communityID := 0
-		if cn.CommunityID != nil {
-			if id, ok := communityMap[*cn.CommunityID]; ok {
-				communityID = id
+// Summary returns a summary of the graph including communities, stats,
+// and the top N nodes by influence score.
+func (s *GraphService) Summary(ctx context.Context, topN int) (model.SummaryResponse, error) {
+	if topN <= 0 {
+		topN = 20
+	}
+
+	data, err := s.core.FetchGraphData(ctx)
+	if err != nil {
+		return model.SummaryResponse{}, err
+	}
+	coreComms, err := s.core.FetchCommunityTree(ctx)
+	if err != nil {
+		return model.SummaryResponse{}, err
+	}
+
+	communityMap := buildCommunityIDMap(coreComms)
+	nodes := make([]model.Node, 0, len(data.Nodes))
+	for _, cn := range data.Nodes {
+		nodes = append(nodes, toPortalNode(cn, communityMap))
+	}
+
+	communities := convertCommunities(coreComms, communityMap)
+
+	sort.Slice(nodes, func(i, j int) bool {
+		return nodes[i].InfluenceScore > nodes[j].InfluenceScore
+	})
+	if topN > len(nodes) {
+		topN = len(nodes)
+	}
+
+	return model.SummaryResponse{
+		Communities: communities,
+		Stats: model.GraphStats{
+			TotalNodes:     len(nodes),
+			TotalEdges:     len(data.Edges),
+			CommunityCount: len(communities),
+			MaxLevel:       computeMaxLevel(communities),
+		},
+		TopNodes: nodes[:topN],
+	}, nil
+}
+
+// Nodes returns a paginated list of nodes with optional filtering.
+func (s *GraphService) Nodes(ctx context.Context, offset, limit int, sortBy, communityFilter string, ids []string) (model.NodesResponse, error) {
+	if limit <= 0 || limit > 500 {
+		limit = 100
+	}
+
+	data, err := s.core.FetchGraphData(ctx)
+	if err != nil {
+		return model.NodesResponse{}, err
+	}
+	coreComms, err := s.core.FetchCommunityTree(ctx)
+	if err != nil {
+		return model.NodesResponse{}, err
+	}
+
+	communityMap := buildCommunityIDMap(coreComms)
+	nodes := make([]model.Node, 0, len(data.Nodes))
+	for _, cn := range data.Nodes {
+		nodes = append(nodes, toPortalNode(cn, communityMap))
+	}
+
+	// Filter
+	if len(ids) > 0 {
+		idSet := make(map[string]bool, len(ids))
+		for _, id := range ids {
+			idSet[id] = true
+		}
+		filtered := nodes[:0]
+		for _, n := range nodes {
+			if idSet[n.ID] {
+				filtered = append(filtered, n)
 			}
 		}
-		nodes = append(nodes, model.Node{
+		nodes = filtered
+	} else if communityFilter != "" {
+		cid, err := strconv.Atoi(communityFilter)
+		if err == nil {
+			filtered := nodes[:0]
+			for _, n := range nodes {
+				if n.CommunityID == cid {
+					filtered = append(filtered, n)
+				}
+			}
+			nodes = filtered
+		}
+	}
+
+	switch sortBy {
+	case "name":
+		sort.Slice(nodes, func(i, j int) bool {
+			return nodes[i].Name < nodes[j].Name
+		})
+	default:
+		sort.Slice(nodes, func(i, j int) bool {
+			return nodes[i].InfluenceScore > nodes[j].InfluenceScore
+		})
+	}
+
+	total := len(nodes)
+	if offset >= total {
+		return model.NodesResponse{
+			Nodes:      []model.Node{},
+			Pagination: model.Pagination{Offset: offset, Limit: limit, Total: total, HasMore: false},
+		}, nil
+	}
+	end := offset + limit
+	if end > total {
+		end = total
+	}
+
+	return model.NodesResponse{
+		Nodes: nodes[offset:end],
+		Pagination: model.Pagination{
+			Offset:  offset,
+			Limit:   limit,
+			Total:   total,
+			HasMore: end < total,
+		},
+	}, nil
+}
+
+// NodeDetail returns a single node plus the neighbors connected to it.
+func (s *GraphService) NodeDetail(ctx context.Context, id string) (model.NodeDetail, bool, error) {
+	coreNode, err := s.core.GetNode(ctx, id)
+	if err != nil {
+		return model.NodeDetail{}, false, err
+	}
+	if coreNode == nil {
+		return model.NodeDetail{}, false, nil
+	}
+
+	coreComms, err := s.core.FetchCommunityTree(ctx)
+	if err != nil {
+		return model.NodeDetail{}, false, err
+	}
+	communityMap := buildCommunityIDMap(coreComms)
+
+	node := toPortalNode(*coreNode, communityMap)
+
+	edges, err := s.fetchAllEdges(ctx)
+	if err != nil {
+		return model.NodeDetail{}, false, err
+	}
+	nodesByID, err := s.fetchNodeIndex(ctx, communityMap)
+	if err != nil {
+		return model.NodeDetail{}, false, err
+	}
+
+	neighbors := []model.Neighbor{}
+	seen := make(map[string]bool)
+	for _, e := range edges {
+		var neighborID string
+		if e.Source == id {
+			neighborID = e.Target
+		} else if e.Target == id {
+			neighborID = e.Source
+		} else {
+			continue
+		}
+		if seen[neighborID] {
+			continue
+		}
+		seen[neighborID] = true
+
+		n, ok := nodesByID[neighborID]
+		if !ok {
+			continue
+		}
+		neighbors = append(neighbors, model.Neighbor{
+			ID:             n.ID,
+			Name:           n.Name,
+			CommunityID:    n.CommunityID,
+			InfluenceScore: n.InfluenceScore,
+			Weight:         e.Weight,
+			Relation:       e.Relation,
+		})
+	}
+	sort.Slice(neighbors, func(i, j int) bool {
+		return neighbors[i].Weight > neighbors[j].Weight
+	})
+
+	return model.NodeDetail{Node: node, Neighbors: neighbors}, true, nil
+}
+
+// NodeEdges returns edges connected to a node, optionally filtered by direction.
+func (s *GraphService) NodeEdges(ctx context.Context, id, direction string) (model.EdgesResponse, bool, error) {
+	coreNode, err := s.core.GetNode(ctx, id)
+	if err != nil {
+		return model.EdgesResponse{}, false, err
+	}
+	if coreNode == nil {
+		return model.EdgesResponse{}, false, nil
+	}
+
+	edges, err := s.fetchAllEdges(ctx)
+	if err != nil {
+		return model.EdgesResponse{}, false, err
+	}
+
+	var matched []model.Edge
+	for _, e := range edges {
+		switch direction {
+		case "in":
+			if e.Target == id {
+				matched = append(matched, e)
+			}
+		case "out":
+			if e.Source == id {
+				matched = append(matched, e)
+			}
+		default:
+			if e.Source == id || e.Target == id {
+				matched = append(matched, e)
+			}
+		}
+	}
+	if matched == nil {
+		matched = []model.Edge{}
+	}
+
+	return model.EdgesResponse{NodeID: id, Edges: matched}, true, nil
+}
+
+// Search searches for nodes by name or description.
+func (s *GraphService) Search(ctx context.Context, query string, limit int) (model.SearchResponse, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+
+	data, err := s.core.FetchGraphData(ctx)
+	if err != nil {
+		return model.SearchResponse{}, err
+	}
+	coreComms, err := s.core.FetchCommunityTree(ctx)
+	if err != nil {
+		return model.SearchResponse{}, err
+	}
+	communityMap := buildCommunityIDMap(coreComms)
+
+	q := strings.ToLower(query)
+	results := make([]model.SearchResult, 0)
+	for _, cn := range data.Nodes {
+		if !strings.Contains(strings.ToLower(cn.Name), q) &&
+			!strings.Contains(strings.ToLower(cn.Description), q) {
+			continue
+		}
+		cid := 0
+		if cn.CommunityID != nil {
+			if mapped, ok := communityMap[*cn.CommunityID]; ok {
+				cid = mapped
+			}
+		}
+		results = append(results, model.SearchResult{
 			ID:             cn.ID,
 			Name:           cn.Name,
-			Description:    cn.Description,
+			CommunityID:    cid,
 			InfluenceScore: cn.InfluenceScore,
-			FirstAppeared:  cn.FirstAppeared,
-			Milestones:     cn.Milestones,
-			CommunityID:    communityID,
-			Degree:         cn.Degree,
 		})
+		if len(results) >= limit {
+			break
+		}
 	}
 
-	// Convert core communities into portal hierarchical communities.
-	communities := convertCommunities(coreCommunities, communityMap)
-	maxLevel := computeMaxLevel(communities)
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].InfluenceScore > results[j].InfluenceScore
+	})
+	if results == nil {
+		results = []model.SearchResult{}
+	}
+	return model.SearchResponse{Query: query, Results: results}, nil
+}
 
-	svc := &GraphService{
-		nodes:        nodes,
-		edges:        edges,
-		communities:  communities,
-		maxLevel:     maxLevel,
-		nodeMap:      make(map[string]*model.Node),
-		edgeIndex:    make(map[string][]model.Edge),
-		neighborMap:  make(map[string][]model.Neighbor),
+// Expand expands a set of nodes to include their neighbors and connecting edges.
+func (s *GraphService) Expand(ctx context.Context, ids []string, includeEdges, includeNeighbors bool) (model.ExpandResponse, error) {
+	idSet := make(map[string]bool, len(ids))
+	for _, id := range ids {
+		idSet[id] = true
 	}
 
-	// Build node map for quick lookup
-	for i := range nodes {
-		svc.nodeMap[nodes[i].ID] = &nodes[i]
+	data, err := s.core.FetchGraphData(ctx)
+	if err != nil {
+		return model.ExpandResponse{}, err
+	}
+	coreComms, err := s.core.FetchCommunityTree(ctx)
+	if err != nil {
+		return model.ExpandResponse{}, err
+	}
+	communityMap := buildCommunityIDMap(coreComms)
+
+	// Build lookup
+	nodesByID := make(map[string]model.Node, len(data.Nodes))
+	portalNodes := make([]model.Node, 0, len(data.Nodes))
+	for _, cn := range data.Nodes {
+		n := toPortalNode(cn, communityMap)
+		nodesByID[cn.ID] = n
+		portalNodes = append(portalNodes, n)
 	}
 
-	// Build edge index for quick neighbor lookup
-	for _, e := range edges {
-		svc.edgeIndex[e.Source] = append(svc.edgeIndex[e.Source], e)
-		svc.edgeIndex[e.Target] = append(svc.edgeIndex[e.Target], e)
-	}
-
-	// Build valid node set
 	nodeSet := make(map[string]bool)
-	for _, n := range nodes {
-		nodeSet[n.ID] = true
+	for _, id := range ids {
+		nodeSet[id] = true
 	}
 
-	// Build neighbor map with relationship info
-	for _, e := range edges {
-		// Only include edges between valid nodes
-		if nodeSet[e.Source] && nodeSet[e.Target] {
-			src := svc.nodeMap[e.Source]
-			tgt := svc.nodeMap[e.Target]
-			if src != nil && tgt != nil {
-				// Add target to source's neighbors
-				svc.neighborMap[e.Source] = append(svc.neighborMap[e.Source], model.Neighbor{
-					ID:             tgt.ID,
-					Name:           tgt.Name,
-					CommunityID:    tgt.CommunityID,
-					InfluenceScore: tgt.InfluenceScore,
-					Weight:         e.Weight,
-					Relation:       e.Relation,
-				})
-				// Add source to target's neighbors
-				svc.neighborMap[e.Target] = append(svc.neighborMap[e.Target], model.Neighbor{
-					ID:             src.ID,
-					Name:           src.Name,
-					CommunityID:    src.CommunityID,
-					InfluenceScore: src.InfluenceScore,
-					Weight:         e.Weight,
-					Relation:       e.Relation,
-				})
+	edgeSet := make(map[[2]string]model.Edge)
+	for _, e := range data.Edges {
+		if includeEdges && idSet[e.Source] && idSet[e.Target] {
+			edgeSet[[2]string{e.Source, e.Target}] = e
+		}
+		if includeNeighbors {
+			if idSet[e.Source] {
+				nodeSet[e.Target] = true
+			}
+			if idSet[e.Target] {
+				nodeSet[e.Source] = true
+			}
+		}
+	}
+	if includeNeighbors {
+		for _, e := range data.Edges {
+			if nodeSet[e.Source] || nodeSet[e.Target] {
+				edgeSet[[2]string{e.Source, e.Target}] = e
 			}
 		}
 	}
 
-	// Sort neighbors by weight (highest first)
-	for id := range svc.neighborMap {
-		neighbors := svc.neighborMap[id]
-		sort.Slice(neighbors, func(i, j int) bool {
-			return neighbors[i].Weight > neighbors[j].Weight
-		})
-		svc.neighborMap[id] = neighbors
+	expanded := make([]model.Node, 0, len(nodeSet))
+	for _, n := range portalNodes {
+		if nodeSet[n.ID] {
+			expanded = append(expanded, n)
+		}
+	}
+	expandedEdges := make([]model.Edge, 0, len(edgeSet))
+	for _, e := range edgeSet {
+		expandedEdges = append(expandedEdges, e)
+	}
+	if expanded == nil {
+		expanded = []model.Node{}
+	}
+	if expandedEdges == nil {
+		expandedEdges = []model.Edge{}
 	}
 
-	slog.Info("graph_service_initialized",
-		slog.Int("nodes", len(nodes)),
-		slog.Int("edges", len(edges)),
-		slog.Int("communities", len(communities)),
-		slog.Int("max_level", maxLevel),
-	)
+	return model.ExpandResponse{Nodes: expanded, Edges: expandedEdges}, nil
+}
 
-	return svc
+// fetchAllEdges loads every edge in the graph. Core currently caps list
+// responses at 100 per page, so we keep paginating until HasMore is false.
+// For a dev tool the page count is small; production should add a
+// dedicated "list all" endpoint on core.
+func (s *GraphService) fetchAllEdges(ctx context.Context) ([]model.Edge, error) {
+	const pageSize = 100
+	var all []model.Edge
+	offset := 0
+	for {
+		resp, err := s.core.ListEdges(ctx, offset, pageSize)
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, resp.Edges...)
+		if !resp.Pagination.HasMore {
+			break
+		}
+		offset += pageSize
+	}
+	return all, nil
+}
+
+func (s *GraphService) fetchNodeIndex(ctx context.Context, communityMap map[string]int) (map[string]model.Node, error) {
+	data, err := s.core.FetchGraphData(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]model.Node, len(data.Nodes))
+	for _, cn := range data.Nodes {
+		out[cn.ID] = toPortalNode(cn, communityMap)
+	}
+	return out, nil
+}
+
+// toPortalNode converts a core node (string community id) into the
+// portal's representation (integer community id).
+func toPortalNode(cn coreclient.CoreNode, communityMap map[string]int) model.Node {
+	cid := 0
+	if cn.CommunityID != nil {
+		if mapped, ok := communityMap[*cn.CommunityID]; ok {
+			cid = mapped
+		}
+	}
+	return model.Node{
+		ID:             cn.ID,
+		Name:           cn.Name,
+		Description:    cn.Description,
+		InfluenceScore: cn.InfluenceScore,
+		FirstAppeared:  cn.FirstAppeared,
+		Milestones:     cn.Milestones,
+		CommunityID:    cid,
+		Degree:         cn.Degree,
+	}
 }
 
 // buildCommunityIDMap walks the core community tree and assigns each unique
@@ -152,13 +448,28 @@ func buildCommunityIDMap(coreCommunities []coreclient.CoreCommunity) map[string]
 }
 
 // convertCommunities transforms core communities (string IDs) into portal
-// communities (integer IDs) using the provided mapping.
+// communities (integer IDs) using the provided mapping. The result is
+// wrapped in a synthetic root node (id=0) so the frontend sidebar can
+// render "全部" (All) as a container with the real communities as
+// children. This matches the shape the mock data provides.
 func convertCommunities(coreCommunities []coreclient.CoreCommunity, mapping map[string]int) []model.HierarchicalCommunity {
-	result := make([]model.HierarchicalCommunity, 0, len(coreCommunities))
+	children := make([]model.HierarchicalCommunity, 0, len(coreCommunities))
+	totalNodes := 0
 	for _, c := range coreCommunities {
-		result = append(result, convertCommunity(c, mapping))
+		children = append(children, convertCommunity(c, mapping))
+		totalNodes += c.NodeCount
 	}
-	return result
+	root := model.HierarchicalCommunity{
+		ID:        0,
+		ParentID:  nil,
+		Name:      "All",
+		Color:     "#888888",
+		Level:     0,
+		NodeIDs:   []string{},
+		NodeCount: totalNodes,
+		Children:  children,
+	}
+	return []model.HierarchicalCommunity{root}
 }
 
 func convertCommunity(c coreclient.CoreCommunity, mapping map[string]int) model.HierarchicalCommunity {
@@ -201,281 +512,4 @@ func computeMaxLevel(communities []model.HierarchicalCommunity) int {
 	}
 	walk(communities)
 	return max
-}
-
-// Summary returns a summary of the graph including communities and stats
-func (s *GraphService) Summary(topN int) model.SummaryResponse {
-	// Default to 20 if topN is invalid
-	if topN <= 0 {
-		topN = 20
-	}
-	// Sort nodes by influence score
-	top := make([]model.Node, len(s.nodes))
-	copy(top, s.nodes)
-	sort.Slice(top, func(i, j int) bool {
-		return top[i].InfluenceScore > top[j].InfluenceScore
-	})
-	if topN > len(top) {
-		topN = len(top)
-	}
-
-	return model.SummaryResponse{
-		Communities: s.communities,
-		Stats: model.GraphStats{
-			TotalNodes:     len(s.nodes),
-			TotalEdges:     len(s.edges),
-			CommunityCount: len(s.communities),
-			MaxLevel:       s.maxLevel,
-		},
-		TopNodes: top[:topN],
-	}
-}
-
-// Nodes returns a paginated list of nodes with optional filtering
-func (s *GraphService) Nodes(offset, limit int, sortBy, communityFilter string, ids []string) model.NodesResponse {
-	// Set default limits
-	if limit <= 0 || limit > 500 {
-		limit = 100
-	}
-
-	var filtered []model.Node
-
-	// Filter by node IDs if provided
-	if len(ids) > 0 {
-		idSet := make(map[string]bool)
-		for _, id := range ids {
-			idSet[id] = true
-		}
-		for _, n := range s.nodes {
-			if idSet[n.ID] {
-				filtered = append(filtered, n)
-			}
-		}
-	} else if communityFilter != "" {
-		// Filter by community ID
-		cid, err := strconv.Atoi(communityFilter)
-		if err == nil {
-			for _, n := range s.nodes {
-				if n.CommunityID == cid {
-					filtered = append(filtered, n)
-				}
-			}
-		}
-	} else {
-		// No filtering - return all nodes
-		filtered = make([]model.Node, len(s.nodes))
-		copy(filtered, s.nodes)
-	}
-
-	// Sort the filtered nodes
-	switch sortBy {
-	case "name":
-		sort.Slice(filtered, func(i, j int) bool {
-			return filtered[i].Name < filtered[j].Name
-		})
-	default:
-		// Default: sort by influence score descending
-		sort.Slice(filtered, func(i, j int) bool {
-			return filtered[i].InfluenceScore > filtered[j].InfluenceScore
-		})
-	}
-
-	total := len(filtered)
-	// Handle case where offset is beyond total
-	if offset >= total {
-		return model.NodesResponse{
-			Nodes:      []model.Node{},
-			Pagination: model.Pagination{Offset: offset, Limit: limit, Total: total, HasMore: false},
-		}
-	}
-
-	// Calculate end index
-	end := offset + limit
-	if end > total {
-		end = total
-	}
-
-	return model.NodesResponse{
-		Nodes: filtered[offset:end],
-		Pagination: model.Pagination{
-			Offset:  offset,
-			Limit:   limit,
-			Total:   total,
-			HasMore: end < total,
-		},
-	}
-}
-
-// NodeDetail returns detailed information about a specific node and its neighbors
-func (s *GraphService) NodeDetail(id string) (*model.NodeDetail, bool) {
-	node, ok := s.nodeMap[id]
-	if !ok {
-		return nil, false
-	}
-
-	neighbors := s.neighborMap[id]
-	if neighbors == nil {
-		neighbors = []model.Neighbor{}
-	}
-
-	return &model.NodeDetail{
-		Node:      *node,
-		Neighbors: neighbors,
-	}, true
-}
-
-// NodeEdges returns edges for a specific node with optional direction filtering
-func (s *GraphService) NodeEdges(id, direction string) (*model.EdgesResponse, bool) {
-	if _, ok := s.nodeMap[id]; !ok {
-		return nil, false
-	}
-
-	allEdges := s.edgeIndex[id]
-
-	var edges []model.Edge
-	for _, e := range allEdges {
-		switch direction {
-		case "in":
-			// Only edges where this node is the target
-			if e.Target == id {
-				edges = append(edges, e)
-			}
-		case "out":
-			// Only edges where this node is the source
-			if e.Source == id {
-				edges = append(edges, e)
-			}
-		default:
-			// All edges
-			edges = append(edges, e)
-		}
-	}
-
-	// Ensure we never return nil
-	if edges == nil {
-		edges = []model.Edge{}
-	}
-
-	return &model.EdgesResponse{
-		NodeID: id,
-		Edges:  edges,
-	}, true
-}
-
-// Search searches for nodes by name or description
-func (s *GraphService) Search(query string, limit int) model.SearchResponse {
-	// Set default limits
-	if limit <= 0 || limit > 100 {
-		limit = 20
-	}
-
-	queryLower := strings.ToLower(query)
-
-	var results []model.SearchResult
-	for _, n := range s.nodes {
-		// Check if query matches name or description
-		if strings.Contains(strings.ToLower(n.Name), queryLower) ||
-			strings.Contains(strings.ToLower(n.Description), queryLower) {
-			if len(results) >= limit {
-				break
-			}
-			results = append(results, model.SearchResult{
-				ID:             n.ID,
-				Name:           n.Name,
-				CommunityID:    n.CommunityID,
-				InfluenceScore: n.InfluenceScore,
-			})
-		}
-	}
-
-	// Sort results by influence score
-	sort.Slice(results, func(i, j int) bool {
-		return results[i].InfluenceScore > results[j].InfluenceScore
-	})
-
-	// Ensure we never return nil
-	if results == nil {
-		results = []model.SearchResult{}
-	}
-
-	return model.SearchResponse{
-		Query:   query,
-		Results: results,
-	}
-}
-
-// Expand expands a set of nodes to include their neighbors and connecting edges
-func (s *GraphService) Expand(ids []string, includeEdges, includeNeighbors bool) model.ExpandResponse {
-	idSet := make(map[string]bool)
-	for _, id := range ids {
-		idSet[id] = true
-	}
-
-	nodeSet := make(map[string]bool)
-	edgeSet := make(map[[2]string]model.Edge)
-
-	for _, id := range ids {
-		// Add the requested node
-		if n, ok := s.nodeMap[id]; ok {
-			nodeSet[id] = true
-			_ = n
-		}
-
-		// Add edges between requested nodes
-		if includeEdges {
-			for _, e := range s.edgeIndex[id] {
-				if idSet[e.Source] && idSet[e.Target] {
-					// Use sorted key to avoid duplicates (source-target vs target-source)
-					key := [2]string{e.Source, e.Target}
-					if _, exists := edgeSet[key]; !exists {
-						edgeSet[key] = e
-					}
-				}
-			}
-		}
-
-		// Expand to include neighbors
-		if includeNeighbors {
-			// Add all neighbor nodes
-			for _, nb := range s.neighborMap[id] {
-				nodeSet[nb.ID] = true
-			}
-			// Add edges from original node to neighbors
-			for _, e := range s.edgeIndex[id] {
-				if nodeSet[e.Source] || nodeSet[e.Target] {
-					key := [2]string{e.Source, e.Target}
-					if _, exists := edgeSet[key]; !exists {
-						edgeSet[key] = e
-					}
-				}
-			}
-		}
-	}
-
-	// Convert nodeSet to actual nodes
-	nodes := make([]model.Node, 0, len(nodeSet))
-	for _, n := range s.nodes {
-		if nodeSet[n.ID] {
-			nodes = append(nodes, n)
-		}
-	}
-
-	// Convert edgeSet to actual edges
-	edges := make([]model.Edge, 0, len(edgeSet))
-	for _, e := range edgeSet {
-		edges = append(edges, e)
-	}
-
-	// Ensure we never return nil
-	if nodes == nil {
-		nodes = []model.Node{}
-	}
-	if edges == nil {
-		edges = []model.Edge{}
-	}
-
-	return model.ExpandResponse{
-		Nodes: nodes,
-		Edges: edges,
-	}
 }

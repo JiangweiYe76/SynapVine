@@ -1,6 +1,7 @@
 package coreclient
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -29,7 +30,7 @@ func TestFetchGraphData_Success(t *testing.T) {
 	defer server.Close()
 
 	c := New(server.URL)
-	data, err := c.FetchGraphData()
+	data, err := c.FetchGraphData(context.Background())
 	if err != nil {
 		t.Fatalf("FetchGraphData failed: %v", err)
 	}
@@ -56,7 +57,7 @@ func TestFetchGraphData_Empty(t *testing.T) {
 	defer server.Close()
 
 	c := New(server.URL)
-	data, err := c.FetchGraphData()
+	data, err := c.FetchGraphData(context.Background())
 	if err != nil {
 		t.Fatalf("FetchGraphData failed: %v", err)
 	}
@@ -73,7 +74,7 @@ func TestFetchGraphData_NonOKStatus(t *testing.T) {
 	defer server.Close()
 
 	c := New(server.URL)
-	_, err := c.FetchGraphData()
+	_, err := c.FetchGraphData(context.Background())
 	if err == nil {
 		t.Fatal("expected error on 500 response, got nil")
 	}
@@ -91,7 +92,7 @@ func TestFetchGraphData_InvalidJSON(t *testing.T) {
 	defer server.Close()
 
 	c := New(server.URL)
-	_, err := c.FetchGraphData()
+	_, err := c.FetchGraphData(context.Background())
 	if err == nil {
 		t.Fatal("expected decode error, got nil")
 	}
@@ -102,7 +103,7 @@ func TestFetchGraphData_InvalidJSON(t *testing.T) {
 
 func TestFetchGraphData_ConnectionError(t *testing.T) {
 	c := New("http://127.0.0.1:1")
-	_, err := c.FetchGraphData()
+	_, err := c.FetchGraphData(context.Background())
 	if err == nil {
 		t.Fatal("expected connection error, got nil")
 	}

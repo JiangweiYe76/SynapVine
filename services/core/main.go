@@ -41,13 +41,16 @@ func main() {
 	defer neo.Close(context.Background())
 
 	nodeRepo := repository.NewNodeRepository(neo)
+	edgeRepo := repository.NewEdgeRepository(neo)
 	commRepo := repository.NewCommunityRepository(neo)
 
 	nodeSvc := service.NewNodeService(nodeRepo, commRepo)
+	edgeSvc := service.NewEdgeService(edgeRepo)
 	commSvc := service.NewCommunityService(commRepo)
 	detectorSvc := service.NewCommunityDetectorService(nodeRepo, commRepo)
 
 	nodeHandler := handler.NewNodeHandler(nodeSvc)
+	edgeHandler := handler.NewEdgeHandler(edgeSvc)
 	commHandler := handler.NewCommunityHandler(commSvc, detectorSvc)
 	healthHandler := handler.NewHealthHandler()
 
@@ -71,6 +74,12 @@ func main() {
 	app.Post("/api/nodes", nodeHandler.Create)
 	app.Put("/api/nodes/:id", nodeHandler.Update)
 	app.Delete("/api/nodes/:id", nodeHandler.Delete)
+
+	app.Get("/api/edges", edgeHandler.List)
+	app.Get("/api/edges/:source/:target", edgeHandler.Get)
+	app.Post("/api/edges", edgeHandler.Create)
+	app.Put("/api/edges/:source/:target", edgeHandler.Update)
+	app.Delete("/api/edges/:source/:target", edgeHandler.Delete)
 
 	app.Get("/api/communities", commHandler.List)
 	app.Get("/api/communities/tree", commHandler.Tree)
