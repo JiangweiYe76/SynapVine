@@ -130,6 +130,32 @@ type Edge struct {
 	Relation string  `json:"relation"`
 }
 
+// EdgeCreateRequest represents a request to create a new edge.
+//
+// (Source, Target) is the composite primary key; both endpoints must already
+// exist as Concept nodes. Weight must lie in [0, 1].
+type EdgeCreateRequest struct {
+	Source   string  `json:"source"`
+	Target   string  `json:"target"`
+	Weight   float64 `json:"weight"`
+	Relation string  `json:"relation"`
+}
+
+// EdgeUpdateRequest represents a request to update an existing edge.
+// Source and Target are intentionally absent: the (source, target) pair is
+// the edge identity and is immutable. To move an edge, delete the old one
+// and create a new one.
+type EdgeUpdateRequest struct {
+	Weight   *float64 `json:"weight,omitempty"`
+	Relation *string  `json:"relation,omitempty"`
+}
+
+// EdgesListResponse is the response for listing edges with pagination.
+type EdgesListResponse struct {
+	Edges      []Edge     `json:"edges"`
+	Pagination Pagination `json:"pagination"`
+}
+
 // ErrorResponse is the standard error response format.
 type ErrorResponse struct {
 	Error   string `json:"error"`

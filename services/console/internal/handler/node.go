@@ -161,8 +161,8 @@ func (h *NodeHandler) Delete(c *fiber.Ctx) error {
 
 // Stats handles GET /api/stats
 func (h *NodeHandler) Stats(c *fiber.Ctx) error {
-	// Stats are derived from the authoritative graph snapshot in core.
-	// Local edges are added on top since edge CRUD still lives in console.
+	// Stats are derived from the authoritative graph snapshot in core,
+	// which is the single source of truth for nodes and edges.
 	graph, err := h.core.GraphData(c.Context())
 	if err != nil {
 		slog.Error("graph_data_core_failed", slog.Any("error", err))
