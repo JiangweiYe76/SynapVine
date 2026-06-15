@@ -44,7 +44,7 @@ function createNodeObject(node: any) {
   const isSelected = props.selectedNode?.id === node.id
   const color = getFilteredColor(node, communityIds)
   const score = node.influence_score || 5
-  const size = (score - 5.5) * 1.5
+  const size = Math.max(0.5, (score - 5) * 1.5)
 
   const group = new THREE.Group()
 
