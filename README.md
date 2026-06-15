@@ -1,6 +1,6 @@
 # SynapVine — AI Knowledge Graph
 
-An interactive 3D knowledge graph visualization of AI concepts, with a management console for graph operations. Nodes represent AI concepts (Transformer, BERT, GAN, etc.) and edges represent relationships between them. Communities are automatically detected using the Louvain algorithm, with multi-level hierarchical grouping.
+An interactive 3D knowledge graph visualization of AI concepts, with a management console for graph operations. Nodes represent AI concepts (Transformer, BERT, GAN, etc.) and edges represent relationships between them. Communities are managed and detected in the core service; the portal visualizes the community hierarchy returned by core.
 
 ***
 
@@ -12,11 +12,11 @@ An interactive 3D knowledge graph visualization of AI concepts, with a managemen
 - Node size reflects influence score, edge width reflects relationship weight
 - Drag, pan, zoom, and rotate the canvas
 
-### Community Detection
+### Community Visualization
 
-- Automatic community detection via Louvain algorithm
-- Multi-level hierarchical communities (up to 3 levels)
-- Color-coded communities with an interactive legend panel
+- Hierarchical communities loaded from the core service
+- Multi-level community trees with color-coded groups
+- Interactive legend panel for browsing communities
 
 ### Search & Navigation
 
@@ -73,6 +73,7 @@ An interactive 3D knowledge graph visualization of AI concepts, with a managemen
                                │        core          │
                                │   (internal)         │
                                │   Neo4j CRUD         │
+                               │   Community CRUD     │
                                │   Community detect   │
                                │   Review queue       │
                                └──────────────────────┘
@@ -117,11 +118,11 @@ go run main.go
 
 **Environment variables:**
 
-| Variable         | Default                 | Description          |
-| ---------------- | ----------------------- | -------------------- |
-| `PORT`           | `8000`                  | Server port          |
-| `DATA_PATH`      | `../data/graph.json`    | Graph data file path |
-| `ALLOWED_ORIGIN` | `http://localhost:5173` | CORS allowed origin  |
+| Variable         | Default                   | Description                       |
+| ---------------- | ------------------------- | --------------------------------- |
+| `PORT`           | `8000`                    | Server port                       |
+| `ALLOWED_ORIGIN` | `http://localhost:5173`   | CORS allowed origin               |
+| `CORE_URL`       | `http://localhost:8001`   | Core service URL (mandatory)      |
 
 ### Backend — Core
 
@@ -211,7 +212,8 @@ All `/api/graph/*` endpoints require a valid token (`?token=xxx`).
 
 - [x] Graph JSON data source
 - [x] 3D force-directed graph rendering (Portal)
-- [x] Community detection (Louvain + hierarchical)
+- [x] Community management and detection in core
+- [x] Community visualization in portal
 - [x] Search, timeline, dark theme
 - [x] Management console (Dashboard, login)
 - [x] Neo4j integration (core)

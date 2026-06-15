@@ -9,8 +9,6 @@ import (
 	"ai-graph-server/internal/config"
 	"ai-graph-server/internal/coreclient"
 	"ai-graph-server/internal/handler"
-	"ai-graph-server/internal/loader"
-	"ai-graph-server/internal/model"
 	"ai-graph-server/internal/middleware"
 	"ai-graph-server/internal/security"
 	"ai-graph-server/internal/service"
@@ -31,33 +29,36 @@ func main() {
 	cfg := config.Load()
 	slog.Info("configuration_loaded",
 		slog.String("port", cfg.Port),
-		slog.String("data_path", cfg.DataPath),
 		slog.String("allowed_origin", cfg.AllowedOrigin),
 		slog.String("core_url", cfg.CoreURL),
 	)
 
-	// Try to load graph data from core service first
-	var graphData *model.GraphData
+	// Load graph data and communities from core service. The portal has no
+	// local fallback; core must be reachable at startup.
 	core := coreclient.New(cfg.CoreURL)
 	graphData, err := core.FetchGraphData()
 	if err != nil {
-		slog.Warn("core_fetch_failed", slog.String("url", cfg.CoreURL), slog.Any("error", err))
-		slog.Info("falling_back_to_local_data", slog.String("path", cfg.DataPath))
-		graphData, err = loader.LoadGraphData(cfg.DataPath)
-		if err != nil {
-			slog.Error("failed_to_load_graph_data", slog.String("path", cfg.DataPath), slog.Any("error", err))
-			os.Exit(1)
-		}
-	} else {
-		slog.Info("graph_data_loaded_from_core",
-			slog.String("url", cfg.CoreURL),
-			slog.Int("nodes", len(graphData.Nodes)),
-			slog.Int("edges", len(graphData.Edges)),
-		)
+		slog.Error("core_fetch_failed", slog.String("url", cfg.CoreURL), slog.Any("error", err))
+		os.Exit(1)
 	}
+	slog.Info("graph_data_loaded_from_core",
+		slog.String("url", cfg.CoreURL),
+		slog.Int("nodes", len(graphData.Nodes)),
+		slog.Int("edges", len(graphData.Edges)),
+	)
+
+	communities, err := core.FetchCommunityTree()
+	if err != nil {
+		slog.Error("core_communities_fetch_failed", slog.String("url", cfg.CoreURL), slog.Any("error", err))
+		os.Exit(1)
+	}
+	slog.Info("communities_loaded_from_core",
+		slog.String("url", cfg.CoreURL),
+		slog.Int("communities", len(communities)),
+	)
 
 	// Initialize service and handler
-	svc := service.New(graphData.Nodes, graphData.Edges)
+	svc := service.New(graphData.Nodes, graphData.Edges, communities)
 	gh := handler.NewGraphHandler(svc)
 
 	// Initialize token store for API authentication

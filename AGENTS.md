@@ -6,12 +6,12 @@ Project overview, build commands, and conventions for AI coding agents.
 
 ## Project Overview
 
-SynapVine is an interactive 3D knowledge graph visualization of AI concepts. Nodes represent AI concepts (Transformer, BERT, GAN, etc.) and edges represent relationships. Communities are detected automatically via the Louvain algorithm with multi-level hierarchical grouping.
+SynapVine is an interactive 3D knowledge graph visualization of AI concepts. Nodes represent AI concepts (Transformer, BERT, GAN, etc.) and edges represent relationships. Communities are managed and detected in the core service; the portal visualizes the community hierarchy returned by core.
 
 The project is organized as a microservice monorepo:
 
-- **`services/portal`** — Public read-only graph API
-- **`services/core`** — Neo4j data service & migration tooling
+- **`services/portal`** — Public read-only graph API (sources all data from core)
+- **`services/core`** — Neo4j data service, migration tooling, community management & detection
 - **`services/console`** — Authentication & management console API
 - **`clients/portal`** — 3D knowledge graph visualization
 - **`clients/console`** — Management console UI
@@ -173,7 +173,7 @@ All development artifacts must be written in English:
 - Use `log/slog` with structured logging. Prefer `slog.Info("event_name", slog.String("key", val))` over `fmt.Printf`.
 - Group imports: (1) standard library, (2) internal packages, (3) third-party packages. Separate groups with blank lines.
 - All exported types/functions must have doc comments.
-- Layered architecture: `handler` (HTTP) -> `service` (business logic) -> `community`/`loader`/`db` (data).
+- Layered architecture: `handler` (HTTP) -> `service` (business logic) -> `coreclient`/`db` (data).
 - Error responses follow the JSON shape: `{"error": "error_code", "message": "human readable"}`.
 - All `slog` messages and attribute values must be in English.
 - All doc comments on exported identifiers must be in English.
@@ -218,9 +218,9 @@ HMAC request signing and AES-GCM response encryption modules exist in `services/
 
 ### Community Detection
 
-- Flat communities: Louvain algorithm via `gonum/graph`.
-- Hierarchical communities: recursive partitioning up to 3 levels (`MaxLevels: 3`, `MinCommunitySize: 3`).
-- Computed at `services/portal` startup and held in memory (static data).
+- Communities are managed through `services/core` (create, update, delete, assign nodes).
+- Louvain detection runs in `services/core` via `POST /api/communities/detect`.
+- `services/portal` loads the community tree from core at startup and holds it in memory (static data).
 
 ### Data Model
 
@@ -247,7 +247,7 @@ endpoint tables are intentionally not maintained in this document.
 - **Backend:** Use standard `go test ./...` from the relevant `services/<name>/` directory. No test framework beyond the Go standard library is currently configured.
 - **Frontend:** No test runner is configured yet. If adding tests, prefer **Vitest** (aligns with Vite). Run via `bun test`.
 - Always verify the dev server (`bun run dev`) and the production build (`bun run build && bun run preview`) both work after significant changes.
-- If you modify the security or community detection code, manually verify the Portal server starts correctly and the API returns expected data.
+- If you modify the security code or the community data flow between core and portal, manually verify the Portal server starts correctly and the API returns expected data.
 
 ---
 
