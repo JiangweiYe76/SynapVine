@@ -1,8 +1,8 @@
 // Package coreclient provides an HTTP client for the core service.
 //
 // The console service treats the core service (which fronts Neo4j) as the
-// authoritative source of truth for nodes and statistics. Edges remain
-// managed locally in the console service for now.
+// authoritative source of truth for nodes, edges, communities, and
+// statistics.
 package coreclient
 
 import (
@@ -112,6 +112,74 @@ func (c *Client) UpdateNode(ctx context.Context, id string, req model.NodeUpdate
 // responds with 404.
 func (c *Client) DeleteNode(ctx context.Context, id string) (bool, error) {
 	err := c.doJSON(ctx, http.MethodDelete, "/api/nodes/"+id, nil, nil)
+	if err != nil {
+		var httpErr *HTTPStatusError
+		if errors.As(err, &httpErr) && httpErr.StatusCode == http.StatusNotFound {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+// ListEdges returns a paginated list of edges from the core service.
+func (c *Client) ListEdges(ctx context.Context, offset, limit int, search string) (*model.EdgesListResponse, error) {
+	params := url.Values{}
+	params.Set("offset", fmt.Sprintf("%d", offset))
+	params.Set("limit", fmt.Sprintf("%d", limit))
+	if search != "" {
+		params.Set("search", search)
+	}
+	var resp model.EdgesListResponse
+	if err := c.doJSON(ctx, http.MethodGet, "/api/edges?"+params.Encode(), nil, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// GetEdge fetches a single edge by its (source, target) pair. It returns
+// (nil, nil) when the core responds with 404.
+func (c *Client) GetEdge(ctx context.Context, source, target string) (*model.Edge, error) {
+	var edge model.Edge
+	err := c.doJSON(ctx, http.MethodGet, fmt.Sprintf("/api/edges/%s/%s", source, target), nil, &edge)
+	if err != nil {
+		var httpErr *HTTPStatusError
+		if errors.As(err, &httpErr) && httpErr.StatusCode == http.StatusNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &edge, nil
+}
+
+// CreateEdge creates a new edge and returns the created resource.
+func (c *Client) CreateEdge(ctx context.Context, req model.EdgeCreateRequest) (*model.Edge, error) {
+	var edge model.Edge
+	if err := c.doJSON(ctx, http.MethodPost, "/api/edges", req, &edge); err != nil {
+		return nil, err
+	}
+	return &edge, nil
+}
+
+// UpdateEdge updates an existing edge and returns the updated resource.
+// It returns (nil, nil) when the core responds with 404.
+func (c *Client) UpdateEdge(ctx context.Context, source, target string, req model.EdgeUpdateRequest) (*model.Edge, error) {
+	var edge model.Edge
+	err := c.doJSON(ctx, http.MethodPut, fmt.Sprintf("/api/edges/%s/%s", source, target), req, &edge)
+	if err != nil {
+		var httpErr *HTTPStatusError
+		if errors.As(err, &httpErr) && httpErr.StatusCode == http.StatusNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &edge, nil
+}
+
+// DeleteEdge removes an edge by its (source, target) pair. It returns
+// (false, nil) when the core responds with 404.
+func (c *Client) DeleteEdge(ctx context.Context, source, target string) (bool, error) {
+	err := c.doJSON(ctx, http.MethodDelete, fmt.Sprintf("/api/edges/%s/%s", source, target), nil, nil)
 	if err != nil {
 		var httpErr *HTTPStatusError
 		if errors.As(err, &httpErr) && httpErr.StatusCode == http.StatusNotFound {

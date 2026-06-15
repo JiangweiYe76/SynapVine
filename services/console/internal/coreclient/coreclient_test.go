@@ -285,3 +285,130 @@ func TestGraphData_ConnectionError(t *testing.T) {
 		t.Fatal("expected connection error, got nil")
 	}
 }
+
+func TestListEdges_Success(t *testing.T) {
+	c, server := newTestClient(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/edges" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		if got := r.URL.Query().Get("search"); got != "based" {
+			t.Errorf("expected search=based, got %s", got)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(model.EdgesListResponse{
+			Edges: []model.Edge{
+				{Source: "a", Target: "b", Weight: 0.4, Relation: "based_on"},
+			},
+			Pagination: model.Pagination{Offset: 0, Limit: 20, Total: 1, HasMore: false},
+		})
+	})
+	defer server.Close()
+
+	resp, err := c.ListEdges(context.Background(), 0, 20, "based")
+	if err != nil {
+		t.Fatalf("ListEdges failed: %v", err)
+	}
+	if len(resp.Edges) != 1 || resp.Edges[0].Source != "a" {
+		t.Errorf("unexpected response: %+v", resp)
+	}
+}
+
+func TestGetEdge_Success(t *testing.T) {
+	c, server := newTestClient(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/edges/a/b" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(model.Edge{Source: "a", Target: "b", Weight: 0.5, Relation: "r"})
+	})
+	defer server.Close()
+
+	edge, err := c.GetEdge(context.Background(), "a", "b")
+	if err != nil {
+		t.Fatalf("GetEdge failed: %v", err)
+	}
+	if edge == nil || edge.Target != "b" {
+		t.Errorf("unexpected edge: %+v", edge)
+	}
+}
+
+func TestGetEdge_NotFound(t *testing.T) {
+	c, server := newTestClient(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"error":"edge_not_found"}`))
+	})
+	defer server.Close()
+
+	edge, err := c.GetEdge(context.Background(), "missing", "x")
+	if err != nil {
+		t.Fatalf("expected nil error for 404, got %v", err)
+	}
+	if edge != nil {
+		t.Errorf("expected nil edge, got %+v", edge)
+	}
+}
+
+func TestCreateEdge_Conflict(t *testing.T) {
+	c, server := newTestClient(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		w.WriteHeader(http.StatusConflict)
+		_, _ = w.Write([]byte(`{"error":"edge_exists"}`))
+	})
+	defer server.Close()
+
+	_, err := c.CreateEdge(context.Background(), model.EdgeCreateRequest{
+		Source: "a", Target: "b", Weight: 0.5, Relation: "r",
+	})
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	var httpErr *HTTPStatusError
+	if !errors.As(err, &httpErr) {
+		t.Fatalf("expected *HTTPStatusError, got %T", err)
+	}
+	if httpErr.StatusCode != 409 {
+		t.Errorf("expected status 409, got %d", httpErr.StatusCode)
+	}
+}
+
+func TestUpdateEdge_NotFound(t *testing.T) {
+	c, server := newTestClient(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut {
+			t.Errorf("expected PUT, got %s", r.Method)
+		}
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"error":"edge_not_found"}`))
+	})
+	defer server.Close()
+
+	w := 0.7
+	edge, err := c.UpdateEdge(context.Background(), "missing", "x", model.EdgeUpdateRequest{Weight: &w})
+	if err != nil {
+		t.Fatalf("expected nil error for 404, got %v", err)
+	}
+	if edge != nil {
+		t.Errorf("expected nil edge, got %+v", edge)
+	}
+}
+
+func TestDeleteEdge_NotFound(t *testing.T) {
+	c, server := newTestClient(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete {
+			t.Errorf("expected DELETE, got %s", r.Method)
+		}
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"error":"edge_not_found"}`))
+	})
+	defer server.Close()
+
+	ok, err := c.DeleteEdge(context.Background(), "missing", "x")
+	if err != nil {
+		t.Fatalf("expected nil error for 404, got %v", err)
+	}
+	if ok {
+		t.Errorf("expected ok=false for 404, got true")
+	}
+}
