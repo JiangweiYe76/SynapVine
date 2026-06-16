@@ -181,3 +181,20 @@ func (h *GraphHandler) Expand(c *fiber.Ctx) error {
 	}
 	return c.JSON(resp)
 }
+
+// Timeline handles GET /api/graph/timeline
+// Returns the [minYear, maxYear] span of every node's `first_appeared`
+// field, computed by core over the full graph. The result is independent
+// of which nodes the caller has loaded, so UI range selectors can show
+// the full extent of the dataset.
+func (h *GraphHandler) Timeline(c *fiber.Ctx) error {
+	resp, err := h.svc.TimelineRange(c.Context())
+	if err != nil {
+		slog.Error("timeline_range_failed", slog.Any("error", err))
+		return c.Status(502).JSON(model.ErrorResponse{
+			Error:   "core_unavailable",
+			Message: "Failed to load timeline range from core",
+		})
+	}
+	return c.JSON(resp)
+}

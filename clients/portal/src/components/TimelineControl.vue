@@ -28,8 +28,8 @@ const speeds = [0.5, 1, 2, 5]
 
 const decadeTicks = computed(() => {
   const ticks: number[] = []
-  const start = Math.ceil(timeline.range.value.minYear / 20) * 20
-  const end = Math.floor(timeline.range.value.maxYear / 20) * 20
+  const start = Math.ceil(timeline.range.value.min_year / 20) * 20
+  const end = Math.floor(timeline.range.value.max_year / 20) * 20
   for (let y = start; y <= end; y += 20) {
     ticks.push(y)
   }
@@ -37,8 +37,8 @@ const decadeTicks = computed(() => {
 })
 
 function yearToPercent(year: number): number {
-  const range = timeline.range.value.maxYear - timeline.range.value.minYear
-  return ((year - timeline.range.value.minYear) / range) * 100
+  const range = timeline.range.value.max_year - timeline.range.value.min_year
+  return ((year - timeline.range.value.min_year) / range) * 100
 }
 
 const progressPercent = computed(() => yearToPercent(timeline.currentYear.value))
@@ -59,13 +59,13 @@ const progressPercent = computed(() => yearToPercent(timeline.currentYear.value)
               <TooltipTrigger as-child>
                 <button
                   class="ctrl-btn"
-                  @click="timeline.seek(timeline.range.value.minYear)"
+                  @click="timeline.seek(timeline.range.value.min_year)"
                 >
                   <SkipBack :size="15" />
                 </button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>{{ t('timeline.earliest', { year: timeline.range.value.minYear }) }}</p>
+                <p>{{ t('timeline.earliest', { year: timeline.range.value.min_year }) }}</p>
               </TooltipContent>
             </Tooltip>
             <Tooltip>
@@ -105,13 +105,13 @@ const progressPercent = computed(() => yearToPercent(timeline.currentYear.value)
               <TooltipTrigger as-child>
                 <button
                   class="ctrl-btn"
-                  @click="timeline.seek(timeline.range.value.maxYear)"
+                  @click="timeline.seek(timeline.range.value.max_year)"
                 >
                   <SkipForward :size="15" />
                 </button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>{{ t('timeline.latest', { year: timeline.range.value.maxYear }) }}</p>
+                <p>{{ t('timeline.latest', { year: timeline.range.value.max_year }) }}</p>
               </TooltipContent>
             </Tooltip>
           </div>
@@ -172,8 +172,8 @@ const progressPercent = computed(() => yearToPercent(timeline.currentYear.value)
             <input
               type="range"
               class="timeline-slider"
-              :min="timeline.range.value.minYear"
-              :max="timeline.range.value.maxYear"
+              :min="timeline.range.value.min_year"
+              :max="timeline.range.value.max_year"
               :value="timeline.currentYear.value"
               :style="{ '--progress': `${progressPercent}%` }"
               @input="(e) => timeline.seek(Number((e.target as HTMLInputElement).value))"

@@ -123,12 +123,13 @@ func main() {
 	})
 
 	// Register API route handlers
-	api.Get("/summary", gh.Summary)
-	api.Get("/nodes", gh.Nodes)
-	api.Get("/nodes/:id", gh.NodeDetail)
-	api.Get("/nodes/:id/edges", gh.NodeEdges)
-	api.Get("/search", gh.Search)
-	api.Get("/expand", gh.Expand)
+api.Get("/summary", gh.Summary)
+api.Get("/timeline", gh.Timeline)
+api.Get("/nodes", gh.Nodes)
+api.Get("/nodes/:id", gh.NodeDetail)
+api.Get("/nodes/:id/edges", gh.NodeEdges)
+api.Get("/search", gh.Search)
+api.Get("/expand", gh.Expand)
 
 	// Log startup information
 	slog.Info("server_starting", slog.String("port", cfg.Port))

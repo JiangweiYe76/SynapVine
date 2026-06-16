@@ -161,3 +161,13 @@ type ErrorResponse struct {
 	Error   string `json:"error"`
 	Message string `json:"message"`
 }
+
+// TimelineRange describes the inclusive [minYear, maxYear] span covered by
+// the `first_appeared` field of every Concept node in the graph. It is
+// returned by the timeline endpoint and is intended to drive UI range
+// selectors that need the full extent of the dataset, not just the
+// currently visible window.
+type TimelineRange struct {
+	MinYear int `json:"min_year"`
+	MaxYear int `json:"max_year"`
+}

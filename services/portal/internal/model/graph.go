@@ -124,6 +124,16 @@ type TokenResponse struct {
 	Token string `json:"token"` // Temporary access token
 }
 
+// TimelineRange is the [minYear, maxYear] span of every node's
+// `first_appeared` field, computed by core over the full graph. It is
+// returned by the /api/graph/timeline endpoint and is independent of
+// which nodes the caller has loaded, so UI range selectors can show the
+// full extent of the dataset.
+type TimelineRange struct {
+	MinYear int `json:"min_year"`
+	MaxYear int `json:"max_year"`
+}
+
 // ErrorResponse is the standard error response format
 type ErrorResponse struct {
 	Error   string `json:"error"`   // Error code

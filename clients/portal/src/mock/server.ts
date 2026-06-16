@@ -7,6 +7,7 @@ import type {
   NodeEdgesResponse,
   SearchResponse,
   ExpandResponse,
+  TimelineRange,
 } from '../types/graph'
 import { generateMockData } from './data'
 
@@ -39,6 +40,19 @@ export function createMockServer() {
           max_level: 2,
         },
         top_nodes: topNodes,
+      }
+    },
+
+    getTimelineRange(): TimelineRange {
+      const years = mockData.nodes
+        .map(n => (n.first_appeared ? parseInt(n.first_appeared.split('-')[0], 10) : NaN))
+        .filter(y => !Number.isNaN(y))
+      if (years.length === 0) {
+        return { min_year: new Date().getFullYear(), max_year: new Date().getFullYear() }
+      }
+      return {
+        min_year: Math.min(...years),
+        max_year: Math.max(...years),
       }
     },
 

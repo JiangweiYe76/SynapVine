@@ -15,9 +15,11 @@ import (
 
 // graphDataStub is a stub NodeService used by the GraphData tests.
 type graphDataStub struct {
-	nodes []model.Node
-	edges []model.Edge
-	err   error
+	nodes       []model.Node
+	edges       []model.Edge
+	err         error
+	timeline    model.TimelineRange
+	timelineErr error
 }
 
 func (s *graphDataStub) List(_ context.Context, offset, limit int, search string) (*model.NodesListResponse, error) {
@@ -43,6 +45,13 @@ func (s *graphDataStub) GetAll(_ context.Context) ([]model.Node, []model.Edge, e
 		return nil, nil, s.err
 	}
 	return s.nodes, s.edges, nil
+}
+
+func (s *graphDataStub) TimelineRange(_ context.Context) (model.TimelineRange, error) {
+	if s.timelineErr != nil {
+		return model.TimelineRange{}, s.timelineErr
+	}
+	return s.timeline, nil
 }
 
 // Compile-time check that graphDataStub satisfies NodeService.
@@ -141,6 +150,102 @@ func TestNodeHandler_GraphData_ServiceError(t *testing.T) {
 
 	app := newGraphDataApp(svc)
 	req := httptest.NewRequest("GET", "/api/graph/data", nil)
+	resp, err := app.Test(req, -1)
+	if err != nil {
+		t.Fatalf("app.Test failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 500 {
+		t.Fatalf("status = %d, want 500", resp.StatusCode)
+	}
+
+	body, _ := io.ReadAll(resp.Body)
+	var er model.ErrorResponse
+	if err := json.Unmarshal(body, &er); err != nil {
+		t.Fatalf("decode error response failed: %v\nbody: %s", err, string(body))
+	}
+	if er.Error != "internal_error" {
+		t.Errorf("error code = %q, want internal_error", er.Error)
+	}
+	if er.Message == "" {
+		t.Error("expected non-empty error message")
+	}
+}
+
+func newTimelineApp(svc NodeService) *fiber.App {
+	app := fiber.New()
+	h := NewNodeHandler(svc)
+	app.Get("/api/graph/timeline", h.Timeline)
+	return app
+}
+
+func TestNodeHandler_Timeline_Success(t *testing.T) {
+	svc := &graphDataStub{
+		timeline: model.TimelineRange{MinYear: 1957, MaxYear: 2024},
+	}
+
+	app := newTimelineApp(svc)
+	req := httptest.NewRequest("GET", "/api/graph/timeline", nil)
+	resp, err := app.Test(req, -1)
+	if err != nil {
+		t.Fatalf("app.Test failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("read body failed: %v", err)
+	}
+
+	var tr model.TimelineRange
+	if err := json.Unmarshal(body, &tr); err != nil {
+		t.Fatalf("decode response failed: %v\nbody: %s", err, string(body))
+	}
+	if tr.MinYear != 1957 {
+		t.Errorf("min_year = %d, want 1957", tr.MinYear)
+	}
+	if tr.MaxYear != 2024 {
+		t.Errorf("max_year = %d, want 2024", tr.MaxYear)
+	}
+}
+
+func TestNodeHandler_Timeline_Empty(t *testing.T) {
+	svc := &graphDataStub{
+		timeline: model.TimelineRange{MinYear: 0, MaxYear: 0},
+	}
+
+	app := newTimelineApp(svc)
+	req := httptest.NewRequest("GET", "/api/graph/timeline", nil)
+	resp, err := app.Test(req, -1)
+	if err != nil {
+		t.Fatalf("app.Test failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+
+	body, _ := io.ReadAll(resp.Body)
+	var tr model.TimelineRange
+	if err := json.Unmarshal(body, &tr); err != nil {
+		t.Fatalf("decode response failed: %v\nbody: %s", err, string(body))
+	}
+	if tr.MinYear != 0 || tr.MaxYear != 0 {
+		t.Errorf("expected zero range for empty graph, got %+v", tr)
+	}
+}
+
+func TestNodeHandler_Timeline_ServiceError(t *testing.T) {
+	svc := &graphDataStub{timelineErr: errors.New("neo4j unavailable")}
+
+	app := newTimelineApp(svc)
+	req := httptest.NewRequest("GET", "/api/graph/timeline", nil)
 	resp, err := app.Test(req, -1)
 	if err != nil {
 		t.Fatalf("app.Test failed: %v", err)
