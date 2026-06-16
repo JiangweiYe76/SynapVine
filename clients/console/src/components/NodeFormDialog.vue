@@ -258,7 +258,7 @@ async function handleSave() {
         </DialogDescription>
       </DialogHeader>
 
-      <div class="space-y-4 py-2 max-h-[70vh] overflow-y-auto pr-2">
+      <div class="space-y-4 py-2 max-h-[70vh] overflow-y-auto px-2">
         <!-- ID is only shown when editing: the backend mints a fresh
              UUID on create and returns it in the response. -->
         <div v-if="isEdit" class="space-y-2">
