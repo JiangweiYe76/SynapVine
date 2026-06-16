@@ -31,6 +31,7 @@ const {
   highlightedCommunity,
   loading,
   error,
+  timelineRange,
   loadInitial,
   selectNode,
   highlightCommunity,
@@ -42,7 +43,7 @@ provide('theme', theme)
 
 const { t, locale } = useI18n()
 
-const timeline = useTimeline(nodes, edges)
+const timeline = useTimeline(nodes, edges, timelineRange)
 provide('timeline', timeline)
 
 const searchResults = ref<SearchResult[]>([])

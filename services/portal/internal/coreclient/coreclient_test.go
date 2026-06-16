@@ -108,3 +108,90 @@ func TestFetchGraphData_ConnectionError(t *testing.T) {
 		t.Fatal("expected connection error, got nil")
 	}
 }
+
+func TestFetchTimelineRange_Success(t *testing.T) {
+	body := `{"min_year": 1957, "max_year": 2024}`
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/graph/timeline" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(body))
+	}))
+	defer server.Close()
+
+	c := New(server.URL)
+	tr, err := c.FetchTimelineRange(context.Background())
+	if err != nil {
+		t.Fatalf("FetchTimelineRange failed: %v", err)
+	}
+	if tr.MinYear != 1957 {
+		t.Errorf("MinYear = %d, want 1957", tr.MinYear)
+	}
+	if tr.MaxYear != 2024 {
+		t.Errorf("MaxYear = %d, want 2024", tr.MaxYear)
+	}
+}
+
+func TestFetchTimelineRange_Empty(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"min_year": 0, "max_year": 0}`))
+	}))
+	defer server.Close()
+
+	c := New(server.URL)
+	tr, err := c.FetchTimelineRange(context.Background())
+	if err != nil {
+		t.Fatalf("FetchTimelineRange failed: %v", err)
+	}
+	if tr.MinYear != 0 || tr.MaxYear != 0 {
+		t.Errorf("expected zero range, got %+v", tr)
+	}
+}
+
+func TestFetchTimelineRange_NonOKStatus(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"error":"boom"}`))
+	}))
+	defer server.Close()
+
+	c := New(server.URL)
+	_, err := c.FetchTimelineRange(context.Background())
+	if err == nil {
+		t.Fatal("expected error on 500 response, got nil")
+	}
+	if !strings.Contains(err.Error(), "500") {
+		t.Errorf("expected error to mention status 500, got: %v", err)
+	}
+}
+
+func TestFetchTimelineRange_InvalidJSON(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{not-json`))
+	}))
+	defer server.Close()
+
+	c := New(server.URL)
+	_, err := c.FetchTimelineRange(context.Background())
+	if err == nil {
+		t.Fatal("expected decode error, got nil")
+	}
+	if !strings.Contains(err.Error(), "decode") {
+		t.Errorf("expected decode error, got: %v", err)
+	}
+}
+
+func TestFetchTimelineRange_ConnectionError(t *testing.T) {
+	c := New("http://127.0.0.1:1")
+	_, err := c.FetchTimelineRange(context.Background())
+	if err == nil {
+		t.Fatal("expected connection error, got nil")
+	}
+}

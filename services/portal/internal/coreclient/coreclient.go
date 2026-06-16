@@ -45,8 +45,8 @@ type CoreNode struct {
 
 // CoreGraphData is the raw graph payload returned by the core service.
 type CoreGraphData struct {
-	Nodes []CoreNode    `json:"nodes"`
-	Edges []model.Edge  `json:"edges"`
+	Nodes []CoreNode   `json:"nodes"`
+	Edges []model.Edge `json:"edges"`
 }
 
 // CoreCommunity is the community shape returned by the core service.
@@ -84,6 +84,12 @@ type CoreNodesResponse struct {
 type CoreEdgesListResponse struct {
 	Edges      []model.Edge   `json:"edges"`
 	Pagination CorePagination `json:"pagination"`
+}
+
+// CoreTimelineRange matches the core /api/graph/timeline response shape.
+type CoreTimelineRange struct {
+	MinYear int `json:"min_year"`
+	MaxYear int `json:"max_year"`
 }
 
 // FetchGraphData retrieves the full graph (nodes + edges) from the core service.
@@ -196,6 +202,29 @@ func (c *Client) ListEdges(ctx context.Context, offset, limit int) (*CoreEdgesLi
 	}
 
 	var payload CoreEdgesListResponse
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		return nil, fmt.Errorf("failed to decode core response: %w", err)
+	}
+
+	return &payload, nil
+}
+
+// FetchTimelineRange retrieves the [minYear, maxYear] span of every
+// node's `first_appeared` field from the core service. Core computes the
+// range in Cypher over the full graph, so the result is independent of
+// which nodes the caller has loaded.
+func (c *Client) FetchTimelineRange(ctx context.Context) (*CoreTimelineRange, error) {
+	resp, err := c.do(ctx, "GET", c.baseURL+"/api/graph/timeline", nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to core: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("core returned status %d", resp.StatusCode)
+	}
+
+	var payload CoreTimelineRange
 	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
 		return nil, fmt.Errorf("failed to decode core response: %w", err)
 	}

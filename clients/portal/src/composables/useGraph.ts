@@ -1,10 +1,10 @@
-import { ref, computed, provide, inject, watch, type InjectionKey, type Ref } from 'vue'
+import { ref, computed, provide, inject, type InjectionKey, type Ref } from 'vue'
 import type {
   GraphNode,
   GraphEdge,
-  Community,
   HierarchicalCommunity,
   GraphStats,
+  TimelineRange,
 } from '../types/graph'
 import {
   getSummary,
@@ -12,6 +12,7 @@ import {
   getNodeDetail,
   searchNodes,
   expandNodes,
+  getTimelineRange,
 } from '../api/graph'
 import { useTimeline, type TimelineComposable } from './useTimeline'
 
@@ -24,6 +25,10 @@ export interface GraphState {
   highlightedCommunity: Ref<number[]>
   loading: Ref<boolean>
   error: Ref<string | null>
+  // Server-computed range of `first_appeared` across the full graph.
+  // Independent of the (partial) nodes ref, so the timeline slider can
+  // show the full extent of the dataset, not just the loaded window.
+  timelineRange: Ref<TimelineRange>
 }
 
 export interface GraphActions {
@@ -51,6 +56,11 @@ export function useGraph(): GraphComposable {
   const highlightedCommunity = ref<number[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
+  // Fall back to the current calendar year until the server-computed
+  // range arrives, so the timeline slider has a sane single-point
+  // default instead of NaN/Infinity.
+  const fallbackYear = new Date().getFullYear()
+  const timelineRange = ref<TimelineRange>({ min_year: fallbackYear, max_year: fallbackYear })
 
   const nodeMap = computed(() => {
     const map = new Map<string, GraphNode>()
@@ -62,9 +72,16 @@ export function useGraph(): GraphComposable {
     loading.value = true
     error.value = null
     try {
-      const summary = await getSummary()
+      // Fetch the server-computed timeline range in parallel with the
+      // summary. Both come from core and are independent of which
+      // nodes are loaded into memory.
+      const [summary, range] = await Promise.all([
+        getSummary(),
+        getTimelineRange(),
+      ])
       communities.value = summary.communities
       stats.value = summary.stats
+      timelineRange.value = range
 
       const allNodes = await getNodes({ limit: 500 })
       nodes.value = allNodes.nodes
@@ -247,6 +264,7 @@ export function useGraph(): GraphComposable {
     highlightedCommunity,
     loading,
     error,
+    timelineRange,
     loadInitial,
     loadMore,
     loadCommunity,
@@ -260,7 +278,11 @@ export function useGraph(): GraphComposable {
 
 export function useGraphWithTimeline(): GraphComposable & { timeline: TimelineComposable } {
   const graph = useGraph()
-  const timeline = useTimeline(graph.nodes as Ref<GraphNode[]>, graph.edges as Ref<GraphEdge[]>)
+  const timeline = useTimeline(
+    graph.nodes as Ref<GraphNode[]>,
+    graph.edges as Ref<GraphEdge[]>,
+    graph.timelineRange,
+  )
 
   return {
     ...graph,

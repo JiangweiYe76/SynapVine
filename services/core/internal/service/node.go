@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 
 	"core/internal/model"
 	"core/internal/repository"
@@ -18,9 +19,19 @@ var (
 )
 
 // NodeService provides business logic for node operations.
+//
+// TimelineRange is cached in memory because computing it requires an
+// O(N) Cypher aggregation over every Concept node. With many concurrent
+// readers this would otherwise be re-scanned on every request. The
+// cache is invalidated by every Create/Update/Delete that could change
+// the result; the next read after an invalidation pays one recompute,
+// subsequent reads are O(1).
 type NodeService struct {
 	repo     *repository.NodeRepository
 	commRepo *repository.CommunityRepository
+
+	timelineMu    sync.Mutex
+	timelineCache *model.TimelineRange
 }
 
 // NewNodeService creates a new NodeService.
@@ -86,6 +97,8 @@ func (s *NodeService) Create(ctx context.Context, req model.NodeCreateRequest) (
 	if err != nil {
 		return nil, err
 	}
+	// A new node may have introduced a year outside the cached range.
+	s.invalidateTimelineRange()
 	return s.repo.Get(ctx, id)
 }
 
@@ -113,6 +126,41 @@ func (s *NodeService) Delete(ctx context.Context, id string) error {
 // GetAll returns all nodes and edges in the graph.
 func (s *NodeService) GetAll(ctx context.Context) ([]model.Node, []model.Edge, error) {
 	return s.repo.GetAll(ctx)
+}
+
+// TimelineRange returns the [minYear, maxYear] span covered by every
+// node's `first_appeared` field.
+//
+// The result is computed by the repository via an O(N) Cypher scan and
+// cached in memory. Subsequent calls are O(1) until a Create, Update or
+// Delete invalidates the cache. The cache protects the database from
+// repeated scans when many concurrent readers hit the endpoint.
+func (s *NodeService) TimelineRange(ctx context.Context) (model.TimelineRange, error) {
+	s.timelineMu.Lock()
+	if s.timelineCache != nil {
+		cached := *s.timelineCache
+		s.timelineMu.Unlock()
+		return cached, nil
+	}
+	s.timelineMu.Unlock()
+
+	tr, err := s.repo.TimelineRange(ctx)
+	if err != nil {
+		return model.TimelineRange{}, err
+	}
+
+	s.timelineMu.Lock()
+	s.timelineCache = &tr
+	s.timelineMu.Unlock()
+	return tr, nil
+}
+
+// invalidateTimelineRange drops the cached range. Safe to call from
+// write paths; the next TimelineRange call will recompute.
+func (s *NodeService) invalidateTimelineRange() {
+	s.timelineMu.Lock()
+	s.timelineCache = nil
+	s.timelineMu.Unlock()
 }
 
 // validateCommunity returns ErrNodeCommunity if the community does not

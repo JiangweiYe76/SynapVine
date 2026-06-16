@@ -1,6 +1,5 @@
-import { ref, computed, type Ref } from 'vue'
+import { ref, computed, watch, type Ref } from 'vue'
 import type { GraphNode, GraphEdge, TimelineRange } from '../types/graph'
-import { getTimelineRange } from '../mock/data'
 
 export interface TimelineState {
   currentYear: Ref<number>
@@ -24,12 +23,25 @@ export type TimelineComposable = TimelineState & TimelineActions
 
 export function useTimeline(
   allNodes: Ref<GraphNode[]>,
-  allEdges: Ref<GraphEdge[]>
+  allEdges: Ref<GraphEdge[]>,
+  timelineRange: Ref<TimelineRange>,
 ): TimelineComposable {
-  const range = ref<TimelineRange>(getTimelineRange())
-  const currentYear = ref(range.value.maxYear)
+  // Use the server-computed range as the source of truth. It reflects
+  // the full graph extent, not the currently loaded window, so the
+  // timeline slider always spans the actual dataset.
+  const range = computed<TimelineRange>(() => timelineRange.value)
+
+  const fallbackYear = new Date().getFullYear()
+  const currentYear = ref(fallbackYear)
   const isPlaying = ref(false)
   const playbackSpeed = ref(1)
+
+  // Clamp currentYear into the (possibly newly arrived) range so the
+  // slider position and visibleNodes stay in sync with the data.
+  watch(range, (r) => {
+    if (currentYear.value > r.max_year) currentYear.value = r.max_year
+    if (currentYear.value < r.min_year) currentYear.value = r.min_year
+  })
 
   let playInterval: ReturnType<typeof setInterval> | null = null
 
@@ -52,7 +64,7 @@ export function useTimeline(
     isPlaying.value = true
     
     playInterval = setInterval(() => {
-      if (currentYear.value >= range.value.maxYear) {
+      if (currentYear.value >= range.value.max_year) {
         pause()
         return
       }
@@ -69,7 +81,7 @@ export function useTimeline(
   }
 
   function seek(year: number) {
-    currentYear.value = Math.max(range.value.minYear, Math.min(range.value.maxYear, year))
+    currentYear.value = Math.max(range.value.min_year, Math.min(range.value.max_year, year))
   }
 
   function setSpeed(speed: number) {
@@ -81,13 +93,13 @@ export function useTimeline(
   }
 
   function next() {
-    if (currentYear.value < range.value.maxYear) {
+    if (currentYear.value < range.value.max_year) {
       currentYear.value += 1
     }
   }
 
   function prev() {
-    if (currentYear.value > range.value.minYear) {
+    if (currentYear.value > range.value.min_year) {
       currentYear.value -= 1
     }
   }

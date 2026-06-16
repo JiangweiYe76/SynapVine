@@ -6,6 +6,7 @@ import type {
   NodeEdgesResponse,
   SearchResponse,
   ExpandResponse,
+  TimelineRange,
 } from '../types/graph'
 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
@@ -28,6 +29,9 @@ async function mockFetch(path: string, params?: Record<string, string>): Promise
   switch (cleanPath) {
     case 'summary':
       return mock.getSummary()
+
+    case 'timeline':
+      return mock.getTimelineRange()
 
     case 'nodes': {
       const p: Parameters<typeof mock.getNodes>[0] = {}
@@ -109,6 +113,10 @@ export async function getToken(): Promise<string> {
 
 export async function getSummary(): Promise<GraphSummary> {
   return fetchAPI<GraphSummary>('/summary')
+}
+
+export async function getTimelineRange(): Promise<TimelineRange> {
+  return fetchAPI<TimelineRange>('/timeline')
 }
 
 export async function getNodes(params?: {

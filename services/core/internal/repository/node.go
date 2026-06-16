@@ -254,6 +254,41 @@ func (r *NodeRepository) Exists(ctx context.Context, id string) (bool, error) {
 	return count > 0, nil
 }
 
+// TimelineRange returns the [minYear, maxYear] span covered by the
+// `first_appeared` field of every Concept node in the graph. Nodes with
+// a missing or empty `first_appeared` are ignored.
+//
+// When the graph has no nodes with a valid `first_appeared` the returned
+// range is the zero value (0, 0); callers should treat that as "no data".
+//
+// The query uses `substring(n.first_appeared, 0, 4)` to extract the year
+// prefix from the stored "YYYY-MM" string. This is computed in Cypher
+// rather than in Go so that the database does the aggregation, which
+// keeps the cost O(N) on the server and constant on the client.
+func (r *NodeRepository) TimelineRange(ctx context.Context) (model.TimelineRange, error) {
+	query := `
+		MATCH (n:Concept)
+		WHERE n.first_appeared IS NOT NULL AND n.first_appeared <> ''
+		WITH min(toInteger(substring(n.first_appeared, 0, 4))) AS minYear,
+		     max(toInteger(substring(n.first_appeared, 0, 4))) AS maxYear
+		RETURN minYear, maxYear
+	`
+	records, err := r.neo.Query(ctx, query, nil)
+	if err != nil {
+		return model.TimelineRange{}, fmt.Errorf("failed to compute timeline range: %w", err)
+	}
+	if len(records) == 0 {
+		return model.TimelineRange{}, nil
+	}
+	rec := records[0]
+	minYear := valueOrDefault(rec, "minYear", int64(0))
+	maxYear := valueOrDefault(rec, "maxYear", int64(0))
+	return model.TimelineRange{
+		MinYear: int(minYear),
+		MaxYear: int(maxYear),
+	}, nil
+}
+
 // GetAll returns all nodes and edges in the graph.
 func (r *NodeRepository) GetAll(ctx context.Context) ([]model.Node, []model.Edge, error) {
 	nodeQuery := fmt.Sprintf(`

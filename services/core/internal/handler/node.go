@@ -24,6 +24,7 @@ type NodeService interface {
 	Update(ctx context.Context, id string, req model.NodeUpdateRequest) (*model.Node, error)
 	Delete(ctx context.Context, id string) error
 	GetAll(ctx context.Context) ([]model.Node, []model.Edge, error)
+	TimelineRange(ctx context.Context) (model.TimelineRange, error)
 }
 
 // NodeHandler handles HTTP requests for node operations.
@@ -185,4 +186,21 @@ func (h *NodeHandler) GraphData(c *fiber.Ctx) error {
 		"nodes": nodes,
 		"edges": edges,
 	})
+}
+
+// Timeline handles GET /api/graph/timeline, returning the [minYear,
+// maxYear] span of every node's `first_appeared` field. The result is
+// computed in the database and is independent of which nodes the caller
+// has loaded, so UI range selectors can show the full extent of the
+// dataset.
+func (h *NodeHandler) Timeline(c *fiber.Ctx) error {
+	tr, err := h.svc.TimelineRange(c.Context())
+	if err != nil {
+		slog.Error("timeline_range_failed", slog.Any("error", err))
+		return c.Status(500).JSON(model.ErrorResponse{
+			Error:   "internal_error",
+			Message: "Failed to compute timeline range",
+		})
+	}
+	return c.JSON(tr)
 }

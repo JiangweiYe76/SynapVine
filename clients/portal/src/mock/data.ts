@@ -1,4 +1,4 @@
-import type { GraphNode, GraphEdge, Community, HierarchicalCommunity, TimelineRange } from '../types/graph'
+import type { GraphNode, GraphEdge, Community, HierarchicalCommunity } from '../types/graph'
 import { LEVEL_PALETTES } from '../types/graph'
 
 export const rawNodes: (Omit<GraphNode, 'community_id' | 'degree'> & { first_appeared: string })[] = [
@@ -170,14 +170,6 @@ export const rawNodes: (Omit<GraphNode, 'community_id' | 'degree'> & { first_app
   { id: 'learning_rate', name: 'Learning Rate', description: '学习率，控制参数更新步长的关键超参数', influence_score: 7.8, first_appeared: '1951-01' },
   { id: 'dropout', name: 'Dropout', description: '随机失活正则化，简单有效的防过拟合技术', influence_score: 8.5, first_appeared: '2012-01' },
 ];
-
-export function getTimelineRange(): TimelineRange {
-  const years = rawNodes.map(n => n.first_appeared ? parseInt(n.first_appeared.split('-')[0], 10) : null).filter((y): y is number => y != null)
-  return {
-    minYear: Math.min(...years),
-    maxYear: Math.max(...years),
-  }
-}
 
 // Default community id for the mock data. The raw nodes are bucketed
 // into a single community; the real portal uses Louvain over the

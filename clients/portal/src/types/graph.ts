@@ -19,8 +19,8 @@ export interface Milestone {
 }
 
 export interface TimelineRange {
-  minYear: number
-  maxYear: number
+  min_year: number
+  max_year: number
 }
 
 export interface GraphEdge {

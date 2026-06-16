@@ -370,6 +370,22 @@ func (s *GraphService) Expand(ctx context.Context, ids []string, includeEdges, i
 	return model.ExpandResponse{Nodes: expanded, Edges: expandedEdges}, nil
 }
 
+// TimelineRange returns the [minYear, maxYear] span of every node's
+// `first_appeared` field, computed by core over the full graph. The
+// portal does not aggregate locally; it forwards the call to core so
+// the result reflects the entire dataset, not just the nodes the caller
+// has loaded.
+func (s *GraphService) TimelineRange(ctx context.Context) (model.TimelineRange, error) {
+	core, err := s.core.FetchTimelineRange(ctx)
+	if err != nil {
+		return model.TimelineRange{}, err
+	}
+	return model.TimelineRange{
+		MinYear: core.MinYear,
+		MaxYear: core.MaxYear,
+	}, nil
+}
+
 // fetchAllEdges loads every edge in the graph. Core currently caps list
 // responses at 100 per page, so we keep paginating until HasMore is false.
 // For a dev tool the page count is small; production should add a
