@@ -28,7 +28,6 @@ func NewJWTManager(secret string) *JWTManager {
 }
 
 // Generate creates a new JWT token for the given user
-// Token expires after 24 hours
 func (m *JWTManager) Generate(userID, username, role string) (string, error) {
 	claims := Claims{
 		UserID:   userID,
