@@ -9,6 +9,7 @@ import (
 	"console/internal/coreclient"
 	"console/internal/db"
 	"console/internal/handler"
+	"console/internal/model"
 	"console/internal/store"
 
 	"github.com/gofiber/fiber/v2"
@@ -72,9 +73,11 @@ func main() {
 
 	// Stores: each wraps the shared *sql.DB.
 	users := store.NewUserStore(dbConn)
+	refreshTokens := store.NewRefreshTokenStore(dbConn)
+	audit := store.NewAuditStore(dbConn)
 
 	// Handlers.
-	authHandler := handler.NewAuthHandler(cfg.JWTSecret, users)
+	authHandler := handler.NewAuthHandler(cfg.JWTSecret, users, refreshTokens, audit)
 	nodeHandler := handler.NewNodeHandler(core)
 	edgeHandler := handler.NewEdgeHandler(core)
 	communityHandler := handler.NewCommunityHandler(core)
@@ -90,43 +93,46 @@ func main() {
 		AllowCredentials: true,
 	}))
 
-	// Public auth route (no JWT required).
+	// Public auth routes (no JWT required).
 	app.Post("/api/auth/login", authHandler.Login)
+	app.Post("/api/auth/refresh", authHandler.Refresh)
 
 	// Protected routes (JWT required).
 	api := app.Group("/api", authHandler.JWTMiddleware())
 
 	// Self.
 	api.Get("/me", authHandler.Me)
+	api.Post("/auth/logout", authHandler.Logout)
 
-	// Read (any authenticated user).
+	// Read (viewer+).
 	api.Get("/nodes", nodeHandler.List)
 	api.Get("/nodes/:id", nodeHandler.Get)
 	api.Get("/stats", nodeHandler.Stats)
 
-	// Mutations.
-	api.Post("/nodes", nodeHandler.Create)
-	api.Put("/nodes/:id", nodeHandler.Update)
-	api.Delete("/nodes/:id", nodeHandler.Delete)
+	// Mutations (editor+).
+	editorOnly := handler.RequireRole(model.RoleAdmin, model.RoleEditor)
+	api.Post("/nodes", editorOnly, nodeHandler.Create)
+	api.Put("/nodes/:id", editorOnly, nodeHandler.Update)
+	api.Delete("/nodes/:id", editorOnly, nodeHandler.Delete)
 
-	// Edge read.
+	// Edge read (viewer+).
 	api.Get("/edges", edgeHandler.List)
 	api.Get("/edges/:source/:target", edgeHandler.Get)
 
-	// Edge mutations.
-	api.Post("/edges", edgeHandler.Create)
-	api.Put("/edges/:source/:target", edgeHandler.Update)
-	api.Delete("/edges/:source/:target", edgeHandler.Delete)
+	// Edge mutations (editor+).
+	api.Post("/edges", editorOnly, edgeHandler.Create)
+	api.Put("/edges/:source/:target", editorOnly, edgeHandler.Update)
+	api.Delete("/edges/:source/:target", editorOnly, edgeHandler.Delete)
 
-	// Community read.
+	// Community read (viewer+).
 	api.Get("/communities", communityHandler.List)
 	api.Get("/communities/tree", communityHandler.Tree)
 	api.Get("/communities/:id", communityHandler.Get)
 
-	// Community mutations.
-	api.Post("/communities", communityHandler.Create)
-	api.Put("/communities/:id", communityHandler.Update)
-	api.Delete("/communities/:id", communityHandler.Delete)
+	// Community mutations (editor+).
+	api.Post("/communities", editorOnly, communityHandler.Create)
+	api.Put("/communities/:id", editorOnly, communityHandler.Update)
+	api.Delete("/communities/:id", editorOnly, communityHandler.Delete)
 
 	slog.Info("console_server_starting", slog.String("port", cfg.Port))
 

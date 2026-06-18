@@ -17,6 +17,7 @@ type User struct {
 	Username  string    `json:"username"`
 	Password  string    `json:"-"` // Never expose password in JSON
 	Role      Role      `json:"role"`
+	TokenVer  int       `json:"-"` // Bumped on logout / password change to revoke all outstanding JWTs
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }

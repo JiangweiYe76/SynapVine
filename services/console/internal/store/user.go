@@ -9,6 +9,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"console/internal/model"
 )
@@ -35,9 +36,9 @@ func NewUserStore(db *sql.DB) *UserStore {
 // already taken.
 func (s *UserStore) Create(ctx context.Context, u *model.User) error {
 	_, err := s.db.ExecContext(ctx,
-		`INSERT INTO users (id, username, password, role, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?)`,
-		u.ID, u.Username, u.Password, u.Role, u.CreatedAt, u.UpdatedAt,
+		`INSERT INTO users (id, username, password, role, token_ver, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		u.ID, u.Username, u.Password, u.Role, u.TokenVer, u.CreatedAt, u.UpdatedAt,
 	)
 	if err != nil {
 		if isDuplicateKey(err) {
@@ -52,7 +53,7 @@ func (s *UserStore) Create(ctx context.Context, u *model.User) error {
 // Returns ErrNotFound when no row matches.
 func (s *UserStore) GetByUsername(ctx context.Context, username string) (*model.User, error) {
 	row := s.db.QueryRowContext(ctx,
-		`SELECT id, username, password, role, created_at, updated_at
+		`SELECT id, username, password, role, token_ver, created_at, updated_at
 		 FROM users WHERE username = ?`, username,
 	)
 	return scanUser(row)
@@ -62,7 +63,7 @@ func (s *UserStore) GetByUsername(ctx context.Context, username string) (*model.
 // row matches.
 func (s *UserStore) GetByID(ctx context.Context, id string) (*model.User, error) {
 	row := s.db.QueryRowContext(ctx,
-		`SELECT id, username, password, role, created_at, updated_at
+		`SELECT id, username, password, role, token_ver, created_at, updated_at
 		 FROM users WHERE id = ?`, id,
 	)
 	return scanUser(row)
@@ -76,11 +77,25 @@ func (s *UserStore) Count(ctx context.Context) (int, error) {
 	return n, err
 }
 
+// BumpTokenVer increments token_ver on the given user. The auth handler
+// calls this on logout and password change to invalidate every
+// outstanding JWT issued before the bump.
+func (s *UserStore) BumpTokenVer(ctx context.Context, userID string) error {
+	_, err := s.db.ExecContext(ctx,
+		`UPDATE users SET token_ver = token_ver + 1, updated_at = ? WHERE id = ?`,
+		time.Now(), userID,
+	)
+	if err != nil {
+		return fmt.Errorf("bump token_ver: %w", err)
+	}
+	return nil
+}
+
 // scanUser is a shared row scanner for SELECT statements that project
 // the full user column set.
 func scanUser(row *sql.Row) (*model.User, error) {
 	var u model.User
-	err := row.Scan(&u.ID, &u.Username, &u.Password, &u.Role, &u.CreatedAt, &u.UpdatedAt)
+	err := row.Scan(&u.ID, &u.Username, &u.Password, &u.Role, &u.TokenVer, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNotFound

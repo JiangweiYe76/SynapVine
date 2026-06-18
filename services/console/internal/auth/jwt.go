@@ -12,6 +12,7 @@ type Claims struct {
 	UserID   string `json:"user_id"`
 	Username string `json:"username"`
 	Role     string `json:"role"`
+	TokenVer int    `json:"token_ver"` // Matches users.token_ver; mismatch => token was revoked
 	jwt.RegisteredClaims
 }
 
@@ -27,12 +28,16 @@ func NewJWTManager(secret string) *JWTManager {
 	}
 }
 
-// Generate creates a new JWT token for the given user
-func (m *JWTManager) Generate(userID, username, role string) (string, error) {
+// Generate creates a new JWT token for the given user. The token
+// embeds the user's current token_ver so the server can revoke every
+// outstanding token by bumping that counter on logout or password
+// change.
+func (m *JWTManager) Generate(userID, username, role string, tokenVer int) (string, error) {
 	claims := Claims{
 		UserID:   userID,
 		Username: username,
 		Role:     role,
+		TokenVer: tokenVer,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

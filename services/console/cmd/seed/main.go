@@ -80,6 +80,7 @@ func main() {
 		Username:  username,
 		Password:  hash,
 		Role:      model.RoleAdmin,
+		TokenVer:  0,
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
