@@ -26,6 +26,8 @@ The project is organized as a microservice monorepo:
 | Backend Framework | Fiber | v2.52.13 |
 | Backend Graph Lib | gonum | v0.17.0 |
 | Graph DB | Neo4j | 5.23 (via `services/infra`) |
+| Auth DB | MySQL | 8.0 (via `services/infra`, console service only) |
+| Password Hashing | argon2id (`golang.org/x/crypto/argon2`) | — |
 | Frontend Framework | Vue | 3.5.32 |
 | Frontend Language | TypeScript | ~6.0.2 |
 | Build Tool | Vite | 8.0.10 |
@@ -77,7 +79,10 @@ go run main.go
 ```
 
 - Server starts on `http://localhost:8002`
-- Provides JWT-based authentication (`/api/auth/login`, `/api/me`)
+- Provides JWT-based authentication: `/api/auth/login`, `/api/auth/refresh`, `/api/auth/logout`, `/api/me`
+- Users, refresh tokens, and audit events are persisted in MySQL (see `internal/store`). Migrations are applied automatically on startup; run `go run ./cmd/seed` once to bootstrap the first admin (the dev script `make dev` does this automatically).
+- Mutation routes (`POST/PUT/DELETE` on nodes, edges, communities) require `admin` or `editor` role via the `RequireRole` middleware in `internal/handler/rbac.go`. `viewer` can read.
+- Passwords are hashed with **argon2id** (see `internal/auth/password.go`).
 
 ### Frontend — Portal
 
@@ -145,7 +150,12 @@ docker-compose up -d
 |----------|---------|-------------|
 | `PORT` | `8002` | Server port |
 | `ALLOWED_ORIGIN` | `http://localhost:5174` | CORS allowed origin |
-| `JWT_SECRET` | *(dev key)* | JWT signing secret |
+| `JWT_SECRET` | *(none — required)* | JWT signing secret |
+| `MYSQL_DSN` | *(none — required)* | DSN for the console auth DB (e.g. `synapvine:synapvine123@tcp(localhost:3306)/synapvine_console?parseTime=true`) |
+| `ADMIN_USERNAME` | *(required for seed)* | Username of the bootstrap admin created by `cmd/seed` |
+| `ADMIN_PASSWORD` | *(required for seed)* | Plaintext password of the bootstrap admin |
+
+The console service is **stateless across restarts** for users: all users, refresh tokens, and audit events live in MySQL. Migrations are applied automatically on startup. The first admin is created by running `cd services/console && go run ./cmd/seed` (the dev script `make dev` does this for you).
 
 ### `clients/portal`
 
