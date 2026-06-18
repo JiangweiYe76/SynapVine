@@ -53,6 +53,15 @@ start_backend() {
   echo $! > "$PID_DIR/$name.pid"
 }
 
+start_seed() {
+  # Args: name dir [KEY=VAL ...]
+  local name="$1" dir="$2"
+  shift 2
+  echo "==> Running $name..."
+  ( cd "$dir" && env "$@" go run ./cmd/seed ) &
+  echo $! > "$PID_DIR/$name.pid"
+}
+
 start_frontend() {
   local name="$1" dir="$2" port="$3"
   echo "==> Starting $name frontend on :$port..."
@@ -73,12 +82,20 @@ wait_for() {
   done
 }
 
-# 1. Neo4j
-echo "==> Starting Neo4j (docker-compose)..."
+# 1. Neo4j + MySQL
+echo "==> Starting Neo4j + MySQL (docker-compose)..."
 (cd services/infra && COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT" docker-compose up -d)
 echo -n "    Waiting for Neo4j to become healthy"
 for i in $(seq 1 90); do
   status=$(docker inspect -f '{{.State.Health.Status}}' synapvine-neo4j 2>/dev/null || echo "starting")
+  if [ "$status" = "healthy" ]; then echo " healthy"; break; fi
+  echo -n "."
+  sleep 1
+  if [ "$i" -eq 90 ]; then echo " TIMEOUT (status=$status)"; exit 1; fi
+done
+echo -n "    Waiting for MySQL to become healthy"
+for i in $(seq 1 90); do
+  status=$(docker inspect -f '{{.State.Health.Status}}' synapvine-mysql 2>/dev/null || echo "starting")
   if [ "$status" = "healthy" ]; then echo " healthy"; break; fi
   echo -n "."
   sleep 1
@@ -100,7 +117,26 @@ case "$STACK" in
 esac
 
 if $need_console; then
-  start_backend console services/console "$CONSOLE_PORT" CORE_URL="$CORE_URL" PORT="$CONSOLE_PORT"
+  # Seed the console MySQL with the dev admin (admin / admin123) the
+  # first time the stack comes up. The seed tool is idempotent and
+  # exits 0 when users already exist, so re-running is safe.
+  #
+  # Important: `wait` without an argument waits for *every* background
+  # job, including the long-running core backend started above, which
+  # would hang the script forever. We wait only for the seed (its PID
+  # is $!) and then drop the seed's pidfile so cleanup doesn't try to
+  # kill a stale process later.
+  start_seed console-seed services/console \
+    MYSQL_DSN="synapvine:synapvine123@tcp(localhost:3306)/synapvine_console?parseTime=true" \
+    ADMIN_USERNAME="admin" \
+    ADMIN_PASSWORD="admin123"
+  wait $!
+  rm -f "$PID_DIR/console-seed.pid"
+  start_backend console services/console "$CONSOLE_PORT" \
+    CORE_URL="$CORE_URL" \
+    PORT="$CONSOLE_PORT" \
+    MYSQL_DSN="synapvine:synapvine123@tcp(localhost:3306)/synapvine_console?parseTime=true" \
+    JWT_SECRET="console-dev-secret-key-change-in-production"
   start_frontend console-fe clients/console "$CONSOLE_FE_PORT"
 fi
 
@@ -112,9 +148,10 @@ fi
 echo
 echo "Stack is up:"
 echo "  Neo4j           bolt://localhost:7687  browser: http://localhost:7474"
+echo "  MySQL           localhost:3306  (db: synapvine_console, user: synapvine)"
 echo "  Core            $CORE_URL"
 if $need_console; then
-echo "  Console API     http://localhost:$CONSOLE_PORT"
+echo "  Console API     http://localhost:$CONSOLE_PORT  (dev login: admin / admin123)"
 echo "  Console UI      http://localhost:$CONSOLE_FE_PORT"
 fi
 if $need_portal; then

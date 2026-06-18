@@ -20,6 +20,26 @@ services:
       timeout: 5s
       retries: 5
 
+  mysql:
+    image: mysql:8.0
+    container_name: synapvine-mysql
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=synapvine_root_pw
+      - MYSQL_DATABASE=synapvine_console
+      - MYSQL_USER=synapvine
+      - MYSQL_PASSWORD=synapvine123
+    volumes:
+      - mysql_data:/var/lib/mysql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-usynapvine", "-psynapvine123"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
 volumes:
   neo4j_data:
   neo4j_logs:
+  mysql_data:

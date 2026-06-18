@@ -3,8 +3,8 @@
 help:
 	@echo "AI-Graph Development"
 	@echo ""
-	@echo "  make dev         Bring up Neo4j + core + portal + console + both frontends"
-	@echo "  make portal-dev  Bring up Neo4j + core + portal backend + portal frontend only"
+	@echo "  make dev         Bring up Neo4j + MySQL + core + portal + console + both frontends"
+	@echo "  make portal-dev  Bring up Neo4j + MySQL + core + portal backend + portal frontend only"
 	@echo "  make dev-down    Stop everything started by any of the above"
 
 CORE_PORT        ?= 8001
