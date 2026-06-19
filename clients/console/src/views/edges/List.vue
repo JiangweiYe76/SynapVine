@@ -22,10 +22,12 @@ import {
 } from '@/components/ui/table'
 import { edgesAPI } from '@/api/edges'
 import { nodesAPI } from '@/api/nodes'
+import { useAuthStore } from '@/stores/auth'
 import type { Edge, Node } from '@/types/graph'
 import EdgeFormDialog from '@/components/EdgeFormDialog.vue'
 import EdgeDeleteConfirmDialog from '@/components/EdgeDeleteConfirmDialog.vue'
 
+const authStore = useAuthStore()
 const edges = ref<Edge[]>([])
 const nodes = ref<Record<string, Node>>({})
 const loading = ref(true)
@@ -101,6 +103,9 @@ const columns = [
     header: '',
     cell: (info) => {
       const edge = info.row.original
+      // Mutation actions are gated on the role so a viewer never even
+      // sees the buttons; the server enforces it again.
+      if (!authStore.isEditor) return null
       return h('div', { class: 'flex items-center justify-end gap-1' }, [
         h(Button, {
           variant: 'ghost',
@@ -187,7 +192,7 @@ onMounted(() => {
             Manage knowledge graph relationships
           </p>
         </div>
-        <Button @click="openCreateDialog">Add Edge</Button>
+        <Button v-if="authStore.isEditor" @click="openCreateDialog">Add Edge</Button>
       </div>
 
       <Card>

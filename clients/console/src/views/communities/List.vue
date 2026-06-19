@@ -20,10 +20,12 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { communitiesAPI } from '@/api/communities'
+import { useAuthStore } from '@/stores/auth'
 import type { HierarchicalCommunity } from '@/types/graph'
 import CommunityFormDialog from '@/components/CommunityFormDialog.vue'
 import CommunityDeleteConfirmDialog from '@/components/CommunityDeleteConfirmDialog.vue'
 
+const authStore = useAuthStore()
 interface FlatRow {
   id: string
   name: string
@@ -191,6 +193,9 @@ const columns = [
     header: '',
     cell: (info) => {
       const row = info.row.original
+      // Mutation actions are gated on the role so a viewer never even
+      // sees the buttons; the server enforces it again.
+      if (!authStore.isEditor) return null
       return h('div', { class: 'flex items-center justify-end gap-1' }, [
         h(
           Button,
@@ -242,7 +247,7 @@ onMounted(fetchTree)
           <h2 class="text-2xl font-bold tracking-tight">Communities</h2>
           <p class="text-muted-foreground">Manage hierarchical community structure</p>
         </div>
-        <Button @click="openCreateDialog">
+        <Button v-if="authStore.isEditor" @click="openCreateDialog">
           <Plus class="h-4 w-4 mr-1" />
           Add Community
         </Button>
