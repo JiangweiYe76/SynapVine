@@ -114,7 +114,7 @@ bun run dev
 - Dev server starts on `http://localhost:5174`
 - Vite proxies `/api` to `http://localhost:8002`
 
-### Infrastructure (Neo4j)
+### Infrastructure (Neo4j + MySQL)
 
 ```bash
 cd services/infra
@@ -150,6 +150,7 @@ docker-compose up -d
 |----------|---------|-------------|
 | `PORT` | `8002` | Server port |
 | `ALLOWED_ORIGIN` | `http://localhost:5174` | CORS allowed origin |
+| `CORE_URL` | *(none — required)* | Base URL of the core service |
 | `JWT_SECRET` | *(none — required)* | JWT signing secret |
 | `MYSQL_DSN` | *(none — required)* | DSN for the console auth DB (e.g. `synapvine:synapvine123@tcp(localhost:3306)/synapvine_console?parseTime=true`) |
 | `ADMIN_USERNAME` | *(required for seed)* | Username of the bootstrap admin created by `cmd/seed` |
