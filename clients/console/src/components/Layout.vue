@@ -25,8 +25,11 @@ const authStore = useAuthStore()
 const router = useRouter()
 const mobileOpen = ref(false)
 
-function logout() {
-  authStore.logout()
+async function logout() {
+  // authStore.logout hits POST /api/auth/logout and then clears the
+  // local session. We await so the server has invalidated the refresh
+  // token before we navigate away.
+  await authStore.logout()
   router.push('/login')
 }
 

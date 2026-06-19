@@ -20,10 +20,12 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { nodesAPI } from '@/api/nodes'
+import { useAuthStore } from '@/stores/auth'
 import type { Node } from '@/types/graph'
 import NodeFormDialog from '@/components/NodeFormDialog.vue'
 import DeleteConfirmDialog from '@/components/DeleteConfirmDialog.vue'
 
+const authStore = useAuthStore()
 const nodes = ref<Node[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
@@ -88,6 +90,9 @@ const columns = [
     header: '',
     cell: (info) => {
       const node = info.row.original
+      // Mutation actions are gated on the role so a viewer never even
+      // sees the buttons; the server enforces it again.
+      if (!authStore.isEditor) return null
       return h('div', { class: 'flex items-center justify-end gap-1' }, [
         h(Button, {
           variant: 'ghost',
@@ -171,7 +176,7 @@ onMounted(fetchNodes)
             Manage knowledge graph nodes
           </p>
         </div>
-        <Button @click="openCreateDialog">Add Node</Button>
+        <Button v-if="authStore.isEditor" @click="openCreateDialog">Add Node</Button>
       </div>
 
       <Card>
