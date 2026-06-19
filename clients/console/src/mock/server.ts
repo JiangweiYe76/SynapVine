@@ -1,5 +1,11 @@
 import { mockUser, mockCredentials, mockNodes, mockEdges } from './data'
-import type { LoginRequest, LoginResponse, User } from '../types/auth'
+import type {
+  LoginRequest,
+  LogoutRequest,
+  RefreshRequest,
+  SessionResponse,
+  User,
+} from '../types/auth'
 import type {
   Node,
   NodesListResponse,
@@ -12,24 +18,77 @@ import type {
   StatsResponse,
 } from '../types/graph'
 
+// 24h access TTL, 7d refresh TTL — same as the real backend constants.
+const ACCESS_TTL_MS = 24 * 60 * 60 * 1000
+const REFRESH_TTL_MS = 7 * 24 * 60 * 60 * 1000
+
+interface MockToken {
+  value: string
+  expiresAt: number
+}
+
+interface MockRefreshToken {
+  value: string
+  expiresAt: number
+  revoked: boolean
+}
+
 export function createMockServer() {
-  let token: string | null = null
+  let access: MockToken | null = null
+  let refresh: MockRefreshToken | null = null
   let nodes: Node[] = [...mockNodes]
   let edges: Edge[] = [...mockEdges]
 
+  function newToken(prefix: string): string {
+    return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
+  }
+
+  function issueSession(user: User): SessionResponse {
+    const now = Date.now()
+    access = { value: newToken('mock_access'), expiresAt: now + ACCESS_TTL_MS }
+    refresh = { value: newToken('mock_refresh'), expiresAt: now + REFRESH_TTL_MS, revoked: false }
+    return {
+      token: access.value,
+      refresh_token: refresh.value,
+      expires_at: new Date(access.expiresAt).toISOString(),
+      user,
+    }
+  }
+
   return {
-    login(credentials: LoginRequest): LoginResponse {
+    login(credentials: LoginRequest): SessionResponse {
       if (
         credentials.username === mockCredentials.username &&
         credentials.password === mockCredentials.password
       ) {
-        token = 'mock_token_' + Date.now()
-        return { token, user: mockUser }
+        return issueSession(mockUser)
       }
       throw new Error('Invalid username or password')
     },
 
+    refresh(_req: RefreshRequest): SessionResponse {
+      if (!refresh || refresh.revoked || refresh.expiresAt < Date.now()) {
+        refresh = null
+        access = null
+        throw new Error('Refresh token is invalid or has been revoked')
+      }
+      // Rotate: invalidate the old refresh token, mint a new pair.
+      const old = refresh
+      const session = issueSession(mockUser)
+      old.revoked = true
+      return session
+    },
+
+    logout(_req: LogoutRequest): void {
+      if (refresh) refresh.revoked = true
+      access = null
+      refresh = null
+    },
+
     me(_authHeader?: string): User {
+      if (!access || access.expiresAt < Date.now()) {
+        throw new Error('Session expired')
+      }
       return mockUser
     },
 
@@ -37,11 +96,11 @@ export function createMockServer() {
       let filtered = nodes
       if (search) {
         const q = search.toLowerCase()
-        filtered = nodes.filter(
+        filtered = filtered.filter(
           (n) =>
             n.id.toLowerCase().includes(q) ||
             n.name.toLowerCase().includes(q) ||
-            n.description.toLowerCase().includes(q)
+            n.description.toLowerCase().includes(q),
         )
       }
       const total = filtered.length
@@ -102,11 +161,11 @@ export function createMockServer() {
       let filtered = edges
       if (search) {
         const q = search.toLowerCase()
-        filtered = edges.filter(
+        filtered = filtered.filter(
           (e) =>
             e.source.toLowerCase().includes(q) ||
             e.target.toLowerCase().includes(q) ||
-            e.relation.toLowerCase().includes(q)
+            e.relation.toLowerCase().includes(q),
         )
       }
       const total = filtered.length
