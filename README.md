@@ -94,7 +94,7 @@ An interactive 3D knowledge graph visualization of AI concepts, with a managemen
 
 ### Prerequisites
 
-- **Go** >= 1.21
+- **Go** >= 1.26
 - **Bun** >= 1.0 (or npm)
 - **Node.js** >= 18
 - **Docker** & **Docker Compose** (for Neo4j)
@@ -106,7 +106,8 @@ cd services/infra
 docker-compose up -d
 ```
 
-Neo4j Browser: `http://localhost:7474`
+- Neo4j Browser: `http://localhost:7474`
+- MySQL: `localhost:3306` (console auth DB)
 
 ### Backend — Portal
 
@@ -137,9 +138,9 @@ go run main.go
 | Variable         | Default                 | Description                |
 | ---------------- | ----------------------- | -------------------------- |
 | `PORT`           | `8001`                  | Server port                |
-| `DATA_PATH`      | `../../data/graph.json` | Graph data file path       |
-| `ALLOWED_ORIGIN` | `http://localhost:5174` | CORS allowed origin        |
-| `JWT_SECRET`     | *(dev key)*             | JWT signing secret         |
+| `NEO4J_URI`      | `bolt://localhost:7687` | Neo4j Bolt URI             |
+| `NEO4J_USER`     | `neo4j`                 | Neo4j username             |
+| `NEO4J_PASSWORD` | `synapvine123`          | Neo4j password             |
 
 ### Frontend — Portal
 
@@ -159,7 +160,25 @@ bun install
 bun run dev
 ```
 
-Dev server proxies `/api` to Core backend.
+Dev server proxies `/api` to Console backend.
+
+### Backend — Console
+
+```bash
+cd services/console
+go mod tidy
+go run main.go
+```
+
+**Environment variables:**
+
+| Variable         | Default                 | Description                       |
+| ---------------- | ----------------------- | --------------------------------- |
+| `PORT`           | `8002`                  | Server port                       |
+| `ALLOWED_ORIGIN` | `http://localhost:5174` | CORS allowed origin               |
+| `CORE_URL`       | *(none — required)*     | Base URL of the core service      |
+| `JWT_SECRET`     | *(none — required)*     | JWT signing secret                |
+| `MYSQL_DSN`      | *(none — required)*     | DSN for the console auth DB       |
 
 ***
 
@@ -176,6 +195,7 @@ Dev server proxies `/api` to Core backend.
 | GET    | `/api/graph/nodes/:id/edges` | Yes  | Edges connected to a node                   |
 | GET    | `/api/graph/search`          | Yes  | Search nodes by name/description            |
 | GET    | `/api/graph/expand`          | Yes  | Expand graph by loading neighbors & edges   |
+| GET    | `/api/graph/timeline`        | Yes  | Min/max year range of `first_appeared`      |
 
 All `/api/graph/*` endpoints require a valid token (`?token=xxx`).
 
@@ -217,12 +237,12 @@ All `/api/graph/*` endpoints require a valid token (`?token=xxx`).
 - [x] Search, timeline, dark theme
 - [x] Management console (Dashboard, login)
 - [x] Neo4j integration (core)
-- [ ] Node/edge CRUD in console
+- [x] Node/edge CRUD in console
 - [ ] Review queue for discovery pipeline
 
 ### Phase 2 — Dynamic Graph
 
-- [ ] `services/console` (auth + console management)
+- [x] `services/console` (auth + console management)
 - [ ] `services/discovery` (TypeScript) — arXiv / social media ingestion
 - [ ] LLM pipeline for node/edge generation
 - [ ] Automated community re-detection
@@ -234,8 +254,8 @@ All `/api/graph/*` endpoints require a valid token (`?token=xxx`).
 
 - Rate limiting (60 req/min per IP)
 - Token-based authentication (temporary tokens, 5 min TTL)
-- HMAC request signing with nonce replay protection
-- AES-GCM response encryption
+- HMAC request signing with nonce replay protection (module exists but not enabled)
+- AES-GCM response encryption (module exists but not enabled)
 - CORS with origin/referer validation
 
 ***
