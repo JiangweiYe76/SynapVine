@@ -179,7 +179,7 @@ const columns = [
     header: 'Parent',
     cell: (info) => {
       const v = info.getValue()
-      return v === null
+      return v == null
         ? h('span', { class: 'text-muted-foreground' }, '—')
         : h('span', { class: 'font-mono text-xs' }, String(v))
     },
