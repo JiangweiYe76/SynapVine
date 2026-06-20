@@ -274,6 +274,7 @@ endpoint tables are intentionally not maintained in this document.
 
 ## Commit & PR Guidelines
 
+- **NEVER** run `git commit` or `git push` unless the user explicitly asks you to. Making code changes does NOT mean you should commit them. Always wait for the user to review and explicitly request a commit or push.
 - Keep commits focused. A single commit should address one concern (feature, fix, or refactor).
 - If you modify both Go and Vue code, mention both in the commit message (e.g., `feat: add node filtering to API and UI`).
 - Run `go mod tidy` in the affected `services/<name>/` directory before committing Go changes.
