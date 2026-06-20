@@ -1,10 +1,10 @@
-import { ref, watch, onMounted, type InjectionKey } from 'vue'
+import { ref, watch, onMounted, type InjectionKey, type Ref } from 'vue'
 import { inject } from 'vue'
 
 export type Theme = 'dark' | 'light'
 
 export interface ThemeComposable {
-  theme: Theme
+  theme: Ref<Theme>
   toggleTheme: () => void
   setTheme: (t: Theme) => void
 }

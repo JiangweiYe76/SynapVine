@@ -466,7 +466,7 @@ func buildCommunityIDMap(coreCommunities []coreclient.CoreCommunity) map[string]
 // convertCommunities transforms core communities (string IDs) into portal
 // communities (integer IDs) using the provided mapping. The result is
 // wrapped in a synthetic root node (id=0) so the frontend sidebar can
-// render "全部" (All) as a container with the real communities as
+// render "All" as a container with the real communities as
 // children. This matches the shape the mock data provides.
 func convertCommunities(coreCommunities []coreclient.CoreCommunity, mapping map[string]int) []model.HierarchicalCommunity {
 	children := make([]model.HierarchicalCommunity, 0, len(coreCommunities))

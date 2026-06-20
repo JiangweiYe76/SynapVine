@@ -1,11 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import { inject, type Ref } from 'vue'
-import type { GraphState, GraphActions } from '../composables/useGraph'
-
 const { t } = useI18n()
-
-const graph = inject<GraphState & GraphActions>('graph')
 
 const props = defineProps<{
   stats: { total_nodes: number; total_edges: number; community_count: number } | null
