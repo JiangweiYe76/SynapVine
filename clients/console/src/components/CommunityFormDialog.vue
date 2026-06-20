@@ -136,7 +136,7 @@ watch(() => props.open, (isOpen) => {
         name: props.community.name,
         color: isPreset ? props.community.color : presetColors[0],
         domain: props.community.domain,
-        parentId: props.community.parent_id,
+        parentId: props.community.parent_id ?? null,
         useCustomColor: !isPreset,
       }
     } else {
