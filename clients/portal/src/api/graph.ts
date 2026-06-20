@@ -48,8 +48,8 @@ async function mockFetch(path: string, params?: Record<string, string>): Promise
 
     case 'expand': {
       const expandParams: Parameters<typeof mock.expand>[0] = { ids: params?.ids || '' }
-      if (params?.include_edges === 'true' || params?.include_edges === true) expandParams.include_edges = true
-      if (params?.include_neighbors === 'true' || params?.include_neighbors === true) expandParams.include_neighbors = true
+      if (params?.include_edges === 'true') expandParams.include_edges = true
+      if (params?.include_neighbors === 'true') expandParams.include_neighbors = true
       return mock.expand(expandParams)
     }
 
@@ -108,7 +108,7 @@ export async function getToken(): Promise<string> {
   }
   const data = await response.json()
   token = data.token
-  return token
+  return token ?? ''
 }
 
 export async function getSummary(): Promise<GraphSummary> {
@@ -140,7 +140,7 @@ export async function getNodeEdges(id: string, direction?: string): Promise<Node
 }
 
 export async function searchNodes(query: string, limit?: number): Promise<SearchResponse> {
-  return fetchAPI<SearchResponse>('/search', { q: query, limit: limit?.toString() })
+  return fetchAPI<SearchResponse>('/search', { q: query, ...(limit != null ? { limit: String(limit) } : {}) })
 }
 
 export async function expandNodes(params: {
@@ -148,5 +148,8 @@ export async function expandNodes(params: {
   include_edges?: boolean
   include_neighbors?: boolean
 }): Promise<ExpandResponse> {
-  return fetchAPI<ExpandResponse>('/expand', params as Record<string, string>)
+  const queryParams: Record<string, string> = { ids: params.ids }
+  if (params.include_edges) queryParams.include_edges = 'true'
+  if (params.include_neighbors) queryParams.include_neighbors = 'true'
+  return fetchAPI<ExpandResponse>('/expand', queryParams)
 }
