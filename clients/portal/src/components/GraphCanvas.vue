@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, inject, type Ref } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import ForceGraph3D from '3d-force-graph'
 import * as THREE from 'three'
 import type { GraphNode, GraphEdge, Community } from '../types/graph'
@@ -27,10 +27,6 @@ interface SavedCamera {
   lookAt: { x: number; y: number; z: number }
 }
 const savedCamera = ref<SavedCamera | null>(null)
-
-function getNodeColor(node: any) {
-  return PALETTE[node.community_id % PALETTE.length]
-}
 
 function getFilteredColor(node: any, communityIds: number[]) {
   const base = PALETTE[node.community_id % PALETTE.length]
@@ -85,46 +81,61 @@ function getBackgroundColor(): string {
 
 function relationColor(relation: string): string {
   const colors: Record<string, string> = {
-    // 架构/继承 — 柔蓝灰
-    '架构基础': '#5a7a8a',
-    '核心机制': '#5a7a8a',
-    '机制组成': '#5a7a8a',
-    '基础架构': '#5a7a8a',
-    '骨架网络': '#5a7a8a',
-    '仅用编码器': '#5a7a8a',
-    '仅用解码器': '#5a7a8a',
-    '变体基础': '#5a7a8a',
-    '基础模型': '#5a7a8a',
-    '取代': '#5a7a8a',
-    '统一框架': '#5a7a8a',
-    '理论基础': '#5a7a8a',
-    '子领域': '#5a7a8a',
-    '范式': '#5a7a8a',
-    // 训练/优化 — 柔绿
-    '训练': '#6a8a6a',
-    '优化': '#6a8a6a',
-    '正则化': '#6a8a6a',
-    '加速推理': '#6a8a6a',
-    '可组合': '#6a8a6a',
-    '训练方式': '#6a8a6a',
-    '超参数': '#6a8a6a',
-    // 演进/改进 — 柔紫
-    '改进': '#7a6a8a',
-    '升级迭代': '#7a6a8a',
-    '优化改进': '#7a6a8a',
-    '变体': '#7a6a8a',
-    '扩展': '#7a6a8a',
-    '简化变体': '#7a6a8a',
-    '增强': '#7a6a8a',
-    '替代方案': '#7a6a8a',
-    '提升推理': '#7a6a8a',
-    '知识增强': '#7a6a8a',
-    '推理增强': '#7a6a8a',
-    '被超越': '#7a6a8a',
-    // 同领域
-    '同领域': '#5a6a6a',
-    // 跨领域
-    '跨领域': '#4a4a5a',
+    // Architecture / inheritance — soft blue-gray
+    'architecture foundation': '#5a7a8a',
+    'core mechanism': '#5a7a8a',
+    'component': '#5a7a8a',
+    'base architecture': '#5a7a8a',
+    'backbone network': '#5a7a8a',
+    'encoder only': '#5a7a8a',
+    'decoder only': '#5a7a8a',
+    'variant foundation': '#5a7a8a',
+    'foundation model': '#5a7a8a',
+    'replaces': '#5a7a8a',
+    'unified framework': '#5a7a8a',
+    'theoretical basis': '#5a7a8a',
+    'subfield': '#5a7a8a',
+    'paradigm': '#5a7a8a',
+    'implementation': '#5a7a8a',
+    'depends on': '#5a7a8a',
+    'applied to CV': '#5a7a8a',
+    'used for': '#5a7a8a',
+    'image encoder': '#5a7a8a',
+    'uses': '#5a7a8a',
+    'uses CNN': '#5a7a8a',
+    'retrieval dependency': '#5a7a8a',
+    'challenge': '#5a7a8a',
+    'based on': '#5a7a8a',
+    // Training / optimization — soft green
+    'training': '#6a8a6a',
+    'optimization': '#6a8a6a',
+    'regularization': '#6a8a6a',
+    'accelerates inference': '#6a8a6a',
+    'composable': '#6a8a6a',
+    'composable with': '#6a8a6a',
+    'training method': '#6a8a6a',
+    'hyperparameter': '#6a8a6a',
+    'optimizes': '#6a8a6a',
+    // Evolution / improvement — soft purple
+    'improvement': '#7a6a8a',
+    'iteration': '#7a6a8a',
+    'optimized variant': '#7a6a8a',
+    'variant': '#7a6a8a',
+    'extends': '#7a6a8a',
+    'simplified variant': '#7a6a8a',
+    'enhancement': '#7a6a8a',
+    'enhances': '#7a6a8a',
+    'alternative': '#7a6a8a',
+    'enables': '#7a6a8a',
+    'improves': '#7a6a8a',
+    'improves reasoning': '#7a6a8a',
+    'reasoning enhancement': '#7a6a8a',
+    'knowledge enhancement': '#7a6a8a',
+    'surpassed by': '#7a6a8a',
+    // Same domain
+    'same domain': '#5a6a6a',
+    // Cross domain
+    'cross domain': '#4a4a5a',
   }
   return colors[relation] || '#5a6a6a'
 }
@@ -156,7 +167,7 @@ function initGraph() {
     relation: e.relation
   }))
 
-  graph = ForceGraph3D({ controlType: 'orbit' })(containerRef.value)
+  graph = (ForceGraph3D as any)({ controlType: 'orbit' })(containerRef.value)
     .graphData({ nodes: nodeData, links: linkData })
     .nodeId('id')
     .nodeVal('influence_score')

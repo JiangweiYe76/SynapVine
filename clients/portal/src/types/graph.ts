@@ -5,8 +5,8 @@ export interface GraphNode {
   influence_score: number
   description: string
   degree: number
-  first_appeared?: string    // 首次出现年月 (YYYY-MM)
-  milestones?: Milestone[]   // 关键里程碑
+  first_appeared?: string    // First appearance date (YYYY-MM)
+  milestones?: Milestone[]   // Key milestones
   x?: number
   y?: number
   z?: number
