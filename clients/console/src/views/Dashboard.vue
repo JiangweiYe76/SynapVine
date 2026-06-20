@@ -20,6 +20,7 @@ const statCards = computed(() => [
 const quickActions = [
   { name: 'Manage Nodes', description: 'View and edit knowledge graph nodes', path: '/nodes' },
   { name: 'Manage Edges', description: 'View and edit relationships', path: '/edges' },
+  { name: 'Manage Communities', description: 'View and edit community structure', path: '/communities' },
 ]
 
 async function fetchStats() {
