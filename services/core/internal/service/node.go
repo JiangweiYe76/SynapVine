@@ -64,6 +64,7 @@ func (s *NodeService) List(ctx context.Context, offset, limit int, search string
 		Pagination: model.Pagination{
 			Offset:  offset,
 			Limit:   limit,
+			Total:   total,
 			HasMore: offset+limit < total,
 		},
 	}, nil
