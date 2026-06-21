@@ -161,6 +161,12 @@ func (h *NodeHandler) Delete(c *fiber.Ctx) error {
 	id := c.Params("id")
 
 	if err := h.svc.Delete(c.Context(), id); err != nil {
+		if errors.Is(err, service.ErrNodeNotFound) {
+			return c.Status(404).JSON(model.ErrorResponse{
+				Error:   "node_not_found",
+				Message: "Node with the specified ID not found",
+			})
+		}
 		slog.Error("node_delete_failed", slog.String("id", id), slog.Any("error", err))
 		return c.Status(500).JSON(model.ErrorResponse{
 			Error:   "delete_failed",

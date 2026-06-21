@@ -157,8 +157,7 @@ func (r *CommunityRepository) Exists(ctx context.Context, id string) (bool, erro
 	if err != nil {
 		return false, fmt.Errorf("failed to check community existence: %w", err)
 	}
-	count := records[0].Values[0].(int64)
-	return count > 0, nil
+	return recordCount(records) > 0, nil
 }
 
 // ClearAll removes all Community nodes and BELONGS_TO relationships.
@@ -205,8 +204,7 @@ func (r *CommunityRepository) HasChildren(ctx context.Context, id string) (bool,
 	if err != nil {
 		return false, fmt.Errorf("failed to check community children: %w", err)
 	}
-	count := records[0].Values[0].(int64)
-	return count > 0, nil
+	return recordCount(records) > 0, nil
 }
 
 // AssignNodesBatch creates BELONGS_TO relationships between Concepts and Communities.

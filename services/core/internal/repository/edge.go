@@ -36,11 +36,12 @@ func (r *EdgeRepository) List(ctx context.Context, offset, limit int) ([]model.E
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to count edges: %w", err)
 	}
-	total := int(countResult[0].Values[0].(int64))
+	total := int(recordCount(countResult))
 
 	query := fmt.Sprintf(`
 		MATCH (s:Concept)-[r:RELATES_TO]->(t:Concept)
 		RETURN %s
+		ORDER BY s.id, t.id
 		SKIP $offset LIMIT $limit
 	`, edgeSelectFields)
 	records, err := r.neo.Query(ctx, query, map[string]any{
@@ -74,7 +75,7 @@ func (r *EdgeRepository) Search(ctx context.Context, q string, offset, limit int
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to count edge search results: %w", err)
 	}
-	total := int(countResult[0].Values[0].(int64))
+	total := int(recordCount(countResult))
 
 	query := fmt.Sprintf(`
 		MATCH (s:Concept)-[r:RELATES_TO]->(t:Concept)
@@ -82,6 +83,7 @@ func (r *EdgeRepository) Search(ctx context.Context, q string, offset, limit int
 		   OR toLower(t.id) CONTAINS $q
 		   OR toLower(r.relation) CONTAINS $q
 		RETURN %s
+		ORDER BY s.id, t.id
 		SKIP $offset LIMIT $limit
 	`, edgeSelectFields)
 	records, err := r.neo.Query(ctx, query, map[string]any{
@@ -134,8 +136,7 @@ func (r *EdgeRepository) Exists(ctx context.Context, source, target string) (boo
 	if err != nil {
 		return false, fmt.Errorf("failed to check edge existence: %w", err)
 	}
-	count := records[0].Values[0].(int64)
-	return count > 0, nil
+	return recordCount(records) > 0, nil
 }
 
 // EndpointExists reports whether the Concept node with the given id exists.
@@ -146,8 +147,7 @@ func (r *EdgeRepository) EndpointExists(ctx context.Context, id string) (bool, e
 	if err != nil {
 		return false, fmt.Errorf("failed to check node existence: %w", err)
 	}
-	count := records[0].Values[0].(int64)
-	return count > 0, nil
+	return recordCount(records) > 0, nil
 }
 
 // Create inserts a new RELATES_TO relationship. The caller must have
@@ -232,11 +232,7 @@ func (r *EdgeRepository) Delete(ctx context.Context, source, target string) (boo
 	if err != nil {
 		return false, fmt.Errorf("failed to delete edge: %w", err)
 	}
-	deleted := int64(0)
-	if len(records) > 0 {
-		deleted = records[0].Values[0].(int64)
-	}
-	return deleted > 0, nil
+	return recordCount(records) > 0, nil
 }
 
 func recordToEdge(rec *neo4j.Record) model.Edge {
