@@ -20,12 +20,14 @@ func NewTokenStore() *TokenStore {
 	}
 }
 
-// Issue generates and stores a new temporary access token
-// Returns the generated token string (valid for 5 minutes)
-func (ts *TokenStore) Issue() string {
+// Issue generates and stores a new temporary access token.
+// Returns the generated token string (valid for 5 minutes).
+func (ts *TokenStore) Issue() (string, error) {
 	// Generate a cryptographically secure random token (32 bytes = 64 hex chars)
 	b := make([]byte, 32)
-	rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
 	token := hex.EncodeToString(b)
 
 	// Store token with 5-minute expiration
@@ -33,7 +35,7 @@ func (ts *TokenStore) Issue() string {
 	ts.tokens[token] = time.Now().Add(5 * time.Minute)
 	ts.mu.Unlock()
 
-	return token
+	return token, nil
 }
 
 // Validate checks if a token is valid (exists and not expired)

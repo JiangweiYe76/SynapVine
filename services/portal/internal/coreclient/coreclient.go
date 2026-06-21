@@ -164,7 +164,7 @@ func (c *Client) ListNodes(ctx context.Context, offset, limit int, search string
 // GetNode fetches a single node by id from the core service.
 // Returns (nil, nil) when the node does not exist (404).
 func (c *Client) GetNode(ctx context.Context, id string) (*CoreNode, error) {
-	resp, err := c.do(ctx, "GET", c.baseURL+"/api/nodes/"+id, nil)
+	resp, err := c.do(ctx, "GET", c.baseURL+"/api/nodes/"+url.PathEscape(id), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to core: %w", err)
 	}

@@ -119,9 +119,16 @@ func (s *NodeService) Update(ctx context.Context, id string, req model.NodeUpdat
 }
 
 // Delete deletes a node by ID.
+// Returns ErrNodeNotFound when the node does not exist.
 func (s *NodeService) Delete(ctx context.Context, id string) error {
-	_, err := s.repo.Delete(ctx, id)
-	return err
+	existed, err := s.repo.Delete(ctx, id)
+	if err != nil {
+		return err
+	}
+	if !existed {
+		return ErrNodeNotFound
+	}
+	return nil
 }
 
 // GetAll returns all nodes and edges in the graph.

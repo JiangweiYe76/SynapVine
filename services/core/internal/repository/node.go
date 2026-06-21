@@ -24,11 +24,13 @@ func NewNodeRepository(neo *db.Neo4j) *NodeRepository {
 
 // nodeSelectFields is the standard RETURN clause used by all node read paths.
 // community_id is computed via the BELONGS_TO relationship to a Community.
+// degree is the count of RELATES_TO relationships (both directions).
 const nodeSelectFields = `
 		n.id AS id, n.name AS name,
 		n.description AS description, n.influence_score AS influence_score,
 		n.first_appeared AS first_appeared, n.milestones AS milestones,
-		[(n)-[:BELONGS_TO]->(c:Community) | c.id][0] AS community_id
+		[(n)-[:BELONGS_TO]->(c:Community) | c.id][0] AS community_id,
+		size((n)-[:RELATES_TO]-()) AS degree
 	`
 
 // List returns paginated nodes.
@@ -38,11 +40,12 @@ func (r *NodeRepository) List(ctx context.Context, offset, limit int) ([]model.N
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to count nodes: %w", err)
 	}
-	total := int(countResult[0].Values[0].(int64))
+	total := int(recordCount(countResult))
 
 	query := fmt.Sprintf(`
 		MATCH (n:Concept)
 		RETURN %s
+		ORDER BY n.name
 		SKIP $offset LIMIT $limit
 	`, nodeSelectFields)
 	records, err := r.neo.Query(ctx, query, map[string]any{
@@ -71,12 +74,13 @@ func (r *NodeRepository) Search(ctx context.Context, q string, offset, limit int
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to count search results: %w", err)
 	}
-	total := int(countResult[0].Values[0].(int64))
+	total := int(recordCount(countResult))
 
 	query := fmt.Sprintf(`
 		MATCH (n:Concept)
 		WHERE toLower(n.name) CONTAINS $q OR toLower(n.id) CONTAINS $q OR toLower(n.description) CONTAINS $q
 		RETURN %s
+		ORDER BY n.name
 		SKIP $offset LIMIT $limit
 	`, nodeSelectFields)
 	records, err := r.neo.Query(ctx, query, map[string]any{
@@ -234,13 +238,15 @@ func (r *NodeRepository) Update(ctx context.Context, id string, req model.NodeUp
 }
 
 // Delete deletes a Concept node by ID.
+// Returns (true, nil) when the node existed and was deleted,
+// (false, nil) when the node does not exist.
 func (r *NodeRepository) Delete(ctx context.Context, id string) (bool, error) {
-	cypher := `MATCH (n:Concept {id: $id}) DETACH DELETE n`
-	err := r.neo.Execute(ctx, cypher, map[string]any{"id": id})
+	cypher := `MATCH (n:Concept {id: $id}) DETACH DELETE n RETURN count(n) AS deleted`
+	records, err := r.neo.QueryWrite(ctx, cypher, map[string]any{"id": id})
 	if err != nil {
 		return false, fmt.Errorf("failed to delete node: %w", err)
 	}
-	return true, nil
+	return recordCount(records) > 0, nil
 }
 
 // Exists checks if a node exists.
@@ -250,8 +256,7 @@ func (r *NodeRepository) Exists(ctx context.Context, id string) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("failed to check node existence: %w", err)
 	}
-	count := records[0].Values[0].(int64)
-	return count > 0, nil
+	return recordCount(records) > 0, nil
 }
 
 // TimelineRange returns the [minYear, maxYear] span covered by the
@@ -335,6 +340,7 @@ func recordToNode(rec *neo4j.Record) model.Node {
 		InfluenceScore: valueOrDefault(rec, "influence_score", 0.0),
 		FirstAppeared:  valueOrDefault(rec, "first_appeared", ""),
 		CommunityID:    valueOrNilString(rec, "community_id"),
+		Degree:         int(valueOrDefault(rec, "degree", int64(0))),
 	}
 	if milestones, ok := rec.Get("milestones"); ok && milestones != nil {
 		if arr, ok := milestones.([]any); ok {
@@ -366,4 +372,17 @@ func valueOrDefault[T any](rec *neo4j.Record, key string, def T) T {
 		}
 	}
 	return def
+}
+
+// recordCount safely extracts the int64 count from the first column of the
+// first record. It returns 0 when the result set is empty or the value is
+// not an int64, preventing panics from unchecked type assertions.
+func recordCount(records []*neo4j.Record) int64 {
+	if len(records) == 0 || len(records[0].Values) == 0 {
+		return 0
+	}
+	if v, ok := records[0].Values[0].(int64); ok {
+		return v
+	}
+	return 0
 }

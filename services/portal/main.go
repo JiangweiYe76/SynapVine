@@ -60,17 +60,12 @@ func main() {
 		AppName: "AI-Graph Server",
 	})
 
-	// Apply rate limiting middleware (60 requests per minute per IP)
+	// Apply rate limiting middleware (60 requests per minute per IP).
+	// Uses c.IP() directly to prevent clients from bypassing rate limits
+	// by spoofing the X-Forwarded-For header.
 	app.Use(limiter.New(limiter.Config{
 		Max:        60,
 		Expiration: 1 * time.Minute,
-		KeyGenerator: func(c *fiber.Ctx) string {
-			// Use X-Forwarded-For header if present, otherwise use IP
-			if xff := c.Get("X-Forwarded-For"); xff != "" {
-				return strings.Split(xff, ",")[0]
-			}
-			return c.IP()
-		},
 		LimitReached: func(c *fiber.Ctx) error {
 			return c.Status(429).JSON(fiber.Map{
 				"error":       "rate_limit_exceeded",
@@ -82,9 +77,10 @@ func main() {
 	// Apply request logging middleware
 	app.Use(middleware.Logger())
 
-	// Apply CORS middleware
+	// Apply CORS middleware.
+	// Configure allowed origins via ALLOWED_ORIGIN env var (default: http://localhost:5173).
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     cfg.AllowedOrigin + ", http://localhost:5173",
+		AllowOrigins:     cfg.AllowedOrigin,
 		AllowMethods:     "GET, POST",
 		AllowCredentials: true,
 	}))
@@ -99,8 +95,16 @@ func main() {
 				"message": "Invalid client",
 			})
 		}
+		token, err := tokenStore.Issue()
+		if err != nil {
+			slog.Error("token_issue_failed", slog.Any("error", err))
+			return c.Status(500).JSON(fiber.Map{
+				"error":   "token_error",
+				"message": "Failed to generate token",
+			})
+		}
 		return c.JSON(fiber.Map{
-			"token": tokenStore.Issue(),
+			"token": token,
 		})
 	})
 
