@@ -1,0 +1,72 @@
+package main
+
+import (
+	"context"
+	"log/slog"
+	"os"
+
+	"discovery/internal/config"
+	"discovery/internal/consoleclient"
+	"discovery/internal/coreclient"
+	"discovery/internal/extractor"
+	"discovery/internal/handler"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
+)
+
+func main() {
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}))
+	slog.SetDefault(logger)
+
+	cfg := config.Load()
+	slog.Info("configuration_loaded",
+		slog.String("port", cfg.Port),
+		slog.String("console_url", cfg.ConsoleURL),
+		slog.String("core_url", cfg.CoreURL),
+	)
+
+	// Core service: health check.
+	core := coreclient.New(cfg.CoreURL)
+	if err := core.Health(context.Background()); err != nil {
+		slog.Error("core_health_check_failed", slog.Any("error", err))
+		os.Exit(1)
+	}
+	slog.Info("core_health_check_passed")
+
+	// Console service: health check.
+	console := consoleclient.New(cfg.ConsoleURL)
+	if err := console.Health(context.Background()); err != nil {
+		slog.Error("console_health_check_failed", slog.Any("error", err))
+		os.Exit(1)
+	}
+	slog.Info("console_health_check_passed")
+
+	// Extractor service.
+	ext := extractor.NewService()
+
+	// Handler.
+	analyzeHandler := handler.NewAnalyzeHandler(core, console, ext)
+
+	app := fiber.New(fiber.Config{
+		AppName: "AI-Graph Discovery Server",
+	})
+
+	app.Use(cors.New(cors.Config{
+		AllowOrigins: "*",
+		AllowMethods: "GET, POST, OPTIONS",
+		AllowHeaders: "Content-Type, Authorization",
+	}))
+
+	app.Get("/health", analyzeHandler.Health)
+	app.Post("/api/analyze", analyzeHandler.Analyze)
+
+	slog.Info("discovery_server_starting", slog.String("port", cfg.Port))
+
+	if err := app.Listen(":" + cfg.Port); err != nil {
+		slog.Error("server_failed", slog.Any("error", err))
+		os.Exit(1)
+	}
+}
