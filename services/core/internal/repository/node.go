@@ -30,7 +30,7 @@ const nodeSelectFields = `
 		n.description AS description, n.influence_score AS influence_score,
 		n.first_appeared AS first_appeared, n.milestones AS milestones,
 		[(n)-[:BELONGS_TO]->(c:Community) | c.id][0] AS community_id,
-		size((n)-[:RELATES_TO]-()) AS degree
+		COUNT { (n)-[:RELATES_TO]-() } AS degree
 	`
 
 // List returns paginated nodes.
