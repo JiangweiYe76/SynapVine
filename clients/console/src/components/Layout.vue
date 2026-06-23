@@ -5,6 +5,9 @@ import {
   CircleDot,
   GitBranch,
   Layers,
+  FileText,
+  ClipboardCheck,
+  Brain,
   LogOut,
   Menu,
 } from '@lucide/vue'
@@ -38,6 +41,9 @@ const navItems = [
   { name: 'Nodes', path: '/nodes', icon: CircleDot },
   { name: 'Edges', path: '/edges', icon: GitBranch },
   { name: 'Communities', path: '/communities', icon: Layers },
+  { name: 'Papers', path: '/papers', icon: FileText },
+  { name: 'Review', path: '/review', icon: ClipboardCheck },
+  { name: 'LLM', path: '/llm', icon: Brain },
 ]
 
 function isActive(path: string) {
