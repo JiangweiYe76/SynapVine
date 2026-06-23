@@ -99,6 +99,65 @@ async function mockFetch<T>(path: string, options?: RequestInit): Promise<T> {
     }
   }
 
+  // --- Papers ---
+  if (pathname === 'papers' && method === 'GET') {
+    const offset = parseInt(params.get('offset') ?? '0')
+    const limit = parseInt(params.get('limit') ?? '20')
+    return mock.listPapers(offset, limit) as T
+  }
+  if (pathname === 'papers' && method === 'POST') {
+    return mock.createPaper(JSON.parse(options!.body as string)) as T
+  }
+  const paperMatch = pathname.match(/^papers\/(.+)$/)
+  if (paperMatch) {
+    const id = paperMatch[1]
+    if (method === 'GET') return mock.getPaper(id) as T
+    if (method === 'PUT') return mock.updatePaper(id, JSON.parse(options!.body as string)) as T
+    if (method === 'DELETE') { mock.deletePaper(id); return undefined as T }
+  }
+
+  // --- Review Queue ---
+  if (pathname === 'review-queue' && method === 'GET') {
+    const offset = parseInt(params.get('offset') ?? '0')
+    const limit = parseInt(params.get('limit') ?? '20')
+    const status = params.get('status') ?? ''
+    return mock.listReviewItems(offset, limit, status) as T
+  }
+  const reviewMatch = pathname.match(/^review-queue\/([^/]+)\/(approve|reject)$/)
+  if (reviewMatch) {
+    const id = reviewMatch[1]
+    const action = reviewMatch[2]
+    const body = JSON.parse(options!.body as string)
+    if (action === 'approve') return mock.approveReviewItem(id, body.reviewer_id, body.review_notes) as T
+    if (action === 'reject') { mock.rejectReviewItem(id, body.reviewer_id, body.review_notes); return undefined as T }
+  }
+  const reviewItemMatch = pathname.match(/^review-queue\/([^/]+)$/)
+  if (reviewItemMatch && method === 'GET') {
+    return mock.getReviewItem(reviewItemMatch[1]) as T
+  }
+
+  // --- LLM Providers ---
+  if (pathname === 'llm/providers/default' && method === 'GET') {
+    return mock.getDefaultLLMProvider() as T
+  }
+  if (pathname === 'llm/providers' && method === 'GET') {
+    return mock.listLLMProviders() as T
+  }
+  if (pathname === 'llm/providers' && method === 'POST') {
+    return mock.createLLMProvider(JSON.parse(options!.body as string)) as T
+  }
+  const llmTestMatch = pathname.match(/^llm\/providers\/([^/]+)\/test$/)
+  if (llmTestMatch && method === 'POST') {
+    return mock.testLLMProvider(llmTestMatch[1]) as T
+  }
+  const llmMatch = pathname.match(/^llm\/providers\/([^/]+)$/)
+  if (llmMatch) {
+    const id = llmMatch[1]
+    if (method === 'GET') return mock.getLLMProvider(id) as T
+    if (method === 'PUT') return mock.updateLLMProvider(id, JSON.parse(options!.body as string)) as T
+    if (method === 'DELETE') { mock.deleteLLMProvider(id); return undefined as T }
+  }
+
   throw new Error(`Unknown mock endpoint: ${path}`)
 }
 
