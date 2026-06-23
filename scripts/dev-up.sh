@@ -103,7 +103,9 @@ for i in $(seq 1 90); do
 done
 
 # 2. Core (always started; both portals and consoles need it)
-start_backend core services/core "$CORE_PORT" PORT="$CORE_PORT"
+start_backend core services/core "$CORE_PORT" \
+  PORT="$CORE_PORT" \
+  MYSQL_DSN="synapvine:synapvine123@tcp(localhost:3306)/synapvine_console?parseTime=true"
 wait_for "$CORE_URL/health" "healthy" 30 || exit 1
 
 # 3. Frontends and (optional) extra backends per stack

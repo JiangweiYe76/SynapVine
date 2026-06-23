@@ -34,6 +34,24 @@ const router = createRouter({
       component: () => import('../views/communities/List.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/papers',
+      name: 'Papers',
+      component: () => import('../views/papers/List.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/review',
+      name: 'Review Queue',
+      component: () => import('../views/review/List.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/llm',
+      name: 'LLM Providers',
+      component: () => import('../views/llm/Providers.vue'),
+      meta: { requiresAuth: true },
+    },
   ],
 })
 

@@ -1,5 +1,7 @@
 import type { User } from '../types/auth'
 import type { Node, Edge } from '../types/graph'
+import type { Paper, ReviewQueueItem } from '../types/paper'
+import type { LLMProvider } from '../types/llm'
 
 export const mockUser: User = {
   id: '1',
@@ -1419,4 +1421,102 @@ export const mockEdges: Edge[] = [
   { source: 'yi', target: 'transformer', weight: 0.85, relation: 'based on architecture' },
   { source: 'cross_entropy', target: 'softmax', weight: 0.88, relation: 'loss computation' },
   { source: 'cross_entropy', target: 'backpropagation', weight: 0.85, relation: 'gradient computation' },
+]
+
+export const mockPapers: Paper[] = [
+  {
+    id: 'paper-001',
+    title: 'Attention Is All You Need',
+    authors: 'Vaswani, Shazeer, Parmar et al.',
+    source_url: 'https://arxiv.org/abs/1706.03762',
+    raw_text: 'The dominant sequence transduction models are based on complex recurrent or convolutional neural networks...',
+    status: 'merged',
+    created_at: '2024-01-15T10:00:00Z',
+    updated_at: '2024-01-16T14:30:00Z',
+  },
+  {
+    id: 'paper-002',
+    title: 'BERT: Pre-training of Deep Bidirectional Transformers',
+    authors: 'Devlin, Chang, Lee, Toutanova',
+    source_url: 'https://arxiv.org/abs/1810.04805',
+    raw_text: 'We introduce a new language representation model called BERT...',
+    status: 'analyzed',
+    created_at: '2024-02-10T08:00:00Z',
+    updated_at: '2024-02-10T09:15:00Z',
+  },
+  {
+    id: 'paper-003',
+    title: 'Scaling Laws for Neural Language Models',
+    authors: 'Kaplan, McCandlish, Henighan et al.',
+    source_url: 'https://arxiv.org/abs/2001.08361',
+    raw_text: 'We study empirical scaling laws for language model performance on the cross-entropy loss...',
+    status: 'uploaded',
+    created_at: '2024-03-05T12:00:00Z',
+    updated_at: '2024-03-05T12:00:00Z',
+  },
+]
+
+export const mockReviewItems: ReviewQueueItem[] = [
+  {
+    id: 'review-001',
+    paper_id: 'paper-002',
+    extracted_nodes: [
+      { name: 'BERT', description: 'Bidirectional encoder pre-trained model', relevance: 10 },
+      { name: 'Masked LM', description: 'Masked language model pre-training objective', relevance: 8.5 },
+      { name: 'Next Sentence Prediction', description: 'Binary classification pre-training task', relevance: 7 },
+    ],
+    extracted_edges: [
+      { source: 'BERT', target: 'Transformer', relation: 'based on architecture', weight: 0.96 },
+      { source: 'BERT', target: 'Masked LM', relation: 'uses objective', weight: 0.95 },
+      { source: 'BERT', target: 'Next Sentence Prediction', relation: 'uses objective', weight: 0.8 },
+    ],
+    status: 'pending',
+    reviewer_id: null,
+    review_notes: null,
+    created_at: '2024-02-10T09:20:00Z',
+    reviewed_at: null,
+  },
+  {
+    id: 'review-002',
+    paper_id: 'paper-001',
+    extracted_nodes: [
+      { name: 'Transformer', description: 'Attention-based sequence model', relevance: 10 },
+      { name: 'Self-Attention', description: 'Intra-sequence attention mechanism', relevance: 9 },
+    ],
+    extracted_edges: [
+      { source: 'Transformer', target: 'Self-Attention', relation: 'core mechanism', weight: 0.98 },
+    ],
+    status: 'approved',
+    reviewer_id: '1',
+    review_notes: 'Good extraction, merged into graph',
+    created_at: '2024-01-15T11:00:00Z',
+    reviewed_at: '2024-01-16T14:30:00Z',
+  },
+]
+
+export const mockLLMProviders: LLMProvider[] = [
+  {
+    id: 'llm-001',
+    name: 'deepseek-chat',
+    base_url: 'https://api.deepseek.com/v1',
+    model: 'deepseek-chat',
+    max_tokens: 4096,
+    temperature: 0.7,
+    is_default: true,
+    is_enabled: true,
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-01T00:00:00Z',
+  },
+  {
+    id: 'llm-002',
+    name: 'gpt-4o',
+    base_url: 'https://api.openai.com/v1',
+    model: 'gpt-4o',
+    max_tokens: 8192,
+    temperature: 0.5,
+    is_default: false,
+    is_enabled: true,
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-01T00:00:00Z',
+  },
 ]

@@ -272,6 +272,123 @@ func (c *Client) DeleteCommunity(ctx context.Context, id string) (bool, error) {
 	return true, nil
 }
 
+// --- Papers ---
+
+// ListPapers returns a paginated list of papers from the core service.
+func (c *Client) ListPapers(ctx context.Context, offset, limit int) (*model.PapersListResponse, error) {
+	params := url.Values{}
+	params.Set("offset", fmt.Sprintf("%d", offset))
+	params.Set("limit", fmt.Sprintf("%d", limit))
+	var resp model.PapersListResponse
+	if err := c.doJSON(ctx, http.MethodGet, "/api/papers?"+params.Encode(), nil, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// GetPaper fetches a single paper by ID.
+func (c *Client) GetPaper(ctx context.Context, id string) (*model.Paper, error) {
+	var paper model.Paper
+	err := c.doJSON(ctx, http.MethodGet, "/api/papers/"+id, nil, &paper)
+	if err != nil {
+		var httpErr *HTTPStatusError
+		if errors.As(err, &httpErr) && httpErr.StatusCode == http.StatusNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &paper, nil
+}
+
+// CreatePaper creates a new paper in the core service.
+func (c *Client) CreatePaper(ctx context.Context, req model.PaperCreateRequest) (*model.Paper, error) {
+	var paper model.Paper
+	if err := c.doJSON(ctx, http.MethodPost, "/api/papers", req, &paper); err != nil {
+		return nil, err
+	}
+	return &paper, nil
+}
+
+// UpdatePaper updates a paper in the core service.
+func (c *Client) UpdatePaper(ctx context.Context, id string, req model.PaperUpdateRequest) (*model.Paper, error) {
+	var paper model.Paper
+	err := c.doJSON(ctx, http.MethodPut, "/api/papers/"+id, req, &paper)
+	if err != nil {
+		var httpErr *HTTPStatusError
+		if errors.As(err, &httpErr) && httpErr.StatusCode == http.StatusNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &paper, nil
+}
+
+// DeletePaper removes a paper by ID.
+func (c *Client) DeletePaper(ctx context.Context, id string) (bool, error) {
+	err := c.doJSON(ctx, http.MethodDelete, "/api/papers/"+id, nil, nil)
+	if err != nil {
+		var httpErr *HTTPStatusError
+		if errors.As(err, &httpErr) && httpErr.StatusCode == http.StatusNotFound {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+// --- Review Queue ---
+
+// ListReviewItems returns a paginated list of review items from core.
+func (c *Client) ListReviewItems(ctx context.Context, offset, limit int, status string) (*model.ReviewQueueListResponse, error) {
+	params := url.Values{}
+	params.Set("offset", fmt.Sprintf("%d", offset))
+	params.Set("limit", fmt.Sprintf("%d", limit))
+	if status != "" {
+		params.Set("status", status)
+	}
+	var resp model.ReviewQueueListResponse
+	if err := c.doJSON(ctx, http.MethodGet, "/api/review-queue?"+params.Encode(), nil, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// GetReviewItem fetches a single review item by ID.
+func (c *Client) GetReviewItem(ctx context.Context, id string) (*model.ReviewQueueItem, error) {
+	var item model.ReviewQueueItem
+	err := c.doJSON(ctx, http.MethodGet, "/api/review-queue/"+id, nil, &item)
+	if err != nil {
+		var httpErr *HTTPStatusError
+		if errors.As(err, &httpErr) && httpErr.StatusCode == http.StatusNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &item, nil
+}
+
+// ApproveReviewItem approves a review item.
+func (c *Client) ApproveReviewItem(ctx context.Context, id, reviewerID, notes string) (*model.ReviewQueueItem, error) {
+	body := map[string]string{
+		"reviewer_id":  reviewerID,
+		"review_notes": notes,
+	}
+	var item model.ReviewQueueItem
+	if err := c.doJSON(ctx, http.MethodPost, "/api/review-queue/"+id+"/approve", body, &item); err != nil {
+		return nil, err
+	}
+	return &item, nil
+}
+
+// RejectReviewItem rejects a review item.
+func (c *Client) RejectReviewItem(ctx context.Context, id, reviewerID, notes string) error {
+	body := map[string]string{
+		"reviewer_id":  reviewerID,
+		"review_notes": notes,
+	}
+	return c.doJSON(ctx, http.MethodPost, "/api/review-queue/"+id+"/reject", body, nil)
+}
+
 // --- HTTP helpers ---
 
 // HTTPStatusError carries the HTTP status code returned by the core service

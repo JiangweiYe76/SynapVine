@@ -1,4 +1,4 @@
-import { mockUser, mockCredentials, mockNodes, mockEdges } from './data'
+import { mockUser, mockCredentials, mockNodes, mockEdges, mockPapers, mockReviewItems, mockLLMProviders } from './data'
 import type {
   LoginRequest,
   LogoutRequest,
@@ -17,6 +17,19 @@ import type {
   EdgeUpdateRequest,
   StatsResponse,
 } from '../types/graph'
+import type {
+  Paper,
+  PapersListResponse,
+  PaperCreateRequest,
+  ReviewQueueItem,
+  ReviewQueueListResponse,
+} from '../types/paper'
+import type {
+  LLMProvider,
+  LLMProviderCreateRequest,
+  LLMProviderListResponse,
+  LLMTestResponse,
+} from '../types/llm'
 
 // 24h access TTL, 7d refresh TTL — same as the real backend constants.
 const ACCESS_TTL_MS = 24 * 60 * 60 * 1000
@@ -38,6 +51,9 @@ export function createMockServer() {
   let refresh: MockRefreshToken | null = null
   let nodes: Node[] = [...mockNodes]
   let edges: Edge[] = [...mockEdges]
+  let papers: Paper[] = [...mockPapers]
+  let reviewItems: ReviewQueueItem[] = [...mockReviewItems]
+  let llmProviders: LLMProvider[] = [...mockLLMProviders]
 
   function newToken(prefix: string): string {
     return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
@@ -230,6 +246,141 @@ export function createMockServer() {
         total_edges: edges.length,
         avg_influence: nodes.length > 0 ? totalInfluence / nodes.length : 0,
       }
+    },
+
+    // --- Papers ---
+
+    listPapers(offset = 0, limit = 20): PapersListResponse {
+      const total = papers.length
+      return { papers: papers.slice(offset, offset + limit), total }
+    },
+
+    getPaper(id: string): Paper {
+      const p = papers.find((pp) => pp.id === id)
+      if (!p) throw new Error('Paper not found')
+      return p
+    },
+
+    createPaper(data: PaperCreateRequest): Paper {
+      const paper: Paper = {
+        id: cryptoRandomId(),
+        title: data.title,
+        authors: data.authors,
+        source_url: data.source_url || '',
+        raw_text: data.raw_text,
+        status: 'uploaded',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }
+      papers.unshift(paper)
+      return paper
+    },
+
+    updatePaper(id: string, data: Partial<Paper>): Paper {
+      const idx = papers.findIndex((p) => p.id === id)
+      if (idx === -1) throw new Error('Paper not found')
+      papers[idx] = { ...papers[idx], ...data, updated_at: new Date().toISOString() }
+      return papers[idx]
+    },
+
+    deletePaper(id: string): void {
+      const idx = papers.findIndex((p) => p.id === id)
+      if (idx === -1) throw new Error('Paper not found')
+      papers.splice(idx, 1)
+    },
+
+    // --- Review Queue ---
+
+    listReviewItems(offset = 0, limit = 20, status = ''): ReviewQueueListResponse {
+      let filtered = reviewItems
+      if (status) filtered = filtered.filter((r) => r.status === status)
+      const total = filtered.length
+      return { items: filtered.slice(offset, offset + limit), total }
+    },
+
+    getReviewItem(id: string): ReviewQueueItem {
+      const item = reviewItems.find((r) => r.id === id)
+      if (!item) throw new Error('Review item not found')
+      return item
+    },
+
+    approveReviewItem(id: string, reviewerId: string, notes: string): ReviewQueueItem {
+      const idx = reviewItems.findIndex((r) => r.id === id)
+      if (idx === -1) throw new Error('Review item not found')
+      reviewItems[idx] = {
+        ...reviewItems[idx],
+        status: 'approved',
+        reviewer_id: reviewerId,
+        review_notes: notes,
+        reviewed_at: new Date().toISOString(),
+      }
+      return reviewItems[idx]
+    },
+
+    rejectReviewItem(id: string, reviewerId: string, notes: string): void {
+      const idx = reviewItems.findIndex((r) => r.id === id)
+      if (idx === -1) throw new Error('Review item not found')
+      reviewItems[idx] = {
+        ...reviewItems[idx],
+        status: 'rejected',
+        reviewer_id: reviewerId,
+        review_notes: notes,
+        reviewed_at: new Date().toISOString(),
+      }
+    },
+
+    // --- LLM Providers ---
+
+    listLLMProviders(): LLMProviderListResponse {
+      return { providers: [...llmProviders], total: llmProviders.length }
+    },
+
+    getLLMProvider(id: string): LLMProvider {
+      const p = llmProviders.find((pp) => pp.id === id)
+      if (!p) throw new Error('LLM provider not found')
+      return p
+    },
+
+    getDefaultLLMProvider(): LLMProvider {
+      const p = llmProviders.find((pp) => pp.is_default)
+      if (!p) throw new Error('No default provider')
+      return p
+    },
+
+    createLLMProvider(data: LLMProviderCreateRequest): LLMProvider {
+      if (data.is_default) llmProviders.forEach((p) => (p.is_default = false))
+      const provider: LLMProvider = {
+        id: cryptoRandomId(),
+        name: data.name,
+        base_url: data.base_url,
+        model: data.model,
+        max_tokens: data.max_tokens || 4096,
+        temperature: data.temperature || 0.7,
+        is_default: data.is_default || false,
+        is_enabled: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }
+      llmProviders.push(provider)
+      return provider
+    },
+
+    updateLLMProvider(id: string, data: Partial<LLMProvider>): LLMProvider {
+      const idx = llmProviders.findIndex((p) => p.id === id)
+      if (idx === -1) throw new Error('LLM provider not found')
+      if (data.is_default) llmProviders.forEach((p) => (p.is_default = false))
+      llmProviders[idx] = { ...llmProviders[idx], ...data, updated_at: new Date().toISOString() }
+      return llmProviders[idx]
+    },
+
+    deleteLLMProvider(id: string): void {
+      const idx = llmProviders.findIndex((p) => p.id === id)
+      if (idx === -1) throw new Error('LLM provider not found')
+      llmProviders.splice(idx, 1)
+    },
+
+    testLLMProvider(_id: string): LLMTestResponse {
+      return { ok: true, model: 'OK', latency_ms: 150 }
     },
   }
 }

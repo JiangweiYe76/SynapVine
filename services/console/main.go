@@ -76,11 +76,17 @@ func main() {
 	refreshTokens := store.NewRefreshTokenStore(dbConn)
 	audit := store.NewAuditStore(dbConn)
 
+	// Stores: LLM providers.
+	llmProviders := store.NewLLMProviderStore(dbConn)
+
 	// Handlers.
 	authHandler := handler.NewAuthHandler(cfg.JWTSecret, users, refreshTokens, audit)
 	nodeHandler := handler.NewNodeHandler(core)
 	edgeHandler := handler.NewEdgeHandler(core)
 	communityHandler := handler.NewCommunityHandler(core)
+	llmHandler := handler.NewLLMHandler(llmProviders)
+	paperHandler := handler.NewPaperHandler(core)
+	reviewHandler := handler.NewReviewQueueHandler(core)
 
 	app := fiber.New(fiber.Config{
 		AppName: "AI-Graph Console Server",
@@ -133,6 +139,36 @@ func main() {
 	api.Post("/communities", editorOnly, communityHandler.Create)
 	api.Put("/communities/:id", editorOnly, communityHandler.Update)
 	api.Delete("/communities/:id", editorOnly, communityHandler.Delete)
+
+	// LLM provider read (viewer+).
+	api.Get("/llm/providers", llmHandler.List)
+	api.Get("/llm/providers/default", llmHandler.GetDefault)
+	api.Get("/llm/providers/:id", llmHandler.Get)
+
+	// LLM provider mutations (editor+).
+	api.Post("/llm/providers", editorOnly, llmHandler.Create)
+	api.Put("/llm/providers/:id", editorOnly, llmHandler.Update)
+	api.Post("/llm/providers/:id/test", editorOnly, llmHandler.Test)
+
+	// LLM provider delete (admin+).
+	adminOnly := handler.RequireRole(model.RoleAdmin)
+	api.Delete("/llm/providers/:id", adminOnly, llmHandler.Delete)
+
+	// Paper read (viewer+).
+	api.Get("/papers", paperHandler.List)
+	api.Get("/papers/:id", paperHandler.Get)
+	api.Get("/papers/stats", paperHandler.Stats)
+
+	// Paper mutations (editor+).
+	api.Post("/papers", editorOnly, paperHandler.Create)
+	api.Put("/papers/:id", editorOnly, paperHandler.Update)
+	api.Delete("/papers/:id", adminOnly, paperHandler.Delete)
+
+	// Review queue (viewer+ for read, editor+ for actions).
+	api.Get("/review-queue", reviewHandler.List)
+	api.Get("/review-queue/:id", reviewHandler.Get)
+	api.Post("/review-queue/:id/approve", editorOnly, reviewHandler.Approve)
+	api.Post("/review-queue/:id/reject", editorOnly, reviewHandler.Reject)
 
 	slog.Info("console_server_starting", slog.String("port", cfg.Port))
 
