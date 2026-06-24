@@ -8,9 +8,10 @@
 #   $4 CONSOLE_FE_PORT
 #   $5 PORTAL_PORT
 #   $6 PORTAL_FE_PORT
-#   $7 CORE_URL
-#   $8 PID_DIR
-#   $9 COMPOSE_PROJECT
+#   $7 DISCOVERY_PORT
+#   $8 CORE_URL
+#   $9 PID_DIR
+#   $10 COMPOSE_PROJECT
 set -euo pipefail
 
 STACK="$1"
@@ -19,9 +20,10 @@ CONSOLE_PORT="$3"
 CONSOLE_FE_PORT="$4"
 PORTAL_PORT="$5"
 PORTAL_FE_PORT="$6"
-CORE_URL="$7"
-PID_DIR="$8"
-COMPOSE_PROJECT="$9"
+DISCOVERY_PORT="$7"
+CORE_URL="$8"
+PID_DIR="$9"
+COMPOSE_PROJECT="${10}"
 
 mkdir -p "$PID_DIR"
 
@@ -140,6 +142,14 @@ if $need_console; then
     MYSQL_DSN="synapvine:synapvine123@tcp(localhost:3306)/synapvine_console?parseTime=true" \
     JWT_SECRET="console-dev-secret-key-change-in-production"
   start_frontend console-fe clients/console "$CONSOLE_FE_PORT"
+  # Discovery depends on core (papers, review queue) and console (LLM
+  # provider config), so it starts after both are up. It only ships
+  # with the console stack; the portal-only stack does not start it.
+  start_backend discovery services/discovery "$DISCOVERY_PORT" \
+    PORT="$DISCOVERY_PORT" \
+    CORE_URL="$CORE_URL" \
+    CONSOLE_URL="http://localhost:$CONSOLE_PORT"
+  wait_for "http://localhost:$DISCOVERY_PORT/health" "healthy" 30 || exit 1
 fi
 
 if $need_portal; then
@@ -155,6 +165,7 @@ echo "  Core            $CORE_URL"
 if $need_console; then
 echo "  Console API     http://localhost:$CONSOLE_PORT  (dev login: admin / admin123)"
 echo "  Console UI      http://localhost:$CONSOLE_FE_PORT"
+echo "  Discovery API   http://localhost:$DISCOVERY_PORT  (POST /api/analyze)"
 fi
 if $need_portal; then
 echo "  Portal API      http://localhost:$PORTAL_PORT"
