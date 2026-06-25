@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/base64"
 	"errors"
 	"log/slog"
 	"strconv"
@@ -82,6 +83,16 @@ func (h *PaperHandler) Create(c *fiber.Ctx) error {
 		UpdatedAt: now,
 	}
 
+	// Decode PDF data if provided.
+	if req.PDFBase64 != "" {
+		data, err := base64.StdEncoding.DecodeString(req.PDFBase64)
+		if err != nil {
+			return c.Status(400).JSON(errorResponse("invalid_pdf", "Invalid base64 PDF data"))
+		}
+		paper.PDFData = data
+		paper.HasPDF = true
+	}
+
 	if err := h.repo.Create(c.Context(), paper); err != nil {
 		slog.Error("paper_create_failed", slog.Any("error", err))
 		return c.Status(500).JSON(errorResponse("internal_error", "Failed to create paper"))
@@ -89,6 +100,22 @@ func (h *PaperHandler) Create(c *fiber.Ctx) error {
 
 	slog.Info("paper_created", slog.String("id", paper.ID), slog.String("title", paper.Title))
 	return c.Status(201).JSON(paper)
+}
+
+// GetPDF serves the raw PDF binary for a paper.
+func (h *PaperHandler) GetPDF(c *fiber.Ctx) error {
+	id := c.Params("id")
+	data, err := h.repo.GetPDFData(c.Context(), id)
+	if err != nil {
+		if errors.Is(err, repository.ErrPaperNotFound) {
+			return c.Status(404).JSON(errorResponse("paper_not_found", "Paper or PDF not found"))
+		}
+		slog.Error("paper_pdf_get_failed", slog.String("id", id), slog.Any("error", err))
+		return c.Status(500).JSON(errorResponse("internal_error", "Failed to get PDF"))
+	}
+	c.Set("Content-Type", "application/pdf")
+	c.Set("Content-Disposition", "inline")
+	return c.Send(data)
 }
 
 // Update handles PUT /api/papers/:id

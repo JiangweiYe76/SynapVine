@@ -30,6 +30,10 @@ var mysqlMigrations = []mysqlMigration{
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 	},
 	{
+		name: "add_pdf_data_to_papers",
+		stmt: `ALTER TABLE papers ADD COLUMN IF NOT EXISTS pdf_data LONGBLOB AFTER raw_text`,
+	},
+	{
 		name: "create_review_queue",
 		stmt: `CREATE TABLE IF NOT EXISTS review_queue (
 			id              VARCHAR(36) NOT NULL,

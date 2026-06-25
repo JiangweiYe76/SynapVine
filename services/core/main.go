@@ -82,7 +82,8 @@ func main() {
 	healthHandler := handler.NewHealthHandler()
 
 	app := fiber.New(fiber.Config{
-		AppName: "AI-Graph Core Server",
+		AppName:   "AI-Graph Core Server",
+		BodyLimit: 50 * 1024 * 1024, // 50 MB — accommodate PDF uploads (base64-encoded)
 	})
 
 	app.Use(cors.New(cors.Config{
@@ -121,6 +122,7 @@ func main() {
 	if paperHandler != nil && reviewHandler != nil {
 		app.Get("/api/papers", paperHandler.List)
 		app.Get("/api/papers/:id", paperHandler.Get)
+		app.Get("/api/papers/:id/pdf", paperHandler.GetPDF)
 		app.Post("/api/papers", paperHandler.Create)
 		app.Put("/api/papers/:id", paperHandler.Update)
 		app.Delete("/api/papers/:id", paperHandler.Delete)
