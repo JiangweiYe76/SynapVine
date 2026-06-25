@@ -336,6 +336,29 @@ func (c *Client) DeletePaper(ctx context.Context, id string) (bool, error) {
 	return true, nil
 }
 
+// GetPaperPDF fetches the raw PDF binary for a paper from the core service.
+// Returns (nil, nil) when the core responds with 404.
+func (c *Client) GetPaperPDF(ctx context.Context, id string) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/api/papers/"+id+"/pdf", nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build pdf request: %w", err)
+	}
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("core request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, nil
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		raw, _ := io.ReadAll(resp.Body)
+		return nil, &HTTPStatusError{StatusCode: resp.StatusCode, Body: string(raw)}
+	}
+	return io.ReadAll(resp.Body)
+}
+
 // --- Review Queue ---
 
 // ListReviewItems returns a paginated list of review items from core.

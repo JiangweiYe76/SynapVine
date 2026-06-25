@@ -1,8 +1,11 @@
 package handler
 
 import (
+	"encoding/base64"
+	"io"
 	"log/slog"
 	"strconv"
+	"strings"
 
 	"console/internal/coreclient"
 	"console/internal/model"
@@ -63,18 +66,82 @@ func (h *PaperHandler) Get(c *fiber.Ctx) error {
 }
 
 // Create handles POST /api/papers
+//
+// Accepts two content types:
+//   - application/json: {"title":"...","authors":"...","source_url":"...","raw_text":"..."}
+//   - multipart/form-data: fields "title", "authors", "source_url", "raw_text",
+//     and an optional "pdf" file field. When "pdf" is provided, text is extracted
+//     from it and used as raw_text (overriding any raw_text form field).
 func (h *PaperHandler) Create(c *fiber.Ctx) error {
+	ct := string(c.Request().Header.ContentType())
+
 	var req model.PaperCreateRequest
-	if err := c.BodyParser(&req); err != nil {
-		return c.Status(400).JSON(model.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "Invalid request body",
-		})
+
+	if strings.HasPrefix(ct, "multipart/form-data") {
+		// --- Multipart form (with optional PDF file) ---
+		req.Title = c.FormValue("title")
+		req.Authors = c.FormValue("authors")
+		req.SourceURL = c.FormValue("source_url")
+		req.RawText = c.FormValue("raw_text")
+
+		fileHeader, err := c.FormFile("pdf")
+		if err == nil && fileHeader != nil {
+			f, err := fileHeader.Open()
+			if err != nil {
+				slog.Error("pdf_open_failed", slog.Any("error", err))
+				return c.Status(400).JSON(model.ErrorResponse{
+					Error:   "pdf_read_failed",
+					Message: "Failed to open uploaded PDF file",
+				})
+			}
+			defer f.Close()
+
+			// Read the entire file so we can both extract text and
+			// forward the raw bytes to core for storage.
+			pdfBytes, err := io.ReadAll(f)
+			if err != nil {
+				slog.Error("pdf_read_bytes_failed", slog.Any("error", err))
+				return c.Status(400).JSON(model.ErrorResponse{
+					Error:   "pdf_read_failed",
+					Message: "Failed to read uploaded PDF file",
+				})
+			}
+
+			req.PDFBase64 = base64.StdEncoding.EncodeToString(pdfBytes)
+
+			// Auto-fill title from filename if not provided.
+			if req.Title == "" {
+				name := fileHeader.Filename
+				if strings.HasSuffix(strings.ToLower(name), ".pdf") {
+					name = name[:len(name)-4]
+				}
+				req.Title = name
+			}
+
+			// Use a placeholder; the PDF is stored and can be viewed.
+			if req.RawText == "" {
+				req.RawText = "(PDF uploaded — text extraction pending)"
+			}
+
+			slog.Info("pdf_read",
+				slog.String("filename", fileHeader.Filename),
+				slog.Int("pdf_bytes", len(pdfBytes)),
+			)
+		}
+	} else {
+		// --- JSON body (original path) ---
+		if err := c.BodyParser(&req); err != nil {
+			return c.Status(400).JSON(model.ErrorResponse{
+				Error:   "invalid_request",
+				Message: "Invalid request body",
+			})
+		}
 	}
+
 	if req.Title == "" || req.RawText == "" {
 		return c.Status(400).JSON(model.ErrorResponse{
 			Error:   "missing_fields",
-			Message: "Title and raw_text are required",
+			Message: "Title and raw_text are required (or upload a PDF file)",
 		})
 	}
 
@@ -141,6 +208,28 @@ func (h *PaperHandler) Delete(c *fiber.Ctx) error {
 
 	slog.Info("paper_deleted", slog.String("id", id))
 	return c.SendStatus(204)
+}
+
+// GetPDF proxies the raw PDF binary from core to the client.
+func (h *PaperHandler) GetPDF(c *fiber.Ctx) error {
+	id := c.Params("id")
+	data, err := h.core.GetPaperPDF(c.Context(), id)
+	if err != nil {
+		slog.Error("paper_pdf_core_failed", slog.String("id", id), slog.Any("error", err))
+		return c.Status(502).JSON(model.ErrorResponse{
+			Error:   "core_unavailable",
+			Message: "Failed to fetch PDF from core service",
+		})
+	}
+	if data == nil {
+		return c.Status(404).JSON(model.ErrorResponse{
+			Error:   "paper_not_found",
+			Message: "Paper or PDF not found",
+		})
+	}
+	c.Set("Content-Type", "application/pdf")
+	c.Set("Content-Disposition", "inline")
+	return c.Send(data)
 }
 
 // Stats handles GET /api/papers/stats — returns paper counts by status.
