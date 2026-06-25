@@ -4,6 +4,7 @@ export interface Paper {
   authors: string
   source_url: string
   raw_text: string
+  has_pdf: boolean
   status: PaperStatus
   created_at: string
   updated_at: string

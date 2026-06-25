@@ -206,8 +206,11 @@ export async function fetchAPI<T>(
   const authStore = useAuthStore()
   const url = `${API_BASE}${path}`
 
+  // When the body is FormData the browser must set Content-Type
+  // (with the correct multipart boundary). Skip the default JSON header.
+  const isFormData = typeof FormData !== 'undefined' && rest.body instanceof FormData
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...((rest.headers as Record<string, string>) || {}),
   }
 

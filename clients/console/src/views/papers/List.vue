@@ -13,6 +13,7 @@ import {
   ChevronRight,
   Pencil,
   Trash2,
+  Eye,
 } from '@lucide/vue'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -74,6 +75,10 @@ function openEditDialog(paper: Paper) {
   formDialogOpen.value = true
 }
 
+function viewPaperPDF(paper: Paper) {
+  window.open(papersAPI.pdfURL(paper.id), '_blank')
+}
+
 function openDeleteDialog(paper: Paper) {
   selectedPaper.value = paper
   deleteDialogOpen.value = true
@@ -129,6 +134,11 @@ const columns = [
       const paper = info.row.original
       if (!authStore.isEditor) return null
       return h('div', { class: 'flex items-center justify-end gap-1' }, [
+        h(Button, {
+          variant: 'ghost',
+          size: 'icon-sm',
+          onClick: () => viewPaperPDF(paper),
+        }, () => h(Eye, { class: 'h-4 w-4' })),
         h(Button, {
           variant: 'ghost',
           size: 'icon-sm',
