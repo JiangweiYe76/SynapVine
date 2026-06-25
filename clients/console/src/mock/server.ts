@@ -268,6 +268,7 @@ export function createMockServer() {
         authors: data.authors,
         source_url: data.source_url || '',
         raw_text: data.raw_text,
+        has_pdf: false,
         status: 'uploaded',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),

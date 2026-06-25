@@ -89,7 +89,8 @@ func main() {
 	reviewHandler := handler.NewReviewQueueHandler(core)
 
 	app := fiber.New(fiber.Config{
-		AppName: "AI-Graph Console Server",
+		AppName:   "AI-Graph Console Server",
+		BodyLimit: 50 * 1024 * 1024, // 50 MB — accommodate PDF uploads (base64-encoded)
 	})
 
 	app.Use(cors.New(cors.Config{
@@ -156,8 +157,9 @@ func main() {
 
 	// Paper read (viewer+).
 	api.Get("/papers", paperHandler.List)
-	api.Get("/papers/:id", paperHandler.Get)
 	api.Get("/papers/stats", paperHandler.Stats)
+	api.Get("/papers/:id", paperHandler.Get)
+	api.Get("/papers/:id/pdf", paperHandler.GetPDF)
 
 	// Paper mutations (editor+).
 	api.Post("/papers", editorOnly, paperHandler.Create)

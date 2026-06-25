@@ -20,6 +20,15 @@ export const papersAPI = {
       body: JSON.stringify(data),
     }),
 
+  createWithPDF: (formData: FormData) =>
+    fetchAPI<Paper>('/papers', {
+      method: 'POST',
+      body: formData,
+      // Do NOT set Content-Type; the browser will set the correct
+      // multipart/form-data boundary automatically.
+      headers: {},
+    }),
+
   update: (id: string, data: PaperUpdateRequest) =>
     fetchAPI<Paper>(`/papers/${id}`, {
       method: 'PUT',
@@ -30,4 +39,9 @@ export const papersAPI = {
     fetchAPI<void>(`/papers/${id}`, {
       method: 'DELETE',
     }),
+
+  pdfURL: (id: string) => {
+    const token = localStorage.getItem('token') || ''
+    return `/api/papers/${id}/pdf?token=${encodeURIComponent(token)}`
+  },
 }

@@ -288,22 +288,29 @@ func (h *AuthHandler) Me(c *fiber.Ctx) error {
 // cause a 401 with error="token_revoked".
 func (h *AuthHandler) JWTMiddleware() fiber.Handler {
 	return func(c *fiber.Ctx) error {
+		// Accept token from Authorization header or ?token= query param
+		// (the latter is needed for window.open / iframe requests that
+		// cannot set custom headers).
+		tokenString := ""
 		authHeader := c.Get("Authorization")
-		if authHeader == "" {
-			return c.Status(401).JSON(model.ErrorResponse{
-				Error:   "missing_token",
-				Message: "Authorization header is required",
-			})
+		if authHeader != "" {
+			const bearerPrefix = "Bearer "
+			if len(authHeader) <= len(bearerPrefix) || authHeader[:len(bearerPrefix)] != bearerPrefix {
+				return c.Status(401).JSON(model.ErrorResponse{
+					Error:   "invalid_token_format",
+					Message: "Authorization header must be Bearer token",
+				})
+			}
+			tokenString = authHeader[len(bearerPrefix):]
+		} else {
+			tokenString = c.Query("token")
+			if tokenString == "" {
+				return c.Status(401).JSON(model.ErrorResponse{
+					Error:   "missing_token",
+					Message: "Authorization header is required",
+				})
+			}
 		}
-
-		const bearerPrefix = "Bearer "
-		if len(authHeader) <= len(bearerPrefix) || authHeader[:len(bearerPrefix)] != bearerPrefix {
-			return c.Status(401).JSON(model.ErrorResponse{
-				Error:   "invalid_token_format",
-				Message: "Authorization header must be Bearer token",
-			})
-		}
-		tokenString := authHeader[len(bearerPrefix):]
 
 		claims, err := h.jwtManager.Validate(tokenString)
 		if err != nil {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch } from 'vue'
 import {
   Dialog,
   DialogContent,
@@ -11,9 +11,9 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { papersAPI } from '@/api/papers'
-import type { Paper, PaperCreateRequest, PaperUpdateRequest } from '@/types/paper'
+import type { Paper, PaperUpdateRequest } from '@/types/paper'
+import { FileText, X } from '@lucide/vue'
 
 const props = defineProps<{
   open: boolean
@@ -25,46 +25,57 @@ const emit = defineEmits<{
   (e: 'saved'): void
 }>()
 
-const isEdit = computed(() => !!props.paper)
+const isEdit = ref(false)
 
 const form = ref({
   title: '',
   authors: '',
   source_url: '',
-  raw_text: '',
 })
 
+const pdfFile = ref<File | null>(null)
 const saving = ref(false)
 const saveError = ref<string | null>(null)
 
 watch(() => props.open, (isOpen) => {
   if (isOpen) {
     saveError.value = null
+    pdfFile.value = null
+    isEdit.value = !!props.paper
     if (props.paper) {
       form.value = {
         title: props.paper.title,
         authors: props.paper.authors,
         source_url: props.paper.source_url,
-        raw_text: props.paper.raw_text,
       }
     } else {
-      form.value = {
-        title: '',
-        authors: '',
-        source_url: '',
-        raw_text: '',
-      }
+      form.value = { title: '', authors: '', source_url: '' }
     }
   }
 })
 
+function onFileChange(e: Event) {
+  const target = e.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) return
+  if (!file.name.toLowerCase().endsWith('.pdf')) {
+    saveError.value = 'Only PDF files are supported'
+    target.value = ''
+    return
+  }
+  pdfFile.value = file
+  saveError.value = null
+}
+
+function clearFile() {
+  pdfFile.value = null
+  const input = document.getElementById('paper-pdf') as HTMLInputElement
+  if (input) input.value = ''
+}
+
 async function handleSave() {
   if (!form.value.title.trim()) {
     saveError.value = 'Title is required'
-    return
-  }
-  if (!isEdit.value && !form.value.raw_text.trim()) {
-    saveError.value = 'Paper text is required'
     return
   }
 
@@ -81,13 +92,17 @@ async function handleSave() {
         await papersAPI.update(props.paper!.id, update)
       }
     } else {
-      const create: PaperCreateRequest = {
-        title: form.value.title.trim(),
-        authors: form.value.authors.trim(),
-        source_url: form.value.source_url.trim() || undefined,
-        raw_text: form.value.raw_text.trim(),
+      if (!pdfFile.value) {
+        saveError.value = 'Please select a PDF file'
+        saving.value = false
+        return
       }
-      await papersAPI.create(create)
+      const formData = new FormData()
+      formData.append('pdf', pdfFile.value)
+      if (form.value.title.trim()) formData.append('title', form.value.title.trim())
+      if (form.value.authors.trim()) formData.append('authors', form.value.authors.trim())
+      if (form.value.source_url.trim()) formData.append('source_url', form.value.source_url.trim())
+      await papersAPI.createWithPDF(formData)
     }
     emit('saved')
     emit('update:open', false)
@@ -105,7 +120,7 @@ async function handleSave() {
       <DialogHeader>
         <DialogTitle>{{ isEdit ? 'Edit Paper' : 'Upload Paper' }}</DialogTitle>
         <DialogDescription>
-          {{ isEdit ? 'Update the paper details.' : 'Paste the paper text for AI concept extraction.' }}
+          {{ isEdit ? 'Update the paper details.' : 'Upload a PDF file for AI concept extraction.' }}
         </DialogDescription>
       </DialogHeader>
 
@@ -138,16 +153,28 @@ async function handleSave() {
         </div>
 
         <div v-if="!isEdit" class="space-y-2">
-          <Label for="paper-text">Paper Text</Label>
-          <Textarea
-            id="paper-text"
-            v-model="form.raw_text"
-            placeholder="Paste the full paper text here..."
-            rows="12"
-            class="font-mono text-sm"
-          />
+          <Label for="paper-pdf">PDF File</Label>
+          <div v-if="!pdfFile" class="flex items-center gap-2">
+            <Input
+              id="paper-pdf"
+              type="file"
+              accept=".pdf"
+              class="cursor-pointer"
+              @change="onFileChange"
+            />
+          </div>
+          <div v-else class="flex items-center gap-2 rounded-md border p-2">
+            <FileText class="h-4 w-4 text-muted-foreground shrink-0" />
+            <span class="text-sm truncate flex-1">{{ pdfFile.name }}</span>
+            <span class="text-xs text-muted-foreground whitespace-nowrap">
+              {{ (pdfFile.size / 1024).toFixed(0) }} KB
+            </span>
+            <Button variant="ghost" size="sm" class="h-6 w-6 p-0" @click="clearFile">
+              <X class="h-4 w-4" />
+            </Button>
+          </div>
           <p class="text-xs text-muted-foreground">
-            The LLM will extract AI concepts and relationships from this text.
+            Text will be extracted from the PDF automatically. Title is auto-filled from the filename if left empty.
           </p>
         </div>
 
