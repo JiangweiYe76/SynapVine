@@ -22,16 +22,13 @@ var mysqlMigrations = []mysqlMigration{
 			authors     TEXT,
 			source_url  VARCHAR(1000),
 			raw_text    LONGTEXT     NOT NULL,
+			pdf_data    LONGBLOB,
 			status      VARCHAR(50)  NOT NULL DEFAULT 'uploaded',
 			created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			updated_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 			PRIMARY KEY (id),
 			KEY idx_papers_status (status)
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
-	},
-	{
-		name: "add_pdf_data_to_papers",
-		stmt: `ALTER TABLE papers ADD COLUMN IF NOT EXISTS pdf_data LONGBLOB AFTER raw_text`,
 	},
 	{
 		name: "create_review_queue",
