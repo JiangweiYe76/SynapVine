@@ -29,7 +29,7 @@ mkdir -p "$PID_DIR"
 
 cleanup() {
   echo
-  echo "==> Shutting down..."
+  echo "==> Shutting down dev processes... (Neo4j + MySQL left running; use make dev-down to stop them)"
   for pidfile in "$PID_DIR"/*.pid; do
     [ -f "$pidfile" ] || continue
     pid=$(cat "$pidfile")
@@ -38,7 +38,6 @@ cleanup() {
     fi
     rm -f "$pidfile"
   done
-  (cd services/infra && COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT" docker-compose down) || true
   rm -rf "$PID_DIR"
   echo "Done."
 }
