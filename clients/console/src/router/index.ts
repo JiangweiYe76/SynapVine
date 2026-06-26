@@ -52,6 +52,12 @@ const router = createRouter({
       component: () => import('../views/llm/Providers.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/embedding',
+      name: 'Embedding Providers',
+      component: () => import('../views/embedding/Providers.vue'),
+      meta: { requiresAuth: true },
+    },
   ],
 })
 

@@ -4,24 +4,24 @@ import (
 	"context"
 	"fmt"
 
-	"console/internal/store"
+	"core/internal/repository"
 )
 
 // Manager provides high-level access to LLM providers. It loads
 // configuration from the database and creates clients on demand.
 type Manager struct {
-	store *store.LLMProviderStore
+	repo *repository.LLMProviderRepository
 }
 
-// NewManager creates a Manager backed by the given store.
-func NewManager(s *store.LLMProviderStore) *Manager {
-	return &Manager{store: s}
+// NewManager creates a Manager backed by the given repository.
+func NewManager(repo *repository.LLMProviderRepository) *Manager {
+	return &Manager{repo: repo}
 }
 
 // DefaultClient returns a Client configured with the default provider.
 // Returns an error if no default provider is configured.
 func (m *Manager) DefaultClient(ctx context.Context) (*Client, error) {
-	p, err := m.store.GetDefault(ctx)
+	p, err := m.repo.GetDefault(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("load default provider: %w", err)
 	}
@@ -33,7 +33,7 @@ func (m *Manager) DefaultClient(ctx context.Context) (*Client, error) {
 
 // ClientByID returns a Client configured with the provider identified by id.
 func (m *Manager) ClientByID(ctx context.Context, id string) (*Client, error) {
-	p, err := m.store.GetByID(ctx, id)
+	p, err := m.repo.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("load provider %s: %w", id, err)
 	}

@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"discovery/internal/config"
-	"discovery/internal/consoleclient"
 	"discovery/internal/coreclient"
 	"discovery/internal/extractor"
 	"discovery/internal/handler"
@@ -24,7 +23,6 @@ func main() {
 	cfg := config.Load()
 	slog.Info("configuration_loaded",
 		slog.String("port", cfg.Port),
-		slog.String("console_url", cfg.ConsoleURL),
 		slog.String("core_url", cfg.CoreURL),
 	)
 
@@ -36,19 +34,11 @@ func main() {
 	}
 	slog.Info("core_health_check_passed")
 
-	// Console service: health check.
-	console := consoleclient.New(cfg.ConsoleURL)
-	if err := console.Health(context.Background()); err != nil {
-		slog.Error("console_health_check_failed", slog.Any("error", err))
-		os.Exit(1)
-	}
-	slog.Info("console_health_check_passed")
-
 	// Extractor service.
 	ext := extractor.NewService()
 
 	// Handler.
-	analyzeHandler := handler.NewAnalyzeHandler(core, console, ext)
+	analyzeHandler := handler.NewAnalyzeHandler(core, ext)
 
 	app := fiber.New(fiber.Config{
 		AppName: "AI-Graph Discovery Server",

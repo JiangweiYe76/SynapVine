@@ -59,24 +59,7 @@ var migrations = []migration{
 			KEY idx_audit_created (created_at)
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 	},
-	{
-		name: "create_llm_providers",
-		stmt: `CREATE TABLE IF NOT EXISTS llm_providers (
-			id          VARCHAR(36)  NOT NULL,
-			name        VARCHAR(100) NOT NULL,
-			base_url    VARCHAR(500) NOT NULL,
-			api_key     VARCHAR(500) NOT NULL,
-			model       VARCHAR(100) NOT NULL,
-			max_tokens  INT          NOT NULL DEFAULT 4096,
-			temperature DOUBLE       NOT NULL DEFAULT 0.7,
-			is_default  BOOLEAN      NOT NULL DEFAULT FALSE,
-			is_enabled  BOOLEAN      NOT NULL DEFAULT TRUE,
-			created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			updated_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-			PRIMARY KEY (id),
-			UNIQUE KEY uq_llm_providers_name (name)
-		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
-	},
+
 }
 
 // Migrate applies all known migrations to the connected database. MySQL

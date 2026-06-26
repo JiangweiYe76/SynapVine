@@ -3,7 +3,6 @@ package handler
 import (
 	"log/slog"
 
-	"discovery/internal/consoleclient"
 	"discovery/internal/coreclient"
 	"discovery/internal/extractor"
 	"discovery/internal/llm"
@@ -22,15 +21,13 @@ type ErrorResponse struct {
 // AnalyzeHandler handles paper analysis requests.
 type AnalyzeHandler struct {
 	core      *coreclient.Client
-	console   *consoleclient.Client
 	extractor *extractor.Service
 }
 
 // NewAnalyzeHandler creates a new AnalyzeHandler.
-func NewAnalyzeHandler(core *coreclient.Client, console *consoleclient.Client, ext *extractor.Service) *AnalyzeHandler {
+func NewAnalyzeHandler(core *coreclient.Client, ext *extractor.Service) *AnalyzeHandler {
 	return &AnalyzeHandler{
 		core:      core,
-		console:   console,
 		extractor: ext,
 	}
 }
@@ -72,9 +69,9 @@ func (h *AnalyzeHandler) Analyze(c *fiber.Ctx) error {
 		// Non-fatal: continue with analysis.
 	}
 
-	// 3. Get default LLM provider from console.
+	// 3. Get default LLM provider from core.
 	slog.Info("analyze_fetch_provider")
-	provider, err := h.console.GetDefaultProvider(ctx)
+	provider, err := h.core.GetDefaultLLMProvider(ctx)
 	if err != nil {
 		slog.Error("analyze_fetch_provider_failed", slog.Any("error", err))
 		h.core.UpdatePaperStatus(ctx, paperID, "uploaded") // Rollback status.

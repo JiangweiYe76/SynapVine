@@ -3,72 +3,55 @@ package handler
 import (
 	"errors"
 	"log/slog"
-	"time"
 
-	"console/internal/llm"
+	"console/internal/coreclient"
 	"console/internal/model"
-	"console/internal/store"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/google/uuid"
 )
 
-// LLMHandler manages LLM provider configuration and testing.
+// LLMHandler proxies LLM provider requests to the core service.
 type LLMHandler struct {
-	store   *store.LLMProviderStore
-	manager *llm.Manager
+	core *coreclient.Client
 }
 
-// NewLLMHandler creates a new LLMHandler.
-func NewLLMHandler(s *store.LLMProviderStore) *LLMHandler {
-	return &LLMHandler{
-		store:   s,
-		manager: llm.NewManager(s),
-	}
+// NewLLMHandler creates a new LLMHandler backed by the given core client.
+func NewLLMHandler(core *coreclient.Client) *LLMHandler {
+	return &LLMHandler{core: core}
 }
 
 // List handles GET /api/llm/providers
 func (h *LLMHandler) List(c *fiber.Ctx) error {
-	providers, err := h.store.List(c.Context())
+	resp, err := h.core.ListLLMProviders(c.Context())
 	if err != nil {
-		slog.Error("llm_providers_list_failed", slog.Any("error", err))
-		return c.Status(500).JSON(model.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to list LLM providers",
+		slog.Error("llm_providers_list_core_failed", slog.Any("error", err))
+		return c.Status(502).JSON(model.ErrorResponse{
+			Error:   "core_unavailable",
+			Message: "Failed to list LLM providers from core service",
 		})
 	}
-
-	resp := make([]model.LLMProviderResponse, 0, len(providers))
-	for _, p := range providers {
-		resp = append(resp, p.ToResponse())
-	}
-
-	return c.JSON(model.LLMProviderListResponse{
-		Providers: resp,
-		Total:     len(resp),
-	})
+	return c.JSON(resp)
 }
 
 // Get handles GET /api/llm/providers/:id
 func (h *LLMHandler) Get(c *fiber.Ctx) error {
 	id := c.Params("id")
 
-	provider, err := h.store.GetByID(c.Context(), id)
+	provider, err := h.core.GetLLMProvider(c.Context(), id)
 	if err != nil {
-		if errors.Is(err, store.ErrNotFound) {
-			return c.Status(404).JSON(model.ErrorResponse{
-				Error:   "provider_not_found",
-				Message: "LLM provider not found",
-			})
-		}
-		slog.Error("llm_provider_get_failed", slog.String("id", id), slog.Any("error", err))
-		return c.Status(500).JSON(model.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to get LLM provider",
+		slog.Error("llm_provider_get_core_failed", slog.String("id", id), slog.Any("error", err))
+		return c.Status(502).JSON(model.ErrorResponse{
+			Error:   "core_unavailable",
+			Message: "Failed to get LLM provider from core service",
 		})
 	}
-
-	return c.JSON(provider.ToResponse())
+	if provider == nil {
+		return c.Status(404).JSON(model.ErrorResponse{
+			Error:   "provider_not_found",
+			Message: "LLM provider not found",
+		})
+	}
+	return c.JSON(provider)
 }
 
 // Create handles POST /api/llm/providers
@@ -81,62 +64,32 @@ func (h *LLMHandler) Create(c *fiber.Ctx) error {
 		})
 	}
 
-	if req.Name == "" || req.BaseURL == "" || req.APIKey == "" || req.Model == "" {
-		return c.Status(400).JSON(model.ErrorResponse{
-			Error:   "missing_fields",
-			Message: "Name, base_url, api_key, and model are required",
+	provider, err := h.core.CreateLLMProvider(c.Context(), req)
+	if err != nil {
+		var httpErr *coreclient.HTTPStatusError
+		if errors.As(err, &httpErr) {
+			if httpErr.StatusCode == 409 {
+				return c.Status(409).JSON(model.ErrorResponse{
+					Error:   "provider_exists",
+					Message: "A provider with this name already exists",
+				})
+			}
+			if httpErr.StatusCode == 400 {
+				return c.Status(400).JSON(model.ErrorResponse{
+					Error:   "missing_fields",
+					Message: "Name, base_url, api_key, and model are required",
+				})
+			}
+		}
+		slog.Error("llm_provider_create_core_failed", slog.Any("error", err))
+		return c.Status(502).JSON(model.ErrorResponse{
+			Error:   "core_unavailable",
+			Message: "Failed to create LLM provider in core service",
 		})
 	}
 
-	if req.MaxTokens <= 0 {
-		req.MaxTokens = 4096
-	}
-	if req.Temperature <= 0 {
-		req.Temperature = 0.7
-	}
-
-	now := time.Now()
-	p := &model.LLMProvider{
-		ID:          uuid.New().String(),
-		Name:        req.Name,
-		BaseURL:     req.BaseURL,
-		APIKey:      req.APIKey,
-		Model:       req.Model,
-		MaxTokens:   req.MaxTokens,
-		Temperature: req.Temperature,
-		IsDefault:   req.IsDefault,
-		IsEnabled:   true,
-		CreatedAt:   now,
-		UpdatedAt:   now,
-	}
-
-	// If this provider is marked as default, clear any existing default first.
-	if p.IsDefault {
-		if err := h.store.ClearDefault(c.Context()); err != nil {
-			slog.Error("llm_clear_default_failed", slog.Any("error", err))
-			return c.Status(500).JSON(model.ErrorResponse{
-				Error:   "internal_error",
-				Message: "Failed to update default provider",
-			})
-		}
-	}
-
-	if err := h.store.Create(c.Context(), p); err != nil {
-		if errors.Is(err, store.ErrDuplicate) {
-			return c.Status(409).JSON(model.ErrorResponse{
-				Error:   "provider_exists",
-				Message: "A provider with this name already exists",
-			})
-		}
-		slog.Error("llm_provider_create_failed", slog.Any("error", err))
-		return c.Status(500).JSON(model.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to create LLM provider",
-		})
-	}
-
-	slog.Info("llm_provider_created", slog.String("id", p.ID), slog.String("name", p.Name))
-	return c.Status(201).JSON(p.ToResponse())
+	slog.Info("llm_provider_created", slog.String("id", provider.ID), slog.String("name", provider.Name))
+	return c.Status(201).JSON(provider)
 }
 
 // Update handles PUT /api/llm/providers/:id
@@ -151,57 +104,50 @@ func (h *LLMHandler) Update(c *fiber.Ctx) error {
 		})
 	}
 
-	// If setting this provider as default, clear existing default first.
-	if req.IsDefault != nil && *req.IsDefault {
-		if err := h.store.ClearDefault(c.Context()); err != nil {
-			slog.Error("llm_clear_default_failed", slog.Any("error", err))
-			return c.Status(500).JSON(model.ErrorResponse{
-				Error:   "internal_error",
-				Message: "Failed to update default provider",
-			})
-		}
-	}
-
-	p, err := h.store.Update(c.Context(), id, &req)
+	provider, err := h.core.UpdateLLMProvider(c.Context(), id, req)
 	if err != nil {
-		if errors.Is(err, store.ErrNotFound) {
-			return c.Status(404).JSON(model.ErrorResponse{
-				Error:   "provider_not_found",
-				Message: "LLM provider not found",
-			})
+		var httpErr *coreclient.HTTPStatusError
+		if errors.As(err, &httpErr) {
+			if httpErr.StatusCode == 409 {
+				return c.Status(409).JSON(model.ErrorResponse{
+					Error:   "provider_exists",
+					Message: "A provider with this name already exists",
+				})
+			}
 		}
-		if errors.Is(err, store.ErrDuplicate) {
-			return c.Status(409).JSON(model.ErrorResponse{
-				Error:   "provider_exists",
-				Message: "A provider with this name already exists",
-			})
-		}
-		slog.Error("llm_provider_update_failed", slog.String("id", id), slog.Any("error", err))
-		return c.Status(500).JSON(model.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to update LLM provider",
+		slog.Error("llm_provider_update_core_failed", slog.String("id", id), slog.Any("error", err))
+		return c.Status(502).JSON(model.ErrorResponse{
+			Error:   "core_unavailable",
+			Message: "Failed to update LLM provider in core service",
+		})
+	}
+	if provider == nil {
+		return c.Status(404).JSON(model.ErrorResponse{
+			Error:   "provider_not_found",
+			Message: "LLM provider not found",
 		})
 	}
 
-	slog.Info("llm_provider_updated", slog.String("id", p.ID))
-	return c.JSON(p.ToResponse())
+	slog.Info("llm_provider_updated", slog.String("id", provider.ID))
+	return c.JSON(provider)
 }
 
 // Delete handles DELETE /api/llm/providers/:id
 func (h *LLMHandler) Delete(c *fiber.Ctx) error {
 	id := c.Params("id")
 
-	if err := h.store.Delete(c.Context(), id); err != nil {
-		if errors.Is(err, store.ErrNotFound) {
-			return c.Status(404).JSON(model.ErrorResponse{
-				Error:   "provider_not_found",
-				Message: "LLM provider not found",
-			})
-		}
-		slog.Error("llm_provider_delete_failed", slog.String("id", id), slog.Any("error", err))
-		return c.Status(500).JSON(model.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to delete LLM provider",
+	ok, err := h.core.DeleteLLMProvider(c.Context(), id)
+	if err != nil {
+		slog.Error("llm_provider_delete_core_failed", slog.String("id", id), slog.Any("error", err))
+		return c.Status(502).JSON(model.ErrorResponse{
+			Error:   "core_unavailable",
+			Message: "Failed to delete LLM provider in core service",
+		})
+	}
+	if !ok {
+		return c.Status(404).JSON(model.ErrorResponse{
+			Error:   "provider_not_found",
+			Message: "LLM provider not found",
 		})
 	}
 
@@ -211,59 +157,41 @@ func (h *LLMHandler) Delete(c *fiber.Ctx) error {
 
 // GetDefault handles GET /api/llm/providers/default
 func (h *LLMHandler) GetDefault(c *fiber.Ctx) error {
-	provider, err := h.store.GetDefault(c.Context())
+	provider, err := h.core.GetDefaultLLMProvider(c.Context())
 	if err != nil {
-		if errors.Is(err, store.ErrNotFound) {
-			return c.Status(404).JSON(model.ErrorResponse{
-				Error:   "no_default_provider",
-				Message: "No default LLM provider configured",
-			})
-		}
-		slog.Error("llm_default_get_failed", slog.Any("error", err))
-		return c.Status(500).JSON(model.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Failed to get default LLM provider",
+		slog.Error("llm_default_get_core_failed", slog.Any("error", err))
+		return c.Status(502).JSON(model.ErrorResponse{
+			Error:   "core_unavailable",
+			Message: "Failed to get default LLM provider from core service",
 		})
 	}
-
-	return c.JSON(provider.ToResponse())
+	if provider == nil {
+		return c.Status(404).JSON(model.ErrorResponse{
+			Error:   "no_default_provider",
+			Message: "No default LLM provider configured",
+		})
+	}
+	return c.JSON(provider)
 }
 
 // Test handles POST /api/llm/providers/:id/test
 func (h *LLMHandler) Test(c *fiber.Ctx) error {
 	id := c.Params("id")
 
-	client, err := h.manager.ClientByID(c.Context(), id)
+	resp, err := h.core.TestLLMProvider(c.Context(), id)
 	if err != nil {
-		if errors.Is(err, store.ErrNotFound) {
+		var httpErr *coreclient.HTTPStatusError
+		if errors.As(err, &httpErr) && httpErr.StatusCode == 404 {
 			return c.Status(404).JSON(model.ErrorResponse{
 				Error:   "provider_not_found",
 				Message: "LLM provider not found",
 			})
 		}
-		return c.Status(400).JSON(model.LLMTestResponse{
-			OK:    false,
-			Error: err.Error(),
+		slog.Error("llm_provider_test_core_failed", slog.String("id", id), slog.Any("error", err))
+		return c.Status(502).JSON(model.ErrorResponse{
+			Error:   "core_unavailable",
+			Message: "Failed to test LLM provider via core service",
 		})
 	}
-
-	start := time.Now()
-	resp, err := client.TestConnectivity(c.Context())
-	latency := time.Since(start).Milliseconds()
-
-	if err != nil {
-		slog.Warn("llm_test_failed", slog.String("id", id), slog.Any("error", err))
-		return c.JSON(model.LLMTestResponse{
-			OK:        false,
-			LatencyMs: latency,
-			Error:     err.Error(),
-		})
-	}
-
-	slog.Info("llm_test_passed", slog.String("id", id), slog.Int64("latency_ms", latency))
-	return c.JSON(model.LLMTestResponse{
-		OK:        true,
-		Model:     resp.Content,
-		LatencyMs: latency,
-	})
+	return c.JSON(resp)
 }

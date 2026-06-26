@@ -412,6 +412,182 @@ func (c *Client) RejectReviewItem(ctx context.Context, id, reviewerID, notes str
 	return c.doJSON(ctx, http.MethodPost, "/api/review-queue/"+id+"/reject", body, nil)
 }
 
+// --- LLM Providers ---
+
+// ListLLMProviders returns all LLM providers from the core service.
+func (c *Client) ListLLMProviders(ctx context.Context) (*model.LLMProviderListResponse, error) {
+	var resp model.LLMProviderListResponse
+	if err := c.doJSON(ctx, http.MethodGet, "/api/llm/providers", nil, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// GetLLMProvider fetches a single LLM provider by ID.
+// Returns (nil, nil) when core responds with 404.
+func (c *Client) GetLLMProvider(ctx context.Context, id string) (*model.LLMProviderResponse, error) {
+	var provider model.LLMProviderResponse
+	err := c.doJSON(ctx, http.MethodGet, "/api/llm/providers/"+id, nil, &provider)
+	if err != nil {
+		var httpErr *HTTPStatusError
+		if errors.As(err, &httpErr) && httpErr.StatusCode == http.StatusNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &provider, nil
+}
+
+// GetDefaultLLMProvider fetches the default LLM provider.
+// Returns (nil, nil) when core responds with 404.
+func (c *Client) GetDefaultLLMProvider(ctx context.Context) (*model.LLMProviderResponse, error) {
+	var provider model.LLMProviderResponse
+	err := c.doJSON(ctx, http.MethodGet, "/api/llm/providers/default", nil, &provider)
+	if err != nil {
+		var httpErr *HTTPStatusError
+		if errors.As(err, &httpErr) && httpErr.StatusCode == http.StatusNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &provider, nil
+}
+
+// CreateLLMProvider creates a new LLM provider via the core service.
+func (c *Client) CreateLLMProvider(ctx context.Context, req model.LLMProviderCreateRequest) (*model.LLMProviderResponse, error) {
+	var provider model.LLMProviderResponse
+	if err := c.doJSON(ctx, http.MethodPost, "/api/llm/providers", req, &provider); err != nil {
+		return nil, err
+	}
+	return &provider, nil
+}
+
+// UpdateLLMProvider updates an existing LLM provider via the core service.
+// Returns (nil, nil) when core responds with 404.
+func (c *Client) UpdateLLMProvider(ctx context.Context, id string, req model.LLMProviderUpdateRequest) (*model.LLMProviderResponse, error) {
+	var provider model.LLMProviderResponse
+	err := c.doJSON(ctx, http.MethodPut, "/api/llm/providers/"+id, req, &provider)
+	if err != nil {
+		var httpErr *HTTPStatusError
+		if errors.As(err, &httpErr) && httpErr.StatusCode == http.StatusNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &provider, nil
+}
+
+// DeleteLLMProvider removes an LLM provider by ID.
+// Returns (false, nil) when core responds with 404.
+func (c *Client) DeleteLLMProvider(ctx context.Context, id string) (bool, error) {
+	err := c.doJSON(ctx, http.MethodDelete, "/api/llm/providers/"+id, nil, nil)
+	if err != nil {
+		var httpErr *HTTPStatusError
+		if errors.As(err, &httpErr) && httpErr.StatusCode == http.StatusNotFound {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+// TestLLMProvider triggers a connectivity test for the given LLM provider.
+func (c *Client) TestLLMProvider(ctx context.Context, id string) (*model.LLMTestResponse, error) {
+	var resp model.LLMTestResponse
+	if err := c.doJSON(ctx, http.MethodPost, "/api/llm/providers/"+id+"/test", nil, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// --- Embedding Providers ---
+
+// ListEmbeddingProviders returns all embedding providers from the core service.
+func (c *Client) ListEmbeddingProviders(ctx context.Context) (*model.EmbeddingProviderListResponse, error) {
+	var resp model.EmbeddingProviderListResponse
+	if err := c.doJSON(ctx, http.MethodGet, "/api/embedding/providers", nil, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// GetEmbeddingProvider fetches a single embedding provider by ID.
+// Returns (nil, nil) when core responds with 404.
+func (c *Client) GetEmbeddingProvider(ctx context.Context, id string) (*model.EmbeddingProviderResponse, error) {
+	var provider model.EmbeddingProviderResponse
+	err := c.doJSON(ctx, http.MethodGet, "/api/embedding/providers/"+id, nil, &provider)
+	if err != nil {
+		var httpErr *HTTPStatusError
+		if errors.As(err, &httpErr) && httpErr.StatusCode == http.StatusNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &provider, nil
+}
+
+// GetDefaultEmbeddingProvider fetches the default embedding provider.
+// Returns (nil, nil) when core responds with 404.
+func (c *Client) GetDefaultEmbeddingProvider(ctx context.Context) (*model.EmbeddingProviderResponse, error) {
+	var provider model.EmbeddingProviderResponse
+	err := c.doJSON(ctx, http.MethodGet, "/api/embedding/providers/default", nil, &provider)
+	if err != nil {
+		var httpErr *HTTPStatusError
+		if errors.As(err, &httpErr) && httpErr.StatusCode == http.StatusNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &provider, nil
+}
+
+// CreateEmbeddingProvider creates a new embedding provider via the core service.
+func (c *Client) CreateEmbeddingProvider(ctx context.Context, req model.EmbeddingProviderCreateRequest) (*model.EmbeddingProviderResponse, error) {
+	var provider model.EmbeddingProviderResponse
+	if err := c.doJSON(ctx, http.MethodPost, "/api/embedding/providers", req, &provider); err != nil {
+		return nil, err
+	}
+	return &provider, nil
+}
+
+// UpdateEmbeddingProvider updates an existing embedding provider via the core service.
+// Returns (nil, nil) when core responds with 404.
+func (c *Client) UpdateEmbeddingProvider(ctx context.Context, id string, req model.EmbeddingProviderUpdateRequest) (*model.EmbeddingProviderResponse, error) {
+	var provider model.EmbeddingProviderResponse
+	err := c.doJSON(ctx, http.MethodPut, "/api/embedding/providers/"+id, req, &provider)
+	if err != nil {
+		var httpErr *HTTPStatusError
+		if errors.As(err, &httpErr) && httpErr.StatusCode == http.StatusNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &provider, nil
+}
+
+// DeleteEmbeddingProvider removes an embedding provider by ID.
+// Returns (false, nil) when core responds with 404.
+func (c *Client) DeleteEmbeddingProvider(ctx context.Context, id string) (bool, error) {
+	err := c.doJSON(ctx, http.MethodDelete, "/api/embedding/providers/"+id, nil, nil)
+	if err != nil {
+		var httpErr *HTTPStatusError
+		if errors.As(err, &httpErr) && httpErr.StatusCode == http.StatusNotFound {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+// TestEmbeddingProvider triggers a connectivity test for the given embedding provider.
+func (c *Client) TestEmbeddingProvider(ctx context.Context, id string) (*model.EmbeddingTestResponse, error) {
+	var resp model.EmbeddingTestResponse
+	if err := c.doJSON(ctx, http.MethodPost, "/api/embedding/providers/"+id+"/test", nil, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
 // --- HTTP helpers ---
 
 // HTTPStatusError carries the HTTP status code returned by the core service

@@ -13,7 +13,7 @@ import (
 	"net/http"
 	"time"
 
-	"console/internal/model"
+	"core/internal/model"
 )
 
 // Message represents a single chat message in OpenAI format.
@@ -63,11 +63,11 @@ func NewClient(p *model.LLMProvider) *Client {
 
 // wireFormat is the OpenAI chat completion request body.
 type wireFormat struct {
-	Model       string           `json:"model"`
-	Messages    []Message        `json:"messages"`
-	MaxTokens   int              `json:"max_tokens,omitempty"`
-	Temperature float64          `json:"temperature,omitempty"`
-	Format      *responseFormat  `json:"response_format,omitempty"`
+	Model       string          `json:"model"`
+	Messages    []Message       `json:"messages"`
+	MaxTokens   int             `json:"max_tokens,omitempty"`
+	Temperature float64         `json:"temperature,omitempty"`
+	Format      *responseFormat `json:"response_format,omitempty"`
 }
 
 type responseFormat struct {
@@ -117,8 +117,6 @@ func (c *Client) Complete(ctx context.Context, req CompletionRequest) (*Completi
 
 	url := c.baseURL
 	// Normalize: ensure the URL points to the chat completions endpoint.
-	// Accept bare base URLs (e.g. "https://api.openai.com/v1") or
-	// full endpoints.
 	if url != "" && url[len(url)-1] != '/' {
 		url += "/"
 	}
