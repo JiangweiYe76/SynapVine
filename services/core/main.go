@@ -15,6 +15,12 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 )
 
+// providerHandlers holds LLM and embedding provider handlers when MySQL is configured.
+type providerHandlers struct {
+	llm       *handler.LLMProviderHandler
+	embedding *handler.EmbeddingProviderHandler
+}
+
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelInfo,
@@ -42,9 +48,10 @@ func main() {
 	}
 	defer neo.Close(context.Background())
 
-	// MySQL: optional (for papers and review queue).
+	// MySQL: optional (for papers, review queue, and provider management).
 	var paperHandler *handler.PaperHandler
 	var reviewHandler *handler.ReviewQueueHandler
+	var provHandlers *providerHandlers
 	if cfg.MySQLDSN != "" {
 		mysqlDB, err := db.OpenMySQL(cfg.MySQLDSN)
 		if err != nil {
@@ -63,8 +70,15 @@ func main() {
 		reviewRepo := repository.NewReviewQueueRepository(mysqlDB)
 		paperHandler = handler.NewPaperHandler(paperRepo)
 		reviewHandler = handler.NewReviewQueueHandler(reviewRepo, paperRepo)
+
+		llmProviderRepo := repository.NewLLMProviderRepository(mysqlDB)
+		embeddingProviderRepo := repository.NewEmbeddingProviderRepository(mysqlDB)
+		provHandlers = &providerHandlers{
+			llm:       handler.NewLLMProviderHandler(llmProviderRepo),
+			embedding: handler.NewEmbeddingProviderHandler(embeddingProviderRepo),
+		}
 	} else {
-		slog.Warn("mysql_not_configured", slog.String("hint", "Set MYSQL_DSN to enable papers and review queue"))
+		slog.Warn("mysql_not_configured", slog.String("hint", "Set MYSQL_DSN to enable papers, review queue, and provider management"))
 	}
 
 	nodeRepo := repository.NewNodeRepository(neo)
@@ -132,6 +146,30 @@ func main() {
 		app.Post("/api/review-queue", reviewHandler.Submit)
 		app.Post("/api/review-queue/:id/approve", reviewHandler.Approve)
 		app.Post("/api/review-queue/:id/reject", reviewHandler.Reject)
+	}
+
+	// LLM and embedding provider routes (only when MySQL is configured).
+	if provHandlers != nil {
+		// LLM provider routes
+		app.Get("/api/llm/providers", provHandlers.llm.List)
+		app.Get("/api/llm/providers/default", provHandlers.llm.GetDefault)
+		app.Get("/api/llm/providers/:id", provHandlers.llm.Get)
+		app.Post("/api/llm/providers", provHandlers.llm.Create)
+		app.Put("/api/llm/providers/:id", provHandlers.llm.Update)
+		app.Delete("/api/llm/providers/:id", provHandlers.llm.Delete)
+		app.Post("/api/llm/providers/:id/test", provHandlers.llm.Test)
+
+		// Internal LLM provider route (includes API key for service-to-service use)
+		app.Get("/api/internal/llm/providers/default", provHandlers.llm.GetDefaultInternal)
+
+		// Embedding provider routes
+		app.Get("/api/embedding/providers", provHandlers.embedding.List)
+		app.Get("/api/embedding/providers/default", provHandlers.embedding.GetDefault)
+		app.Get("/api/embedding/providers/:id", provHandlers.embedding.Get)
+		app.Post("/api/embedding/providers", provHandlers.embedding.Create)
+		app.Put("/api/embedding/providers/:id", provHandlers.embedding.Update)
+		app.Delete("/api/embedding/providers/:id", provHandlers.embedding.Delete)
+		app.Post("/api/embedding/providers/:id/test", provHandlers.embedding.Test)
 	}
 
 	slog.Info("core_server_starting", slog.String("port", cfg.Port))

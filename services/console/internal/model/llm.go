@@ -2,21 +2,6 @@ package model
 
 import "time"
 
-// LLMProvider represents a configured LLM provider with OpenAI-compatible API.
-type LLMProvider struct {
-	ID          string    `json:"id"`
-	Name        string    `json:"name"`
-	BaseURL     string    `json:"base_url"`
-	APIKey      string    `json:"-"` // Never expose API key in responses
-	Model       string    `json:"model"`
-	MaxTokens   int       `json:"max_tokens"`
-	Temperature float64   `json:"temperature"`
-	IsDefault   bool      `json:"is_default"`
-	IsEnabled   bool      `json:"is_enabled"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-}
-
 // LLMProviderResponse is the safe representation returned in API responses.
 type LLMProviderResponse struct {
 	ID          string    `json:"id"`
@@ -29,22 +14,6 @@ type LLMProviderResponse struct {
 	IsEnabled   bool      `json:"is_enabled"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
-}
-
-// ToResponse converts LLMProvider to LLMProviderResponse, hiding the API key.
-func (p *LLMProvider) ToResponse() LLMProviderResponse {
-	return LLMProviderResponse{
-		ID:          p.ID,
-		Name:        p.Name,
-		BaseURL:     p.BaseURL,
-		Model:       p.Model,
-		MaxTokens:   p.MaxTokens,
-		Temperature: p.Temperature,
-		IsDefault:   p.IsDefault,
-		IsEnabled:   p.IsEnabled,
-		CreatedAt:   p.CreatedAt,
-		UpdatedAt:   p.UpdatedAt,
-	}
 }
 
 // LLMProviderCreateRequest is the payload for creating a new provider.

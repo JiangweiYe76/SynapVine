@@ -76,15 +76,13 @@ func main() {
 	refreshTokens := store.NewRefreshTokenStore(dbConn)
 	audit := store.NewAuditStore(dbConn)
 
-	// Stores: LLM providers.
-	llmProviders := store.NewLLMProviderStore(dbConn)
-
 	// Handlers.
 	authHandler := handler.NewAuthHandler(cfg.JWTSecret, users, refreshTokens, audit)
 	nodeHandler := handler.NewNodeHandler(core)
 	edgeHandler := handler.NewEdgeHandler(core)
 	communityHandler := handler.NewCommunityHandler(core)
-	llmHandler := handler.NewLLMHandler(llmProviders)
+	llmHandler := handler.NewLLMHandler(core)
+	embeddingHandler := handler.NewEmbeddingHandler(core)
 	paperHandler := handler.NewPaperHandler(core)
 	reviewHandler := handler.NewReviewQueueHandler(core)
 
@@ -154,6 +152,19 @@ func main() {
 	// LLM provider delete (admin+).
 	adminOnly := handler.RequireRole(model.RoleAdmin)
 	api.Delete("/llm/providers/:id", adminOnly, llmHandler.Delete)
+
+	// Embedding provider read (viewer+).
+	api.Get("/embedding/providers", embeddingHandler.List)
+	api.Get("/embedding/providers/default", embeddingHandler.GetDefault)
+	api.Get("/embedding/providers/:id", embeddingHandler.Get)
+
+	// Embedding provider mutations (editor+).
+	api.Post("/embedding/providers", editorOnly, embeddingHandler.Create)
+	api.Put("/embedding/providers/:id", editorOnly, embeddingHandler.Update)
+	api.Post("/embedding/providers/:id/test", editorOnly, embeddingHandler.Test)
+
+	// Embedding provider delete (admin+).
+	api.Delete("/embedding/providers/:id", adminOnly, embeddingHandler.Delete)
 
 	// Paper read (viewer+).
 	api.Get("/papers", paperHandler.List)

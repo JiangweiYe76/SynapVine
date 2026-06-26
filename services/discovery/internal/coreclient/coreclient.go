@@ -67,6 +67,15 @@ func (c *Client) UpdatePaperStatus(ctx context.Context, id, status string) error
 	return c.doJSON(ctx, http.MethodPut, "/api/papers/"+id, body, nil)
 }
 
+// GetDefaultLLMProvider fetches the default LLM provider (including API key) from core.
+func (c *Client) GetDefaultLLMProvider(ctx context.Context) (*model.LLMProvider, error) {
+	var provider model.LLMProvider
+	if err := c.doJSON(ctx, http.MethodGet, "/api/internal/llm/providers/default", nil, &provider); err != nil {
+		return nil, err
+	}
+	return &provider, nil
+}
+
 func (c *Client) doJSON(ctx context.Context, method, path string, body any, out any) error {
 	var reader io.Reader
 	if body != nil {

@@ -8,6 +8,7 @@ import {
   FileText,
   ClipboardCheck,
   Brain,
+  Waves,
   LogOut,
   Menu,
 } from '@lucide/vue'
@@ -44,6 +45,7 @@ const navItems = [
   { name: 'Papers', path: '/papers', icon: FileText },
   { name: 'Review', path: '/review', icon: ClipboardCheck },
   { name: 'LLM', path: '/llm', icon: Brain },
+  { name: 'Embedding', path: '/embedding', icon: Waves },
 ]
 
 function isActive(path: string) {

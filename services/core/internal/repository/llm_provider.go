@@ -1,4 +1,4 @@
-package store
+package repository
 
 import (
 	"context"
@@ -6,23 +6,23 @@ import (
 	"fmt"
 	"time"
 
-	"console/internal/model"
+	"core/internal/model"
 )
 
-// LLMProviderStore persists LLMProvider rows in MySQL.
-type LLMProviderStore struct {
+// LLMProviderRepository persists LLMProvider rows in MySQL.
+type LLMProviderRepository struct {
 	db *sql.DB
 }
 
-// NewLLMProviderStore returns an LLMProviderStore backed by the given *sql.DB.
-func NewLLMProviderStore(db *sql.DB) *LLMProviderStore {
-	return &LLMProviderStore{db: db}
+// NewLLMProviderRepository returns an LLMProviderRepository backed by the given *sql.DB.
+func NewLLMProviderRepository(db *sql.DB) *LLMProviderRepository {
+	return &LLMProviderRepository{db: db}
 }
 
 // Create inserts a new LLM provider. Returns ErrDuplicate when the name
 // is already taken.
-func (s *LLMProviderStore) Create(ctx context.Context, p *model.LLMProvider) error {
-	_, err := s.db.ExecContext(ctx,
+func (r *LLMProviderRepository) Create(ctx context.Context, p *model.LLMProvider) error {
+	_, err := r.db.ExecContext(ctx,
 		`INSERT INTO llm_providers (id, name, base_url, api_key, model, max_tokens, temperature, is_default, is_enabled, created_at, updated_at)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		p.ID, p.Name, p.BaseURL, p.APIKey, p.Model, p.MaxTokens, p.Temperature, p.IsDefault, p.IsEnabled, p.CreatedAt, p.UpdatedAt,
@@ -38,8 +38,8 @@ func (s *LLMProviderStore) Create(ctx context.Context, p *model.LLMProvider) err
 
 // GetByID fetches a provider by primary key. Returns ErrNotFound when no
 // row matches.
-func (s *LLMProviderStore) GetByID(ctx context.Context, id string) (*model.LLMProvider, error) {
-	row := s.db.QueryRowContext(ctx,
+func (r *LLMProviderRepository) GetByID(ctx context.Context, id string) (*model.LLMProvider, error) {
+	row := r.db.QueryRowContext(ctx,
 		`SELECT id, name, base_url, api_key, model, max_tokens, temperature, is_default, is_enabled, created_at, updated_at
 		 FROM llm_providers WHERE id = ?`, id,
 	)
@@ -48,8 +48,8 @@ func (s *LLMProviderStore) GetByID(ctx context.Context, id string) (*model.LLMPr
 
 // GetDefault fetches the provider marked as default. Returns ErrNotFound
 // when no default is set.
-func (s *LLMProviderStore) GetDefault(ctx context.Context) (*model.LLMProvider, error) {
-	row := s.db.QueryRowContext(ctx,
+func (r *LLMProviderRepository) GetDefault(ctx context.Context) (*model.LLMProvider, error) {
+	row := r.db.QueryRowContext(ctx,
 		`SELECT id, name, base_url, api_key, model, max_tokens, temperature, is_default, is_enabled, created_at, updated_at
 		 FROM llm_providers WHERE is_default = TRUE LIMIT 1`,
 	)
@@ -57,8 +57,8 @@ func (s *LLMProviderStore) GetDefault(ctx context.Context) (*model.LLMProvider, 
 }
 
 // List returns all providers ordered by name.
-func (s *LLMProviderStore) List(ctx context.Context) ([]model.LLMProvider, error) {
-	rows, err := s.db.QueryContext(ctx,
+func (r *LLMProviderRepository) List(ctx context.Context) ([]model.LLMProvider, error) {
+	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, name, base_url, api_key, model, max_tokens, temperature, is_default, is_enabled, created_at, updated_at
 		 FROM llm_providers ORDER BY name`,
 	)
@@ -79,7 +79,7 @@ func (s *LLMProviderStore) List(ctx context.Context) ([]model.LLMProvider, error
 }
 
 // Update applies a partial update. Only non-nil fields in the request are written.
-func (s *LLMProviderStore) Update(ctx context.Context, id string, req *model.LLMProviderUpdateRequest) (*model.LLMProvider, error) {
+func (r *LLMProviderRepository) Update(ctx context.Context, id string, req *model.LLMProviderUpdateRequest) (*model.LLMProvider, error) {
 	setClauses := []string{}
 	args := []interface{}{}
 
@@ -117,7 +117,7 @@ func (s *LLMProviderStore) Update(ctx context.Context, id string, req *model.LLM
 	}
 
 	if len(setClauses) == 0 {
-		return s.GetByID(ctx, id)
+		return r.GetByID(ctx, id)
 	}
 
 	setClauses = append(setClauses, "updated_at = ?")
@@ -133,7 +133,7 @@ func (s *LLMProviderStore) Update(ctx context.Context, id string, req *model.LLM
 	}
 	query += " WHERE id = ?"
 
-	result, err := s.db.ExecContext(ctx, query, args...)
+	result, err := r.db.ExecContext(ctx, query, args...)
 	if err != nil {
 		if isDuplicateKey(err) {
 			return nil, ErrDuplicate
@@ -146,12 +146,12 @@ func (s *LLMProviderStore) Update(ctx context.Context, id string, req *model.LLM
 		return nil, ErrNotFound
 	}
 
-	return s.GetByID(ctx, id)
+	return r.GetByID(ctx, id)
 }
 
 // Delete removes a provider by ID. Returns ErrNotFound when no row matches.
-func (s *LLMProviderStore) Delete(ctx context.Context, id string) error {
-	result, err := s.db.ExecContext(ctx, `DELETE FROM llm_providers WHERE id = ?`, id)
+func (r *LLMProviderRepository) Delete(ctx context.Context, id string) error {
+	result, err := r.db.ExecContext(ctx, `DELETE FROM llm_providers WHERE id = ?`, id)
 	if err != nil {
 		return fmt.Errorf("delete llm_provider: %w", err)
 	}
@@ -163,8 +163,8 @@ func (s *LLMProviderStore) Delete(ctx context.Context, id string) error {
 }
 
 // ClearDefault unsets is_default on all providers. Used before setting a new default.
-func (s *LLMProviderStore) ClearDefault(ctx context.Context) error {
-	_, err := s.db.ExecContext(ctx, `UPDATE llm_providers SET is_default = FALSE WHERE is_default = TRUE`)
+func (r *LLMProviderRepository) ClearDefault(ctx context.Context) error {
+	_, err := r.db.ExecContext(ctx, `UPDATE llm_providers SET is_default = FALSE WHERE is_default = TRUE`)
 	if err != nil {
 		return fmt.Errorf("clear default: %w", err)
 	}
@@ -181,4 +181,26 @@ func scanLLMProvider(row *sql.Row) (*model.LLMProvider, error) {
 		return nil, fmt.Errorf("scan llm_provider: %w", err)
 	}
 	return &p, nil
+}
+
+// isDuplicateKey reports whether err is a MySQL 1062 duplicate-key error.
+func isDuplicateKey(err error) bool {
+	if err == nil {
+		return false
+	}
+	return containsAny(err.Error(), "Error 1062", "Duplicate entry")
+}
+
+func containsAny(s string, subs ...string) bool {
+	for _, sub := range subs {
+		if len(sub) == 0 {
+			continue
+		}
+		for i := 0; i <= len(s)-len(sub); i++ {
+			if s[i:i+len(sub)] == sub {
+				return true
+			}
+		}
+	}
+	return false
 }
