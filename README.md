@@ -238,14 +238,14 @@ All `/api/graph/*` endpoints require a valid token (`?token=xxx`).
 - [x] Management console (Dashboard, login)
 - [x] Neo4j integration (core)
 - [x] Node/edge CRUD in console
-- [ ] Review queue for discovery pipeline
+- [x] Review queue for discovery pipeline
 
 ### Phase 2 — Dynamic Graph
 
 - [x] `services/console` (auth + console management)
-- [ ] `services/discovery` (TypeScript) — arXiv / social media ingestion
+- [ ] `services/discovery` — arXiv / social media ingestion + LLM-powered analysis
 - [ ] LLM pipeline for node/edge generation
-- [ ] Automated community re-detection
+- [ ] Automated community re-detection (Louvain hierarchical)
 - [ ] Live data freshness status
 
 ***
