@@ -6,7 +6,7 @@ import {
   getCoreRowModel,
   FlexRender,
 } from '@tanstack/vue-table'
-import Layout from '../../components/Layout.vue'
+
 import {
   FileText,
   ChevronLeft,
@@ -198,7 +198,7 @@ onMounted(fetchPapers)
 </script>
 
 <template>
-  <Layout>
+
     <div class="space-y-6">
       <div class="flex items-center justify-between">
         <div>
@@ -306,5 +306,5 @@ onMounted(fetchPapers)
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  </Layout>
+
 </template>

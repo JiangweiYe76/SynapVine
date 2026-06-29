@@ -6,7 +6,7 @@ import {
   getCoreRowModel,
   FlexRender,
 } from '@tanstack/vue-table'
-import Layout from '../../components/Layout.vue'
+
 import { Layers, ChevronRight, ChevronDown, Pencil, Trash2, Plus } from '@lucide/vue'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -240,7 +240,7 @@ onMounted(fetchTree)
 </script>
 
 <template>
-  <Layout>
+
     <div class="space-y-6">
       <div class="flex items-center justify-between">
         <div>
@@ -323,5 +323,5 @@ onMounted(fetchTree)
       @update:open="deleteDialogOpen = $event"
       @deleted="handleDeleted"
     />
-  </Layout>
+
 </template>

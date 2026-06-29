@@ -6,7 +6,7 @@ import {
   getCoreRowModel,
   FlexRender,
 } from '@tanstack/vue-table'
-import Layout from '../../components/Layout.vue'
+
 import {
   Brain,
   Pencil,
@@ -234,7 +234,7 @@ onMounted(fetchProviders)
 </script>
 
 <template>
-  <Layout>
+
     <div class="space-y-6">
       <div class="flex items-center justify-between">
         <div>
@@ -339,5 +339,5 @@ onMounted(fetchProviders)
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  </Layout>
+
 </template>
