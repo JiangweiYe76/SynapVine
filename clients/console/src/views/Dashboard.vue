@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import Layout from '../components/Layout.vue'
+
 import { Network, Link2, Activity, ChevronRight } from '@lucide/vue'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -39,7 +39,7 @@ onMounted(fetchStats)
 </script>
 
 <template>
-  <Layout>
+
     <div class="space-y-6">
       <div>
         <h2 class="text-2xl font-bold tracking-tight">Dashboard</h2>
@@ -121,5 +121,5 @@ onMounted(fetchStats)
         </CardContent>
       </Card>
     </div>
-  </Layout>
+
 </template>
