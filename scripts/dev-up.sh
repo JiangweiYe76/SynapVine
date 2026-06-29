@@ -40,6 +40,7 @@ cleanup() {
   done
   rm -rf "$PID_DIR"
   echo "Done."
+  exit 0
 }
 trap cleanup EXIT INT TERM
 
