@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch, h } from 'vue'
+import { ref, onMounted, h } from 'vue'
 import {
   useVueTable,
   createColumnHelper,
@@ -21,6 +21,8 @@ import {
 } from '@/components/ui/table'
 import { nodesAPI } from '@/api/nodes'
 import { useAuthStore } from '@/stores/auth'
+import { usePagination } from '@/composables/usePagination'
+import { useDebouncedSearch } from '@/composables/useDebouncedSearch'
 import type { Node } from '@/types/graph'
 import NodeFormDialog from '@/components/NodeFormDialog.vue'
 import DeleteConfirmDialog from '@/components/DeleteConfirmDialog.vue'
@@ -29,16 +31,33 @@ const authStore = useAuthStore()
 const nodes = ref<Node[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
-const searchQuery = ref('')
-const currentPage = ref(0)
-const pageSize = 20
-const totalNodes = ref(0)
 
 const formDialogOpen = ref(false)
 const deleteDialogOpen = ref(false)
 const selectedNode = ref<Node | null>(null)
 
-const totalPages = computed(() => Math.ceil(totalNodes.value / pageSize))
+async function fetchNodes() {
+  loading.value = true
+  error.value = null
+  try {
+    const res = await nodesAPI.list(pagination.offset.value, pagination.pageSize, searchQuery.value)
+    nodes.value = res.nodes
+    pagination.setTotalItems(res.pagination.total)
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : 'Failed to load nodes'
+  } finally {
+    loading.value = false
+  }
+}
+
+const pagination = usePagination({
+  fetchFn: fetchNodes,
+})
+
+const { searchQuery } = useDebouncedSearch({
+  onSearch: fetchNodes,
+  onResetPage: pagination.resetPage,
+})
 
 function openCreateDialog() {
   selectedNode.value = null
@@ -90,8 +109,6 @@ const columns = [
     header: '',
     cell: (info) => {
       const node = info.row.original
-      // Mutation actions are gated on the role so a viewer never even
-      // sees the buttons; the server enforces it again.
       if (!authStore.isEditor) return null
       return h('div', { class: 'flex items-center justify-end gap-1' }, [
         h(Button, {
@@ -116,44 +133,6 @@ const table = useVueTable({
   columns,
   getCoreRowModel: getCoreRowModel(),
 })
-
-let searchTimer: ReturnType<typeof setTimeout> | null = null
-
-watch(searchQuery, () => {
-  if (searchTimer) clearTimeout(searchTimer)
-  searchTimer = setTimeout(() => {
-    currentPage.value = 0
-    fetchNodes()
-  }, 300)
-})
-
-async function fetchNodes() {
-  loading.value = true
-  error.value = null
-  try {
-    const res = await nodesAPI.list(currentPage.value * pageSize, pageSize, searchQuery.value)
-    nodes.value = res.nodes
-    totalNodes.value = res.pagination.total
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Failed to load nodes'
-  } finally {
-    loading.value = false
-  }
-}
-
-function prevPage() {
-  if (currentPage.value > 0) {
-    currentPage.value--
-    fetchNodes()
-  }
-}
-
-function nextPage() {
-  if (currentPage.value < totalPages.value - 1) {
-    currentPage.value++
-    fetchNodes()
-  }
-}
 
 function handleSaved() {
   fetchNodes()
@@ -191,7 +170,7 @@ onMounted(fetchNodes)
               />
             </div>
             <p class="text-sm text-muted-foreground">
-              {{ totalNodes }} nodes total
+              {{ pagination.totalItems.value }} nodes total
             </p>
           </div>
 
@@ -249,14 +228,14 @@ onMounted(fetchNodes)
 
           <div v-if="!loading && !error && table.getRowModel().rows.length > 0" class="flex items-center justify-between mt-4">
             <p class="text-sm text-muted-foreground">
-              Page {{ currentPage + 1 }} of {{ totalPages }}
+              Page {{ pagination.currentPage.value + 1 }} of {{ pagination.totalPages }}
             </p>
             <div class="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                :disabled="currentPage === 0"
-                @click="prevPage"
+                :disabled="pagination.currentPage.value === 0"
+                @click="pagination.prevPage"
               >
                 <ChevronLeft class="h-4 w-4 mr-1" />
                 Previous
@@ -264,8 +243,8 @@ onMounted(fetchNodes)
               <Button
                 variant="outline"
                 size="sm"
-                :disabled="currentPage >= totalPages - 1"
-                @click="nextPage"
+                :disabled="pagination.currentPage.value >= pagination.totalPages.value - 1"
+                @click="pagination.nextPage"
               >
                 Next
                 <ChevronRight class="h-4 w-4 ml-1" />

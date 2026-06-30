@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch, h } from 'vue'
+import { ref, onMounted, h } from 'vue'
 import {
   useVueTable,
   createColumnHelper,
@@ -38,18 +38,14 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { reviewAPI } from '@/api/review'
 import { useAuthStore } from '@/stores/auth'
+import { usePagination } from '@/composables/usePagination'
 import type { ReviewQueueItem, ReviewStatus } from '@/types/paper'
 
 const authStore = useAuthStore()
 const items = ref<ReviewQueueItem[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
-const currentPage = ref(0)
-const pageSize = 20
-const totalItems = ref(0)
 const statusFilter = ref<ReviewStatus | ''>('')
-
-const totalPages = computed(() => Math.ceil(totalItems.value / pageSize))
 
 // Detail dialog
 const detailOpen = ref(false)
@@ -108,6 +104,30 @@ async function handleAction() {
   }
 }
 
+async function fetchItems() {
+  loading.value = true
+  error.value = null
+  try {
+    const res = await reviewAPI.list(pagination.offset.value, pagination.pageSize, statusFilter.value)
+    items.value = res.items
+    pagination.setTotalItems(res.total)
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : 'Failed to load review queue'
+  } finally {
+    loading.value = false
+  }
+}
+
+const pagination = usePagination({
+  fetchFn: fetchItems,
+})
+
+function handleStatusFilterChange(status: ReviewStatus | '') {
+  statusFilter.value = status
+  pagination.resetPage()
+  fetchItems()
+}
+
 const columnHelper = createColumnHelper<ReviewQueueItem>()
 
 const columns = [
@@ -159,39 +179,6 @@ const table = useVueTable({
   getCoreRowModel: getCoreRowModel(),
 })
 
-watch(statusFilter, () => {
-  currentPage.value = 0
-  fetchItems()
-})
-
-async function fetchItems() {
-  loading.value = true
-  error.value = null
-  try {
-    const res = await reviewAPI.list(currentPage.value * pageSize, pageSize, statusFilter.value)
-    items.value = res.items
-    totalItems.value = res.total
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Failed to load review queue'
-  } finally {
-    loading.value = false
-  }
-}
-
-function prevPage() {
-  if (currentPage.value > 0) {
-    currentPage.value--
-    fetchItems()
-  }
-}
-
-function nextPage() {
-  if (currentPage.value < totalPages.value - 1) {
-    currentPage.value++
-    fetchItems()
-  }
-}
-
 function parseNodes(item: ReviewQueueItem) {
   if (Array.isArray(item.extracted_nodes)) return item.extracted_nodes
   try { return JSON.parse(item.extracted_nodes as any) } catch { return [] }
@@ -221,7 +208,7 @@ onMounted(fetchItems)
             :key="opt"
             class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-colors cursor-pointer"
             :class="statusFilter === opt ? 'bg-primary text-primary-foreground' : 'border border-input bg-background hover:bg-accent hover:text-accent-foreground'"
-            @click="statusFilter = opt as ReviewStatus | ''"
+            @click="handleStatusFilterChange(opt as ReviewStatus | '')"
           >
             {{ opt || 'All' }}
           </button>
@@ -277,13 +264,13 @@ onMounted(fetchItems)
 
           <div v-if="!loading && !error && table.getRowModel().rows.length > 0" class="flex items-center justify-between mt-4">
             <p class="text-sm text-muted-foreground">
-              {{ totalItems }} items — Page {{ currentPage + 1 }} of {{ totalPages }}
+              {{ pagination.totalItems.value }} items — Page {{ pagination.currentPage.value + 1 }} of {{ pagination.totalPages }}
             </p>
             <div class="flex items-center gap-2">
-              <Button variant="outline" size="sm" :disabled="currentPage === 0" @click="prevPage">
+              <Button variant="outline" size="sm" :disabled="pagination.currentPage.value === 0" @click="pagination.prevPage">
                 <ChevronLeft class="h-4 w-4 mr-1" /> Previous
               </Button>
-              <Button variant="outline" size="sm" :disabled="currentPage >= totalPages - 1" @click="nextPage">
+              <Button variant="outline" size="sm" :disabled="pagination.currentPage.value >= pagination.totalPages.value - 1" @click="pagination.nextPage">
                 Next <ChevronRight class="h-4 w-4 ml-1" />
               </Button>
             </div>
