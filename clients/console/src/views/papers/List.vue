@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/table'
 import { papersAPI } from '@/api/papers'
 import { useAuthStore } from '@/stores/auth'
+import { usePagination } from '@/composables/usePagination'
 import type { Paper } from '@/types/paper'
 import PaperFormDialog from '@/components/PaperFormDialog.vue'
 import {
@@ -42,9 +43,6 @@ const authStore = useAuthStore()
 const papers = ref<Paper[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
-const currentPage = ref(0)
-const pageSize = 20
-const totalPapers = ref(0)
 
 const formDialogOpen = ref(false)
 const deleteDialogOpen = ref(false)
@@ -61,9 +59,23 @@ const statusColors: Record<string, string> = {
   merged: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200',
 }
 
-const totalPages = computed(() => Math.ceil(totalPapers.value / pageSize))
+async function fetchPapers() {
+  loading.value = true
+  error.value = null
+  try {
+    const res = await papersAPI.list(pagination.offset.value, pagination.pageSize)
+    papers.value = res.papers
+    pagination.setTotalItems(res.total)
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : 'Failed to load papers'
+  } finally {
+    loading.value = false
+  }
+}
 
-import { computed } from 'vue'
+const pagination = usePagination({
+  fetchFn: fetchPapers,
+})
 
 function openCreateDialog() {
   selectedPaper.value = null
@@ -162,34 +174,6 @@ const table = useVueTable({
   getCoreRowModel: getCoreRowModel(),
 })
 
-async function fetchPapers() {
-  loading.value = true
-  error.value = null
-  try {
-    const res = await papersAPI.list(currentPage.value * pageSize, pageSize)
-    papers.value = res.papers
-    totalPapers.value = res.total
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Failed to load papers'
-  } finally {
-    loading.value = false
-  }
-}
-
-function prevPage() {
-  if (currentPage.value > 0) {
-    currentPage.value--
-    fetchPapers()
-  }
-}
-
-function nextPage() {
-  if (currentPage.value < totalPages.value - 1) {
-    currentPage.value++
-    fetchPapers()
-  }
-}
-
 function handleSaved() {
   fetchPapers()
 }
@@ -266,13 +250,13 @@ onMounted(fetchPapers)
 
           <div v-if="!loading && !error && table.getRowModel().rows.length > 0" class="flex items-center justify-between mt-4">
             <p class="text-sm text-muted-foreground">
-              {{ totalPapers }} papers total — Page {{ currentPage + 1 }} of {{ totalPages }}
+              {{ pagination.totalItems.value }} papers total — Page {{ pagination.currentPage.value + 1 }} of {{ pagination.totalPages }}
             </p>
             <div class="flex items-center gap-2">
-              <Button variant="outline" size="sm" :disabled="currentPage === 0" @click="prevPage">
+              <Button variant="outline" size="sm" :disabled="pagination.currentPage.value === 0" @click="pagination.prevPage">
                 <ChevronLeft class="h-4 w-4 mr-1" /> Previous
               </Button>
-              <Button variant="outline" size="sm" :disabled="currentPage >= totalPages - 1" @click="nextPage">
+              <Button variant="outline" size="sm" :disabled="pagination.currentPage.value >= pagination.totalPages.value - 1" @click="pagination.nextPage">
                 Next <ChevronRight class="h-4 w-4 ml-1" />
               </Button>
             </div>

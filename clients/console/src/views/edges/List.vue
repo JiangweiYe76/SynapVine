@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch, h } from 'vue'
+import { ref, onMounted, h } from 'vue'
 import {
   useVueTable,
   createColumnHelper,
@@ -23,6 +23,8 @@ import {
 import { edgesAPI } from '@/api/edges'
 import { nodesAPI } from '@/api/nodes'
 import { useAuthStore } from '@/stores/auth'
+import { usePagination } from '@/composables/usePagination'
+import { useDebouncedSearch } from '@/composables/useDebouncedSearch'
 import type { Edge, Node } from '@/types/graph'
 import EdgeFormDialog from '@/components/EdgeFormDialog.vue'
 import EdgeDeleteConfirmDialog from '@/components/EdgeDeleteConfirmDialog.vue'
@@ -32,31 +34,10 @@ const edges = ref<Edge[]>([])
 const nodes = ref<Record<string, Node>>({})
 const loading = ref(true)
 const error = ref<string | null>(null)
-const searchQuery = ref('')
-const currentPage = ref(0)
-const pageSize = 20
-const totalEdges = ref(0)
 
 const formDialogOpen = ref(false)
 const deleteDialogOpen = ref(false)
 const selectedEdge = ref<Edge | null>(null)
-
-const totalPages = computed(() => Math.ceil(totalEdges.value / pageSize))
-
-function openCreateDialog() {
-  selectedEdge.value = null
-  formDialogOpen.value = true
-}
-
-function openEditDialog(edge: Edge) {
-  selectedEdge.value = edge
-  formDialogOpen.value = true
-}
-
-function openDeleteDialog(edge: Edge) {
-  selectedEdge.value = edge
-  deleteDialogOpen.value = true
-}
 
 async function loadNodes() {
   try {
@@ -73,6 +54,44 @@ async function loadNodes() {
 
 function nodeName(id: string): string {
   return nodes.value[id]?.name ?? id
+}
+
+async function fetchEdges() {
+  loading.value = true
+  error.value = null
+  try {
+    const res = await edgesAPI.list(pagination.offset.value, pagination.pageSize, searchQuery.value)
+    edges.value = res.edges
+    pagination.setTotalItems(res.pagination.total)
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : 'Failed to load edges'
+  } finally {
+    loading.value = false
+  }
+}
+
+const pagination = usePagination({
+  fetchFn: fetchEdges,
+})
+
+const { searchQuery } = useDebouncedSearch({
+  onSearch: fetchEdges,
+  onResetPage: pagination.resetPage,
+})
+
+function openCreateDialog() {
+  selectedEdge.value = null
+  formDialogOpen.value = true
+}
+
+function openEditDialog(edge: Edge) {
+  selectedEdge.value = edge
+  formDialogOpen.value = true
+}
+
+function openDeleteDialog(edge: Edge) {
+  selectedEdge.value = edge
+  deleteDialogOpen.value = true
 }
 
 const columnHelper = createColumnHelper<Edge>()
@@ -103,8 +122,6 @@ const columns = [
     header: '',
     cell: (info) => {
       const edge = info.row.original
-      // Mutation actions are gated on the role so a viewer never even
-      // sees the buttons; the server enforces it again.
       if (!authStore.isEditor) return null
       return h('div', { class: 'flex items-center justify-end gap-1' }, [
         h(Button, {
@@ -129,44 +146,6 @@ const table = useVueTable({
   columns,
   getCoreRowModel: getCoreRowModel(),
 })
-
-let searchTimer: ReturnType<typeof setTimeout> | null = null
-
-watch(searchQuery, () => {
-  if (searchTimer) clearTimeout(searchTimer)
-  searchTimer = setTimeout(() => {
-    currentPage.value = 0
-    fetchEdges()
-  }, 300)
-})
-
-async function fetchEdges() {
-  loading.value = true
-  error.value = null
-  try {
-    const res = await edgesAPI.list(currentPage.value * pageSize, pageSize, searchQuery.value)
-    edges.value = res.edges
-    totalEdges.value = res.pagination.total
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Failed to load edges'
-  } finally {
-    loading.value = false
-  }
-}
-
-function prevPage() {
-  if (currentPage.value > 0) {
-    currentPage.value--
-    fetchEdges()
-  }
-}
-
-function nextPage() {
-  if (currentPage.value < totalPages.value - 1) {
-    currentPage.value++
-    fetchEdges()
-  }
-}
 
 function handleSaved() {
   fetchEdges()
@@ -207,7 +186,7 @@ onMounted(() => {
               />
             </div>
             <p class="text-sm text-muted-foreground">
-              {{ totalEdges }} edges total
+              {{ pagination.totalItems.value }} edges total
             </p>
           </div>
 
@@ -264,14 +243,14 @@ onMounted(() => {
 
           <div v-if="!loading && !error && table.getRowModel().rows.length > 0" class="flex items-center justify-between mt-4">
             <p class="text-sm text-muted-foreground">
-              Page {{ currentPage + 1 }} of {{ totalPages }}
+              Page {{ pagination.currentPage.value + 1 }} of {{ pagination.totalPages }}
             </p>
             <div class="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                :disabled="currentPage === 0"
-                @click="prevPage"
+                :disabled="pagination.currentPage.value === 0"
+                @click="pagination.prevPage"
               >
                 <ChevronLeft class="h-4 w-4 mr-1" />
                 Previous
@@ -279,8 +258,8 @@ onMounted(() => {
               <Button
                 variant="outline"
                 size="sm"
-                :disabled="currentPage >= totalPages - 1"
-                @click="nextPage"
+                :disabled="pagination.currentPage.value >= pagination.totalPages.value - 1"
+                @click="pagination.nextPage"
               >
                 Next
                 <ChevronRight class="h-4 w-4 ml-1" />
