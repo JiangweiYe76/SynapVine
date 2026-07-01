@@ -264,7 +264,9 @@ onMounted(fetchNodes)
 
     <DeleteConfirmDialog
       :open="deleteDialogOpen"
-      :node="selectedNode"
+      title="Delete Node"
+      :description="`Are you sure you want to delete ${selectedNode?.name}? This action cannot be undone.`"
+      :delete-fn="async () => { if (selectedNode) await nodesAPI.delete(selectedNode.id) }"
       @update:open="deleteDialogOpen = $event"
       @deleted="handleDeleted"
     />

@@ -27,7 +27,7 @@ import { usePagination } from '@/composables/usePagination'
 import { useDebouncedSearch } from '@/composables/useDebouncedSearch'
 import type { Edge, Node } from '@/types/graph'
 import EdgeFormDialog from '@/components/EdgeFormDialog.vue'
-import EdgeDeleteConfirmDialog from '@/components/EdgeDeleteConfirmDialog.vue'
+import DeleteConfirmDialog from '@/components/DeleteConfirmDialog.vue'
 
 const authStore = useAuthStore()
 const edges = ref<Edge[]>([])
@@ -277,9 +277,11 @@ onMounted(() => {
       @saved="handleSaved"
     />
 
-    <EdgeDeleteConfirmDialog
+    <DeleteConfirmDialog
       :open="deleteDialogOpen"
-      :edge="selectedEdge"
+      title="Delete Edge"
+      :description="`Are you sure you want to delete the edge from ${selectedEdge?.source} to ${selectedEdge?.target}? This action cannot be undone.`"
+      :delete-fn="async () => { if (selectedEdge) await edgesAPI.delete(selectedEdge.source, selectedEdge.target) }"
       @update:open="deleteDialogOpen = $event"
       @deleted="handleDeleted"
     />

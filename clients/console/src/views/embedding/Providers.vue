@@ -30,14 +30,7 @@ import { embeddingAPI } from '@/api/embedding'
 import { useAuthStore } from '@/stores/auth'
 import type { EmbeddingProvider } from '@/types/embedding'
 import EmbeddingProviderFormDialog from '@/components/EmbeddingProviderFormDialog.vue'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import DeleteConfirmDialog from '@/components/DeleteConfirmDialog.vue'
 
 const authStore = useAuthStore()
 const providers = ref<EmbeddingProvider[]>([])
@@ -50,24 +43,6 @@ const selectedProvider = ref<EmbeddingProvider | null>(null)
 
 const testingId = ref<string | null>(null)
 const testResult = ref<{ id: string; ok: boolean; message: string } | null>(null)
-
-const deleting = ref(false)
-const deleteError = ref<string | null>(null)
-
-async function handleDelete() {
-  if (!selectedProvider.value) return
-  deleting.value = true
-  deleteError.value = null
-  try {
-    await embeddingAPI.delete(selectedProvider.value.id)
-    deleteDialogOpen.value = false
-    fetchProviders()
-  } catch (e) {
-    deleteError.value = e instanceof Error ? e.message : 'Failed to delete provider'
-  } finally {
-    deleting.value = false
-  }
-}
 
 function openCreateDialog() {
   selectedProvider.value = null
@@ -324,25 +299,13 @@ onMounted(fetchProviders)
       @saved="handleSaved"
     />
 
-    <Dialog :open="deleteDialogOpen" @update:open="deleteDialogOpen = $event">
-      <DialogContent class="sm:max-w-sm">
-        <DialogHeader>
-          <DialogTitle>Delete Provider</DialogTitle>
-          <DialogDescription>
-            Are you sure you want to delete <strong>{{ selectedProvider?.name }}</strong>?
-            This action cannot be undone.
-          </DialogDescription>
-        </DialogHeader>
-
-        <p v-if="deleteError" class="text-sm text-destructive">{{ deleteError }}</p>
-
-        <DialogFooter>
-          <Button variant="outline" @click="deleteDialogOpen = false">Cancel</Button>
-          <Button variant="destructive" :disabled="deleting" @click="handleDelete">
-            {{ deleting ? 'Deleting...' : 'Delete' }}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <DeleteConfirmDialog
+      :open="deleteDialogOpen"
+      title="Delete Provider"
+      :description="`Are you sure you want to delete ${selectedProvider?.name}? This action cannot be undone.`"
+      :delete-fn="async () => { if (selectedProvider) await embeddingAPI.delete(selectedProvider.id) }"
+      @update:open="deleteDialogOpen = $event"
+      @deleted="fetchProviders"
+    />
 
 </template>

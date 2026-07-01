@@ -9,12 +9,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { nodesAPI } from '@/api/nodes'
-import type { Node } from '@/types/graph'
 
 const props = defineProps<{
   open: boolean
-  node?: Node | null
+  title?: string
+  description?: string
+  deleteFn: () => Promise<void>
 }>()
 
 const emit = defineEmits<{
@@ -26,17 +26,15 @@ const deleting = ref(false)
 const deleteError = ref<string | null>(null)
 
 async function handleDelete() {
-  if (!props.node) return
-
   deleting.value = true
   deleteError.value = null
 
   try {
-    await nodesAPI.delete(props.node.id)
+    await props.deleteFn()
     emit('deleted')
     emit('update:open', false)
   } catch (e) {
-    deleteError.value = e instanceof Error ? e.message : 'Failed to delete node'
+    deleteError.value = e instanceof Error ? e.message : 'Failed to delete'
   } finally {
     deleting.value = false
   }
@@ -47,10 +45,11 @@ async function handleDelete() {
   <Dialog :open="open" @update:open="emit('update:open', $event)">
     <DialogContent class="sm:max-w-sm">
       <DialogHeader>
-        <DialogTitle>Delete Node</DialogTitle>
+        <DialogTitle>{{ title || 'Confirm Delete' }}</DialogTitle>
         <DialogDescription>
-          Are you sure you want to delete <strong>{{ node?.name }}</strong>?
-          This action cannot be undone.
+          <slot>
+            {{ description || 'Are you sure you want to delete this item? This action cannot be undone.' }}
+          </slot>
         </DialogDescription>
       </DialogHeader>
 

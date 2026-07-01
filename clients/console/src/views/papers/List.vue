@@ -30,14 +30,7 @@ import { useAuthStore } from '@/stores/auth'
 import { usePagination } from '@/composables/usePagination'
 import type { Paper } from '@/types/paper'
 import PaperFormDialog from '@/components/PaperFormDialog.vue'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import DeleteConfirmDialog from '@/components/DeleteConfirmDialog.vue'
 
 const authStore = useAuthStore()
 const papers = ref<Paper[]>([])
@@ -47,9 +40,6 @@ const error = ref<string | null>(null)
 const formDialogOpen = ref(false)
 const deleteDialogOpen = ref(false)
 const selectedPaper = ref<Paper | null>(null)
-
-const deleting = ref(false)
-const deleteError = ref<string | null>(null)
 
 const statusColors: Record<string, string> = {
   uploaded: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
@@ -94,21 +84,6 @@ function viewPaperPDF(paper: Paper) {
 function openDeleteDialog(paper: Paper) {
   selectedPaper.value = paper
   deleteDialogOpen.value = true
-}
-
-async function handleDelete() {
-  if (!selectedPaper.value) return
-  deleting.value = true
-  deleteError.value = null
-  try {
-    await papersAPI.delete(selectedPaper.value.id)
-    deleteDialogOpen.value = false
-    fetchPapers()
-  } catch (e) {
-    deleteError.value = e instanceof Error ? e.message : 'Failed to delete paper'
-  } finally {
-    deleting.value = false
-  }
 }
 
 const columnHelper = createColumnHelper<Paper>()
@@ -272,23 +247,13 @@ onMounted(fetchPapers)
       @saved="handleSaved"
     />
 
-    <Dialog :open="deleteDialogOpen" @update:open="deleteDialogOpen = $event">
-      <DialogContent class="sm:max-w-sm">
-        <DialogHeader>
-          <DialogTitle>Delete Paper</DialogTitle>
-          <DialogDescription>
-            Are you sure you want to delete <strong>{{ selectedPaper?.title }}</strong>?
-            This action cannot be undone.
-          </DialogDescription>
-        </DialogHeader>
-        <p v-if="deleteError" class="text-sm text-destructive">{{ deleteError }}</p>
-        <DialogFooter>
-          <Button variant="outline" @click="deleteDialogOpen = false">Cancel</Button>
-          <Button variant="destructive" :disabled="deleting" @click="handleDelete">
-            {{ deleting ? 'Deleting...' : 'Delete' }}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <DeleteConfirmDialog
+      :open="deleteDialogOpen"
+      title="Delete Paper"
+      :description="`Are you sure you want to delete ${selectedPaper?.title}? This action cannot be undone.`"
+      :delete-fn="async () => { if (selectedPaper) await papersAPI.delete(selectedPaper.id) }"
+      @update:open="deleteDialogOpen = $event"
+      @deleted="fetchPapers"
+    />
 
 </template>
