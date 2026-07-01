@@ -23,7 +23,7 @@ import { communitiesAPI } from '@/api/communities'
 import { useAuthStore } from '@/stores/auth'
 import type { HierarchicalCommunity } from '@/types/graph'
 import CommunityFormDialog from '@/components/CommunityFormDialog.vue'
-import CommunityDeleteConfirmDialog from '@/components/CommunityDeleteConfirmDialog.vue'
+import DeleteConfirmDialog from '@/components/DeleteConfirmDialog.vue'
 
 const authStore = useAuthStore()
 interface FlatRow {
@@ -316,10 +316,11 @@ onMounted(fetchTree)
       @saved="handleSaved"
     />
 
-    <CommunityDeleteConfirmDialog
+    <DeleteConfirmDialog
       :open="deleteDialogOpen"
-      :community-id="selectedCommunityId"
-      :community-name="selectedCommunity?.name"
+      title="Delete Community"
+      :description="`Are you sure you want to delete ${selectedCommunity?.name || 'this community'}? This action cannot be undone.`"
+      :delete-fn="async () => { if (selectedCommunityId) await communitiesAPI.delete(selectedCommunityId) }"
       @update:open="deleteDialogOpen = $event"
       @deleted="handleDeleted"
     />
