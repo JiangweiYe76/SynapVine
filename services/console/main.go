@@ -98,9 +98,27 @@ func main() {
 		AllowCredentials: true,
 	}))
 
-	// Public auth routes (no JWT required).
+	// Public routes (no JWT required).
 	app.Post("/api/auth/login", authHandler.Login)
 	app.Post("/api/auth/refresh", authHandler.Refresh)
+
+	// Health check endpoint (public, no auth required).
+	app.Get("/api/health", func(c *fiber.Ctx) error {
+		consoleStatus := "operational"
+		coreStatus := "operational"
+
+		if err := dbConn.PingContext(c.Context()); err != nil {
+			consoleStatus = "down"
+		}
+		if err := core.Health(c.Context()); err != nil {
+			coreStatus = "down"
+		}
+
+		return c.JSON(fiber.Map{
+			"console": consoleStatus,
+			"core":    coreStatus,
+		})
+	})
 
 	// Protected routes (JWT required).
 	api := app.Group("/api", authHandler.JWTMiddleware())

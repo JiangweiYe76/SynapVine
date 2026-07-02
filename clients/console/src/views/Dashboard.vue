@@ -5,11 +5,15 @@ import { Network, Link2, Activity, ChevronRight } from '@lucide/vue'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { statsAPI } from '@/api/stats'
+import { fetchHealth } from '@/api/health'
 import type { StatsResponse } from '@/types/graph'
 
 const stats = ref<StatsResponse | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
+
+const consoleStatus = ref<'operational' | 'down' | 'checking'>('checking')
+const coreStatus = ref<'operational' | 'down' | 'checking'>('checking')
 
 const statCards = computed(() => [
   { name: 'Total Nodes', value: stats.value?.total_nodes ?? 0, icon: Network },
@@ -35,7 +39,21 @@ async function fetchStats() {
   }
 }
 
-onMounted(fetchStats)
+async function checkHealth() {
+  try {
+    const health = await fetchHealth()
+    consoleStatus.value = health.console
+    coreStatus.value = health.core
+  } catch {
+    consoleStatus.value = 'down'
+    coreStatus.value = 'down'
+  }
+}
+
+onMounted(() => {
+  fetchStats()
+  checkHealth()
+})
 </script>
 
 <template>
@@ -106,16 +124,30 @@ onMounted(fetchStats)
         <CardContent class="space-y-3">
           <div class="flex items-center justify-between">
             <span class="text-muted-foreground">Console Server</span>
-            <Badge variant="default" class="gap-1.5">
-              <span class="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              Operational
+            <Badge :variant="consoleStatus === 'operational' ? 'default' : 'destructive'" class="gap-1.5">
+              <span
+                class="h-1.5 w-1.5 rounded-full"
+                :class="{
+                  'bg-emerald-500': consoleStatus === 'operational',
+                  'bg-red-500': consoleStatus === 'down',
+                  'bg-yellow-500': consoleStatus === 'checking',
+                }"
+              />
+              {{ consoleStatus === 'operational' ? 'Operational' : consoleStatus === 'down' ? 'Down' : 'Checking...' }}
             </Badge>
           </div>
           <div class="flex items-center justify-between">
             <span class="text-muted-foreground">Graph API</span>
-            <Badge variant="default" class="gap-1.5">
-              <span class="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              Operational
+            <Badge :variant="coreStatus === 'operational' ? 'default' : 'destructive'" class="gap-1.5">
+              <span
+                class="h-1.5 w-1.5 rounded-full"
+                :class="{
+                  'bg-emerald-500': coreStatus === 'operational',
+                  'bg-red-500': coreStatus === 'down',
+                  'bg-yellow-500': coreStatus === 'checking',
+                }"
+              />
+              {{ coreStatus === 'operational' ? 'Operational' : coreStatus === 'down' ? 'Down' : 'Checking...' }}
             </Badge>
           </div>
         </CardContent>
