@@ -66,10 +66,10 @@ type LogoutRequest struct {
 
 // LoginResponse is the success body for both /login and /refresh.
 type LoginResponse struct {
-	Token        string              `json:"token"`
-	RefreshToken string              `json:"refresh_token"`
-	User         model.UserResponse  `json:"user"`
-	ExpiresAt    time.Time           `json:"expires_at"`
+	Token        string             `json:"token"`
+	RefreshToken string             `json:"refresh_token"`
+	User         model.UserResponse `json:"user"`
+	ExpiresAt    time.Time          `json:"expires_at"`
 }
 
 // Login handles POST /api/auth/login.
@@ -282,65 +282,61 @@ func (h *AuthHandler) Me(c *fiber.Ctx) error {
 	})
 }
 
+// validateAndSetClaims is the shared core logic for JWT validation.
+// It validates the token, checks token_ver against the database, and
+// stores the claims in c.Locals("claims").
+func (h *AuthHandler) validateAndSetClaims(c *fiber.Ctx, tokenString string) error {
+	claims, err := h.jwtManager.Validate(tokenString)
+	if err != nil {
+		slog.Warn("token_validation_failed", slog.String("ip", c.IP()), slog.Any("error", err))
+		return c.Status(401).JSON(model.ErrorResponse{
+			Error:   "invalid_token",
+			Message: "Invalid or expired token",
+		})
+	}
+
+	// Cross-check token_ver against the live user row. This is
+	// the revocation channel: bumping token_ver on logout or
+	// password change invalidates every outstanding JWT for
+	// that user.
+	user, err := h.users.GetByID(c.Context(), claims.UserID)
+	if err != nil {
+		slog.Warn("token_user_lookup_failed", slog.String("user_id", claims.UserID), slog.Any("error", err))
+		return c.Status(401).JSON(model.ErrorResponse{
+			Error:   "invalid_token",
+			Message: "Invalid or expired token",
+		})
+	}
+	if user.TokenVer != claims.TokenVer {
+		return c.Status(401).JSON(model.ErrorResponse{
+			Error:   "token_revoked",
+			Message: "Session has been revoked, please sign in again",
+		})
+	}
+
+	c.Locals("claims", claims)
+	return nil
+}
+
 // JWTMiddleware returns a Fiber middleware that validates JWT tokens
-// and ensures the embedded token_ver matches the user's current
-// token_ver in the database. Mismatches (logout, password change)
-// cause a 401 with error="token_revoked".
+// from the Authorization header. It ensures the embedded token_ver
+// matches the user's current token_ver in the database. Mismatches
+// (logout, password change) cause a 401 with error="token_revoked".
 func (h *AuthHandler) JWTMiddleware() fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		// Accept token from Authorization header or ?token= query param
-		// (the latter is needed for window.open / iframe requests that
-		// cannot set custom headers).
-		tokenString := ""
 		authHeader := c.Get("Authorization")
-		if authHeader != "" {
-			const bearerPrefix = "Bearer "
-			if len(authHeader) <= len(bearerPrefix) || authHeader[:len(bearerPrefix)] != bearerPrefix {
-				return c.Status(401).JSON(model.ErrorResponse{
-					Error:   "invalid_token_format",
-					Message: "Authorization header must be Bearer token",
-				})
-			}
-			tokenString = authHeader[len(bearerPrefix):]
-		} else {
-			tokenString = c.Query("token")
-			if tokenString == "" {
-				return c.Status(401).JSON(model.ErrorResponse{
-					Error:   "missing_token",
-					Message: "Authorization header is required",
-				})
-			}
-		}
-
-		claims, err := h.jwtManager.Validate(tokenString)
-		if err != nil {
-			slog.Warn("token_validation_failed", slog.String("ip", c.IP()), slog.Any("error", err))
+		const bearerPrefix = "Bearer "
+		if len(authHeader) <= len(bearerPrefix) || authHeader[:len(bearerPrefix)] != bearerPrefix {
 			return c.Status(401).JSON(model.ErrorResponse{
-				Error:   "invalid_token",
-				Message: "Invalid or expired token",
+				Error:   "missing_token",
+				Message: "Authorization header is required",
 			})
 		}
+		tokenString := authHeader[len(bearerPrefix):]
 
-		// Cross-check token_ver against the live user row. This is
-		// the revocation channel: bumping token_ver on logout or
-		// password change invalidates every outstanding JWT for
-		// that user.
-		user, err := h.users.GetByID(c.Context(), claims.UserID)
-		if err != nil {
-			slog.Warn("token_user_lookup_failed", slog.String("user_id", claims.UserID), slog.Any("error", err))
-			return c.Status(401).JSON(model.ErrorResponse{
-				Error:   "invalid_token",
-				Message: "Invalid or expired token",
-			})
+		if err := h.validateAndSetClaims(c, tokenString); err != nil {
+			return err
 		}
-		if user.TokenVer != claims.TokenVer {
-			return c.Status(401).JSON(model.ErrorResponse{
-				Error:   "token_revoked",
-				Message: "Session has been revoked, please sign in again",
-			})
-		}
-
-		c.Locals("claims", claims)
 		return c.Next()
 	}
 }
