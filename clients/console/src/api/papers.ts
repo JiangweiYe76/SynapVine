@@ -40,8 +40,15 @@ export const papersAPI = {
       method: 'DELETE',
     }),
 
-  pdfURL: (id: string) => {
+  downloadPDF: async (id: string): Promise<void> => {
     const token = localStorage.getItem('token') || ''
-    return `/api/papers/${id}/pdf?token=${encodeURIComponent(token)}`
+    const res = await fetch(`/api/papers/${id}/pdf`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!res.ok) throw new Error('Failed to download PDF')
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank')
+    URL.revokeObjectURL(url)
   },
 }

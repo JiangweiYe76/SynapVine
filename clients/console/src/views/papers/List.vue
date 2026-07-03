@@ -77,8 +77,12 @@ function openEditDialog(paper: Paper) {
   formDialogOpen.value = true
 }
 
-function viewPaperPDF(paper: Paper) {
-  window.open(papersAPI.pdfURL(paper.id), '_blank')
+async function viewPaperPDF(paper: Paper) {
+  try {
+    await papersAPI.downloadPDF(paper.id)
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : 'Failed to open PDF'
+  }
 }
 
 function openDeleteDialog(paper: Paper) {
