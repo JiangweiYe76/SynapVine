@@ -139,6 +139,29 @@ func (r *EdgeRepository) Exists(ctx context.Context, source, target string) (boo
 	return recordCount(records) > 0, nil
 }
 
+// ListByNodeIDs returns edges where either source or target is in the
+// given set of node IDs. This pushes the filtering into Neo4j instead
+// of loading all edges and filtering in memory.
+func (r *EdgeRepository) ListByNodeIDs(ctx context.Context, nodeIDs []string) ([]model.Edge, error) {
+	query := fmt.Sprintf(`
+		MATCH (s:Concept)-[r:RELATES_TO]->(t:Concept)
+		WHERE s.id IN $ids OR t.id IN $ids
+		RETURN %s
+	`, edgeSelectFields)
+	records, err := r.neo.Query(ctx, query, map[string]any{
+		"ids": nodeIDs,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list edges by node IDs: %w", err)
+	}
+
+	edges := make([]model.Edge, 0, len(records))
+	for _, rec := range records {
+		edges = append(edges, recordToEdge(rec))
+	}
+	return edges, nil
+}
+
 // EndpointExists reports whether the Concept node with the given id exists.
 // Used by the service layer to validate edge endpoints before creating.
 func (r *EdgeRepository) EndpointExists(ctx context.Context, id string) (bool, error) {

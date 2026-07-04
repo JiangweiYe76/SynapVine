@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"ai-graph-server/internal/model"
@@ -186,7 +187,6 @@ func (c *Client) GetNode(ctx context.Context, id string) (*CoreNode, error) {
 }
 
 // ListEdges proxies a paginated edge listing request to the core service.
-// The portal always requests the full edge set; the dev graph is small.
 func (c *Client) ListEdges(ctx context.Context, offset, limit int) (*CoreEdgesListResponse, error) {
 	v := url.Values{}
 	v.Set("offset", strconv.Itoa(offset))
@@ -207,6 +207,29 @@ func (c *Client) ListEdges(ctx context.Context, offset, limit int) (*CoreEdgesLi
 	}
 
 	return &payload, nil
+}
+
+// ListEdgesByNodeIDs fetches edges connected to any of the given node IDs.
+// The filtering is done server-side in Neo4j, avoiding full-graph scans.
+func (c *Client) ListEdgesByNodeIDs(ctx context.Context, nodeIDs []string) ([]model.Edge, error) {
+	v := url.Values{}
+	v.Set("node_ids", strings.Join(nodeIDs, ","))
+	resp, err := c.do(ctx, "GET", c.baseURL+"/api/edges?"+v.Encode(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to core: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("core returned status %d", resp.StatusCode)
+	}
+
+	var payload CoreEdgesListResponse
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		return nil, fmt.Errorf("failed to decode core response: %w", err)
+	}
+
+	return payload.Edges, nil
 }
 
 // FetchTimelineRange retrieves the [minYear, maxYear] span of every

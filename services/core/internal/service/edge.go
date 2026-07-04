@@ -56,6 +56,12 @@ func (s *EdgeService) List(ctx context.Context, offset, limit int, search string
 	}, nil
 }
 
+// ListByNodeIDs returns all edges connected to any of the given node IDs.
+// Filtering is done in Neo4j, not in memory.
+func (s *EdgeService) ListByNodeIDs(ctx context.Context, nodeIDs []string) ([]model.Edge, error) {
+	return s.repo.ListByNodeIDs(ctx, nodeIDs)
+}
+
 // Get returns the edge identified by (source, target). It returns
 // (nil, nil) when the edge does not exist so handlers can map that to 404.
 func (s *EdgeService) Get(ctx context.Context, source, target string) (*model.Edge, error) {

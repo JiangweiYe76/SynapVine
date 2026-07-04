@@ -5,21 +5,66 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"ai-graph-server/internal/coreclient"
 	"ai-graph-server/internal/model"
 )
 
-// GraphService is a stateless read-through adapter in front of the core
-// service. Every method fetches what it needs from core on each call, so
-// changes made via the console propagate to the portal immediately.
+const graphDataCacheTTL = 30 * time.Second
+
+// graphDataCache holds a cached copy of the full graph data (nodes +
+// edges) returned by core's /api/graph/data endpoint. The cache is
+// shared across requests so that multiple handlers in the same request
+// cycle (e.g. Summary + Expand) don't each trigger a full-graph fetch.
+type graphDataCache struct {
+	mu        sync.RWMutex
+	data      *coreclient.CoreGraphData
+	fetchedAt time.Time
+}
+
+// GraphService is a read-through adapter in front of the core service.
+// It caches the full graph data for a short TTL to avoid repeated
+// full-graph fetches within the same request window.
 type GraphService struct {
-	core *coreclient.Client
+	core  *coreclient.Client
+	cache *graphDataCache
 }
 
 // New creates a GraphService that proxies reads to the given core client.
 func New(core *coreclient.Client) *GraphService {
-	return &GraphService{core: core}
+	return &GraphService{
+		core:  core,
+		cache: &graphDataCache{},
+	}
+}
+
+// fetchGraphDataCached returns the full graph data, using a short-lived
+// in-memory cache to avoid repeated full-graph fetches from core.
+func (s *GraphService) fetchGraphDataCached(ctx context.Context) (*coreclient.CoreGraphData, error) {
+	s.cache.mu.RLock()
+	if s.cache.data != nil && time.Since(s.cache.fetchedAt) < graphDataCacheTTL {
+		data := s.cache.data
+		s.cache.mu.RUnlock()
+		return data, nil
+	}
+	s.cache.mu.RUnlock()
+
+	s.cache.mu.Lock()
+	defer s.cache.mu.Unlock()
+	// Double-check after acquiring write lock.
+	if s.cache.data != nil && time.Since(s.cache.fetchedAt) < graphDataCacheTTL {
+		return s.cache.data, nil
+	}
+
+	data, err := s.core.FetchGraphData(ctx)
+	if err != nil {
+		return nil, err
+	}
+	s.cache.data = data
+	s.cache.fetchedAt = time.Now()
+	return data, nil
 }
 
 // Summary returns a summary of the graph including communities, stats,
@@ -29,7 +74,7 @@ func (s *GraphService) Summary(ctx context.Context, topN int) (model.SummaryResp
 		topN = 20
 	}
 
-	data, err := s.core.FetchGraphData(ctx)
+	data, err := s.fetchGraphDataCached(ctx)
 	if err != nil {
 		return model.SummaryResponse{}, err
 	}
@@ -71,7 +116,7 @@ func (s *GraphService) Nodes(ctx context.Context, offset, limit int, sortBy, com
 		limit = 100
 	}
 
-	data, err := s.core.FetchGraphData(ctx)
+	data, err := s.fetchGraphDataCached(ctx)
 	if err != nil {
 		return model.NodesResponse{}, err
 	}
@@ -164,7 +209,7 @@ func (s *GraphService) NodeDetail(ctx context.Context, id string) (model.NodeDet
 
 	node := toPortalNode(*coreNode, communityMap)
 
-	edges, err := s.fetchAllEdges(ctx)
+	edges, err := s.fetchEdgesByNodeIDs(ctx, []string{id})
 	if err != nil {
 		return model.NodeDetail{}, false, err
 	}
@@ -219,7 +264,7 @@ func (s *GraphService) NodeEdges(ctx context.Context, id, direction string) (mod
 		return model.EdgesResponse{}, false, nil
 	}
 
-	edges, err := s.fetchAllEdges(ctx)
+	edges, err := s.fetchEdgesByNodeIDs(ctx, []string{id})
 	if err != nil {
 		return model.EdgesResponse{}, false, err
 	}
@@ -236,9 +281,7 @@ func (s *GraphService) NodeEdges(ctx context.Context, id, direction string) (mod
 				matched = append(matched, e)
 			}
 		default:
-			if e.Source == id || e.Target == id {
-				matched = append(matched, e)
-			}
+			matched = append(matched, e)
 		}
 	}
 	if matched == nil {
@@ -254,7 +297,7 @@ func (s *GraphService) Search(ctx context.Context, query string, limit int) (mod
 		limit = 20
 	}
 
-	data, err := s.core.FetchGraphData(ctx)
+	data, err := s.fetchGraphDataCached(ctx)
 	if err != nil {
 		return model.SearchResponse{}, err
 	}
@@ -298,63 +341,69 @@ func (s *GraphService) Search(ctx context.Context, query string, limit int) (mod
 }
 
 // Expand expands a set of nodes to include their neighbors and connecting edges.
+// Only edges connected to the requested nodes are fetched from core (via the
+// node_ids filter), instead of loading the entire edge set.
 func (s *GraphService) Expand(ctx context.Context, ids []string, includeEdges, includeNeighbors bool) (model.ExpandResponse, error) {
 	idSet := make(map[string]bool, len(ids))
 	for _, id := range ids {
 		idSet[id] = true
 	}
 
-	data, err := s.core.FetchGraphData(ctx)
+	// Fetch edges connected to the requested nodes only.
+	edges, err := s.fetchEdgesByNodeIDs(ctx, ids)
 	if err != nil {
 		return model.ExpandResponse{}, err
 	}
+
+	// Determine which node IDs we need to resolve.
+	nodeIDsNeeded := make(map[string]bool)
+	for _, id := range ids {
+		nodeIDsNeeded[id] = true
+	}
+	if includeNeighbors {
+		for _, e := range edges {
+			if idSet[e.Source] {
+				nodeIDsNeeded[e.Target] = true
+			}
+			if idSet[e.Target] {
+				nodeIDsNeeded[e.Source] = true
+			}
+		}
+	}
+
+	// Fetch only the nodes we need.
 	coreComms, err := s.core.FetchCommunityTree(ctx)
 	if err != nil {
 		return model.ExpandResponse{}, err
 	}
 	communityMap := buildCommunityIDMap(coreComms)
 
-	// Build lookup
-	nodesByID := make(map[string]model.Node, len(data.Nodes))
-	portalNodes := make([]model.Node, 0, len(data.Nodes))
+	data, err := s.fetchGraphDataCached(ctx)
+	if err != nil {
+		return model.ExpandResponse{}, err
+	}
+
+	nodesByID := make(map[string]model.Node, len(nodeIDsNeeded))
 	for _, cn := range data.Nodes {
-		n := toPortalNode(cn, communityMap)
-		nodesByID[cn.ID] = n
-		portalNodes = append(portalNodes, n)
+		if nodeIDsNeeded[cn.ID] {
+			nodesByID[cn.ID] = toPortalNode(cn, communityMap)
+		}
 	}
 
-	nodeSet := make(map[string]bool)
-	for _, id := range ids {
-		nodeSet[id] = true
-	}
-
+	// Build edge set.
 	edgeSet := make(map[[2]string]model.Edge)
-	for _, e := range data.Edges {
+	for _, e := range edges {
 		if includeEdges && idSet[e.Source] && idSet[e.Target] {
 			edgeSet[[2]string{e.Source, e.Target}] = e
 		}
-		if includeNeighbors {
-			if idSet[e.Source] {
-				nodeSet[e.Target] = true
-			}
-			if idSet[e.Target] {
-				nodeSet[e.Source] = true
-			}
-		}
-	}
-	if includeNeighbors {
-		for _, e := range data.Edges {
-			if nodeSet[e.Source] || nodeSet[e.Target] {
-				edgeSet[[2]string{e.Source, e.Target}] = e
-			}
+		if includeNeighbors && (nodeIDsNeeded[e.Source] || nodeIDsNeeded[e.Target]) {
+			edgeSet[[2]string{e.Source, e.Target}] = e
 		}
 	}
 
-	expanded := make([]model.Node, 0, len(nodeSet))
-	for _, n := range portalNodes {
-		if nodeSet[n.ID] {
-			expanded = append(expanded, n)
-		}
+	expanded := make([]model.Node, 0, len(nodesByID))
+	for _, n := range nodesByID {
+		expanded = append(expanded, n)
 	}
 	expandedEdges := make([]model.Edge, 0, len(edgeSet))
 	for _, e := range edgeSet {
@@ -386,30 +435,15 @@ func (s *GraphService) TimelineRange(ctx context.Context) (model.TimelineRange, 
 	}, nil
 }
 
-// fetchAllEdges loads every edge in the graph. Core currently caps list
-// responses at 100 per page, so we keep paginating until HasMore is false.
-// For a dev tool the page count is small; production should add a
-// dedicated "list all" endpoint on core.
-func (s *GraphService) fetchAllEdges(ctx context.Context) ([]model.Edge, error) {
-	const pageSize = 100
-	var all []model.Edge
-	offset := 0
-	for {
-		resp, err := s.core.ListEdges(ctx, offset, pageSize)
-		if err != nil {
-			return nil, err
-		}
-		all = append(all, resp.Edges...)
-		if !resp.Pagination.HasMore {
-			break
-		}
-		offset += pageSize
-	}
-	return all, nil
+// fetchEdgesByNodeIDs fetches edges connected to the given node IDs.
+// Filtering is pushed down to core (and ultimately Neo4j) so we no
+// longer need to load the entire edge set into memory.
+func (s *GraphService) fetchEdgesByNodeIDs(ctx context.Context, nodeIDs []string) ([]model.Edge, error) {
+	return s.core.ListEdgesByNodeIDs(ctx, nodeIDs)
 }
 
 func (s *GraphService) fetchNodeIndex(ctx context.Context, communityMap map[string]int) (map[string]model.Node, error) {
-	data, err := s.core.FetchGraphData(ctx)
+	data, err := s.fetchGraphDataCached(ctx)
 	if err != nil {
 		return nil, err
 	}
