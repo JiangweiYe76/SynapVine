@@ -47,6 +47,10 @@ export type GraphComposable = GraphState & GraphActions
 export const GraphKey: InjectionKey<GraphComposable> = Symbol('graph')
 export const TimelineKey: InjectionKey<TimelineComposable> = Symbol('timeline')
 
+// Maximum number of node IDs sent per expandNodes request. Keeps the
+// URL query string well below server limits (~550 chars per batch).
+const EXPAND_BATCH_SIZE = 50
+
 export function useGraph(): GraphComposable {
   const nodes = ref<GraphNode[]>([])
   const edges = ref<GraphEdge[]>([])
@@ -68,13 +72,50 @@ export function useGraph(): GraphComposable {
     return map
   })
 
+  /** Merge new edges into the existing edge list, skipping duplicates. */
+  function mergeEdges(existing: GraphEdge[], incoming: GraphEdge[]) {
+    const seen = new Set(existing.map(e => `${e.source}-${e.target}`))
+    for (const e of incoming) {
+      const key = `${e.source}-${e.target}`
+      const rev = `${e.target}-${e.source}`
+      if (!seen.has(key) && !seen.has(rev)) {
+        existing.push(e)
+        seen.add(key)
+      }
+    }
+  }
+
+  /**
+   * Fetch edges for the given node IDs in batches to avoid URL length
+   * limits. Returns all unique edges across batches.
+   */
+  async function expandNodesBatched(
+    ids: string[],
+    opts: { include_edges?: boolean; include_neighbors?: boolean } = {},
+  ): Promise<{ nodes: GraphNode[]; edges: GraphEdge[] }> {
+    const allNodes: GraphNode[] = []
+    const allEdges: GraphEdge[] = []
+    const seenEdgeKeys = new Set<string>()
+
+    for (let i = 0; i < ids.length; i += EXPAND_BATCH_SIZE) {
+      const batch = ids.slice(i, i + EXPAND_BATCH_SIZE)
+      const resp = await expandNodes({ ids: batch.join(','), ...opts })
+      allNodes.push(...resp.nodes)
+      for (const e of resp.edges) {
+        const key = `${e.source}-${e.target}`
+        if (!seenEdgeKeys.has(key)) {
+          seenEdgeKeys.add(key)
+          allEdges.push(e)
+        }
+      }
+    }
+    return { nodes: allNodes, edges: allEdges }
+  }
+
   async function loadInitial() {
     loading.value = true
     error.value = null
     try {
-      // Fetch the server-computed timeline range in parallel with the
-      // summary. Both come from core and are independent of which
-      // nodes are loaded into memory.
       const [summary, range] = await Promise.all([
         getSummary(),
         getTimelineRange(),
@@ -83,15 +124,13 @@ export function useGraph(): GraphComposable {
       stats.value = summary.stats
       timelineRange.value = range
 
-      const allNodes = await getNodes({ limit: 500 })
+      const allNodes = await getNodes({ limit: 200 })
       nodes.value = allNodes.nodes
 
       if (nodes.value.length > 0) {
-        const expandResponse = await expandNodes({
-          ids: nodes.value.map(n => n.id).join(','),
-          include_edges: true,
-        })
-        edges.value = expandResponse.edges
+        const ids = nodes.value.map(n => n.id)
+        const { edges: fetchedEdges } = await expandNodesBatched(ids, { include_edges: true })
+        edges.value = fetchedEdges
       }
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to load graph'
@@ -110,16 +149,9 @@ export function useGraph(): GraphComposable {
       nodes.value.push(...newNodes)
 
       if (newNodes.length > 0) {
-        const expandResponse = await expandNodes({
-          ids: newNodes.map(n => n.id).join(','),
-          include_edges: true,
-        })
-        const existingEdges = new Set(edges.value.map(e => `${e.source}-${e.target}`))
-        const uniqueNewEdges = expandResponse.edges.filter(e =>
-          !existingEdges.has(`${e.source}-${e.target}`) &&
-          !existingEdges.has(`${e.target}-${e.source}`)
-        )
-        edges.value.push(...uniqueNewEdges)
+        const newIds = newNodes.map(n => n.id)
+        const { edges: newEdges } = await expandNodesBatched(newIds, { include_edges: true })
+        mergeEdges(edges.value, newEdges)
       }
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to load more nodes'
@@ -135,12 +167,11 @@ export function useGraph(): GraphComposable {
       const newNodes = response.nodes.filter(n => !nodeMap.value.has(n.id))
       nodes.value.push(...newNodes)
 
-      const allIds = nodes.value.map(n => n.id)
-      const expandResponse = await expandNodes({
-        ids: allIds.join(','),
-        include_edges: true,
-      })
-      edges.value = expandResponse.edges
+      if (newNodes.length > 0) {
+        const newIds = newNodes.map(n => n.id)
+        const { edges: newEdges } = await expandNodesBatched(newIds, { include_edges: true })
+        mergeEdges(edges.value, newEdges)
+      }
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to load community'
     } finally {
@@ -162,13 +193,7 @@ export function useGraph(): GraphComposable {
 
         const newNodes = expandResponse.nodes.filter(n => !nodeMap.value.has(n.id))
         nodes.value.push(...newNodes)
-
-        const existingEdges = new Set(edges.value.map(e => `${e.source}-${e.target}`))
-        const uniqueNewEdges = expandResponse.edges.filter(e =>
-          !existingEdges.has(`${e.source}-${e.target}`) &&
-          !existingEdges.has(`${e.target}-${e.source}`)
-        )
-        edges.value.push(...uniqueNewEdges)
+        mergeEdges(edges.value, expandResponse.edges)
       }
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Search failed'
