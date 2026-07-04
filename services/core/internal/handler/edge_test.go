@@ -20,6 +20,8 @@ import (
 type edgeSvcStub struct {
 	listResp   *model.EdgesListResponse
 	listErr    error
+	listByIDsResp []model.Edge
+	listByIDsErr  error
 	getResp    *model.Edge
 	getErr     error
 	createResp *model.Edge
@@ -34,6 +36,10 @@ type edgeSvcStub struct {
 
 func (s *edgeSvcStub) List(_ context.Context, _ int, _ int, _ string) (*model.EdgesListResponse, error) {
 	return s.listResp, s.listErr
+}
+
+func (s *edgeSvcStub) ListByNodeIDs(_ context.Context, _ []string) ([]model.Edge, error) {
+	return s.listByIDsResp, s.listByIDsErr
 }
 
 func (s *edgeSvcStub) Get(_ context.Context, _, _ string) (*model.Edge, error) {

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"strconv"
+	"strings"
 
 	"core/internal/model"
 	"core/internal/service"
@@ -19,6 +20,7 @@ var _ EdgeService = (*service.EdgeService)(nil)
 // Declared as an interface to enable stubbing in unit tests.
 type EdgeService interface {
 	List(ctx context.Context, offset, limit int, search string) (*model.EdgesListResponse, error)
+	ListByNodeIDs(ctx context.Context, nodeIDs []string) ([]model.Edge, error)
 	Get(ctx context.Context, source, target string) (*model.Edge, error)
 	Create(ctx context.Context, req model.EdgeCreateRequest) (*model.Edge, error)
 	Update(ctx context.Context, source, target string, req model.EdgeUpdateRequest) (*model.Edge, error)
@@ -36,7 +38,37 @@ func NewEdgeHandler(svc EdgeService) *EdgeHandler {
 }
 
 // List handles GET /api/edges.
+// When the node_ids query parameter is present (comma-separated), returns
+// only edges connected to those nodes — filtered in Neo4j, not in memory.
 func (h *EdgeHandler) List(c *fiber.Ctx) error {
+	// Fast path: filter by node IDs (pushed down to Neo4j).
+	if idsStr := c.Query("node_ids", ""); idsStr != "" {
+		ids := strings.Split(idsStr, ",")
+		for i := range ids {
+			ids[i] = strings.TrimSpace(ids[i])
+		}
+		edges, err := h.svc.ListByNodeIDs(c.Context(), ids)
+		if err != nil {
+			slog.Error("edge_list_by_nodes_failed", slog.Any("error", err))
+			return c.Status(500).JSON(model.ErrorResponse{
+				Error:   "internal_error",
+				Message: "Failed to list edges",
+			})
+		}
+		if edges == nil {
+			edges = []model.Edge{}
+		}
+		return c.JSON(model.EdgesListResponse{
+			Edges: edges,
+			Pagination: model.Pagination{
+				Offset:  0,
+				Limit:   len(edges),
+				Total:   len(edges),
+				HasMore: false,
+			},
+		})
+	}
+
 	offset, _ := strconv.Atoi(c.Query("offset", "0"))
 	limit, _ := strconv.Atoi(c.Query("limit", "20"))
 	search := c.Query("search", "")
