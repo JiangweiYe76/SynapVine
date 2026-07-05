@@ -66,7 +66,7 @@ function buildFlatRows(
       nodeCount: n.node_count,
       depth,
       hasChildren: (n.children?.length ?? 0) > 0,
-      expanded: expandedIds.value.has(n.id) || depth === 0,
+      expanded: expandedIds.value.has(n.id),
       children: [],
     }
     out.push(flat)
@@ -97,6 +97,9 @@ async function fetchTree() {
   try {
     const res = await communitiesAPI.tree()
     tree.value = res.communities
+    for (const c of tree.value) {
+      expandedIds.value.add(c.id)
+    }
     recomputeFlat()
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to load communities'
@@ -143,7 +146,7 @@ const columns = [
     header: 'Name',
     cell: (info) => {
       const row = info.row.original
-      return h('div', { class: 'flex items-center gap-2', style: { paddingLeft: `${row.depth * 20}px` } }, [
+      return h('div', { class: 'flex items-center gap-2 min-w-0', style: { paddingLeft: `${row.depth * 20}px` } }, [
         h(
           'button',
           {
@@ -160,7 +163,7 @@ const columns = [
           class: 'inline-block h-3 w-3 rounded-sm border',
           style: { backgroundColor: row.color },
         }),
-        h('span', { class: 'font-medium' }, row.name),
+        h('span', { class: 'font-medium truncate' }, row.name),
       ])
     },
   }),
@@ -181,7 +184,7 @@ const columns = [
       const v = info.getValue()
       return v == null
         ? h('span', { class: 'text-muted-foreground' }, '—')
-        : h('span', { class: 'font-mono text-xs' }, String(v))
+        : h('span', { class: 'font-mono text-xs truncate block' }, String(v))
     },
   }),
   columnHelper.accessor('nodeCount', {
@@ -273,15 +276,17 @@ onMounted(fetchTree)
           </div>
 
           <div v-else class="rounded-md border">
-            <Table>
+            <Table class="table-fixed">
               <TableHeader>
                 <TableRow v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
                   <TableHead
                     v-for="header in headerGroup.headers"
                     :key="header.id"
                     :class="{
-                      'w-[100px]': header.id === 'id',
-                      'w-[80px]': header.id === 'level' || header.id === 'parentId' || header.id === 'nodeCount' || header.id === 'actions',
+                      'w-[130px] truncate overflow-hidden': header.id === 'name',
+                      'w-[200px] truncate overflow-hidden': header.id === 'id' || header.id === 'parentId',
+                      'w-[60px]': header.id === 'level',
+                      'w-[80px]': header.id === 'nodeCount' || header.id === 'actions',
                     }"
                   >
                     <FlexRender
@@ -294,7 +299,16 @@ onMounted(fetchTree)
               </TableHeader>
               <TableBody>
                 <TableRow v-for="row in table.getRowModel().rows" :key="row.id">
-                  <TableCell v-for="cell in row.getVisibleCells()" :key="cell.id">
+                  <TableCell
+                    v-for="cell in row.getVisibleCells()"
+                    :key="cell.id"
+                    :class="{
+                      'w-[130px] overflow-hidden': cell.column.id === 'name',
+                      'w-[200px] overflow-hidden': cell.column.id === 'id' || cell.column.id === 'parentId',
+                      'w-[60px]': cell.column.id === 'level',
+                      'w-[80px]': cell.column.id === 'nodeCount' || cell.column.id === 'actions',
+                    }"
+                  >
                     <FlexRender
                       :render="cell.column.columnDef.cell"
                       :props="cell.getContext()"
