@@ -170,6 +170,62 @@ func (r *CommunityRepository) ClearAll(ctx context.Context) error {
 	return r.neo.Execute(ctx, cypher, nil)
 }
 
+// ExecuteInTx delegates to the underlying Neo4j client, allowing the
+// caller to run multiple repository operations inside a single transaction.
+func (r *CommunityRepository) ExecuteInTx(ctx context.Context, fn func(tx neo4j.ManagedTransaction) error) error {
+	return r.neo.ExecuteInTx(ctx, fn)
+}
+
+// ClearAllTx is the transactional variant of ClearAll.
+func (r *CommunityRepository) ClearAllTx(ctx context.Context, tx neo4j.ManagedTransaction) error {
+	_, err := tx.Run(ctx, `
+		MATCH (c:Community)
+		OPTIONAL MATCH (c)<-[b:BELONGS_TO]-(:Concept)
+		DELETE b, c
+	`, nil)
+	return err
+}
+
+// CreateBatchTx is the transactional variant of CreateBatch.
+func (r *CommunityRepository) CreateBatchTx(ctx context.Context, tx neo4j.ManagedTransaction, communities []model.Community) error {
+	params := make([]map[string]any, 0, len(communities))
+	for _, comm := range communities {
+		params = append(params, map[string]any{
+			"id":        comm.ID,
+			"name":      comm.Name,
+			"color":     comm.Color,
+			"level":     comm.Level,
+			"domain":    comm.Domain,
+			"parent_id": comm.ParentID,
+		})
+	}
+	_, err := tx.Run(ctx, `
+		UNWIND $communities AS comm
+		CREATE (c:Community {
+			id: comm.id,
+			name: comm.name,
+			color: comm.color,
+			level: comm.level,
+			domain: comm.domain,
+			parent_id: comm.parent_id
+		})
+	`, map[string]any{"communities": params})
+	return err
+}
+
+// AssignNodesBatchTx is the transactional variant of AssignNodesBatch.
+func (r *CommunityRepository) AssignNodesBatchTx(ctx context.Context, tx neo4j.ManagedTransaction, assignments []struct {
+	NodeID      string `json:"node_id"`
+	CommunityID string `json:"community_id"`
+}) error {
+	_, err := tx.Run(ctx, `
+		UNWIND $assignments AS a
+		MATCH (n:Concept {id: a.node_id}), (c:Community {id: a.community_id})
+		MERGE (n)-[:BELONGS_TO]->(c)
+	`, map[string]any{"assignments": assignments})
+	return err
+}
+
 // CreateBatch creates multiple Community nodes in a single transaction.
 func (r *CommunityRepository) CreateBatch(ctx context.Context, communities []model.Community) error {
 	cypher := `

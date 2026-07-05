@@ -139,6 +139,18 @@ func (n *Neo4j) writeSessionConfig() neo4j.SessionConfig {
 	return cfg
 }
 
+// ExecuteInTx runs fn inside a single write transaction. All operations
+// within fn share the same Neo4j transaction; if fn returns an error the
+// entire transaction is rolled back.
+func (n *Neo4j) ExecuteInTx(ctx context.Context, fn func(tx neo4j.ManagedTransaction) error) error {
+	session := n.driver.NewSession(ctx, n.writeSessionConfig())
+	defer session.Close(ctx)
+	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
+		return nil, fn(tx)
+	})
+	return err
+}
+
 // Migrate runs all .cypher files in the given directory in lexical order.
 func (n *Neo4j) Migrate(ctx context.Context, migrationsDir string) error {
 	entries, err := os.ReadDir(migrationsDir)
