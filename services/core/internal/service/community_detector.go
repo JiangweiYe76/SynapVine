@@ -7,6 +7,8 @@ import (
 
 	"core/internal/community"
 	"core/internal/repository"
+
+	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 )
 
 // CommunityDetectorService orchestrates community detection and writes results back to Neo4j.
@@ -60,17 +62,6 @@ func (s *CommunityDetectorService) DetectAndStore(ctx context.Context) error {
 	// Flatten hierarchical tree for persistence
 	allComms := community.FlattenHierarchicalCommunities(root)
 
-	// Write back to Neo4j
-	if err := s.commRepo.ClearAll(ctx); err != nil {
-		return fmt.Errorf("failed to clear old communities: %w", err)
-	}
-
-	if len(allComms) > 0 {
-		if err := s.commRepo.CreateBatch(ctx, allComms); err != nil {
-			return fmt.Errorf("failed to create communities: %w", err)
-		}
-	}
-
 	// Build node-to-community assignments (leaf community ID)
 	assignments := make([]struct {
 		NodeID      string `json:"node_id"`
@@ -89,10 +80,25 @@ func (s *CommunityDetectorService) DetectAndStore(ctx context.Context) error {
 		})
 	}
 
-	if len(assignments) > 0 {
-		if err := s.commRepo.AssignNodesBatch(ctx, assignments); err != nil {
-			return fmt.Errorf("failed to assign nodes to communities: %w", err)
+	// Write back to Neo4j in a single transaction. If any step fails
+	// the entire transaction is rolled back and no community data is lost.
+	if err := s.commRepo.ExecuteInTx(ctx, func(tx neo4j.ManagedTransaction) error {
+		if err := s.commRepo.ClearAllTx(ctx, tx); err != nil {
+			return fmt.Errorf("clear old communities: %w", err)
 		}
+		if len(allComms) > 0 {
+			if err := s.commRepo.CreateBatchTx(ctx, tx, allComms); err != nil {
+				return fmt.Errorf("create communities: %w", err)
+			}
+		}
+		if len(assignments) > 0 {
+			if err := s.commRepo.AssignNodesBatchTx(ctx, tx, assignments); err != nil {
+				return fmt.Errorf("assign nodes: %w", err)
+			}
+		}
+		return nil
+	}); err != nil {
+		return fmt.Errorf("failed to persist communities: %w", err)
 	}
 
 	slog.Info("community_detection_persisted",
