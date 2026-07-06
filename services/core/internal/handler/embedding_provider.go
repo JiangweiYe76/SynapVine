@@ -95,16 +95,18 @@ func (h *EmbeddingProviderHandler) Create(c *fiber.Ctx) error {
 
 	now := time.Now()
 	p := &model.EmbeddingProvider{
-		ID:         uuid.New().String(),
-		Name:       req.Name,
-		BaseURL:    req.BaseURL,
-		APIKey:     req.APIKey,
-		Model:      req.Model,
+		ProviderBase: model.ProviderBase{
+			ID:        uuid.New().String(),
+			Name:      req.Name,
+			BaseURL:   req.BaseURL,
+			APIKey:    req.APIKey,
+			Model:     req.Model,
+			IsDefault: req.IsDefault,
+			IsEnabled: true,
+			CreatedAt: now,
+			UpdatedAt: now,
+		},
 		Dimensions: req.Dimensions,
-		IsDefault:  req.IsDefault,
-		IsEnabled:  true,
-		CreatedAt:  now,
-		UpdatedAt:  now,
 	}
 
 	// If this provider is marked as default, clear any existing default first.

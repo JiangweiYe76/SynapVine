@@ -97,17 +97,19 @@ func (h *LLMProviderHandler) Create(c *fiber.Ctx) error {
 
 	now := time.Now()
 	p := &model.LLMProvider{
-		ID:          uuid.New().String(),
-		Name:        req.Name,
-		BaseURL:     req.BaseURL,
-		APIKey:      req.APIKey,
-		Model:       req.Model,
+		ProviderBase: model.ProviderBase{
+			ID:        uuid.New().String(),
+			Name:      req.Name,
+			BaseURL:   req.BaseURL,
+			APIKey:    req.APIKey,
+			Model:     req.Model,
+			IsDefault: req.IsDefault,
+			IsEnabled: true,
+			CreatedAt: now,
+			UpdatedAt: now,
+		},
 		MaxTokens:   req.MaxTokens,
 		Temperature: req.Temperature,
-		IsDefault:   req.IsDefault,
-		IsEnabled:   true,
-		CreatedAt:   now,
-		UpdatedAt:   now,
 	}
 
 	// If this provider is marked as default, clear any existing default first.
