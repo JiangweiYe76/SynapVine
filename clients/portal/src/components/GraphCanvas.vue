@@ -22,6 +22,42 @@ const emit = defineEmits<{
 const containerRef = ref<HTMLDivElement>()
 let graph: any = null
 
+// Cache for Three.js geometries and materials to avoid GPU memory leaks
+const geometryCache = new Map<string, any>()
+const materialCache = new Map<string, any>()
+const nodeObjects = new Map<string, any>()
+
+function getCachedGeometry(radius: string, widthSegments = 24, heightSegments = 24): any {
+  const key = `sphere_${radius}_${widthSegments}_${heightSegments}`
+  if (!geometryCache.has(key)) {
+    geometryCache.set(key, new THREE.SphereGeometry(parseFloat(radius), widthSegments, heightSegments))
+  }
+  return geometryCache.get(key)!
+}
+
+function getCachedMaterial(color: string, isSelected: boolean, isOutline = false): any {
+  const key = `mat_${color}_${isSelected}_${isOutline}`
+  if (!materialCache.has(key)) {
+    if (isOutline) {
+      materialCache.set(key, new THREE.MeshBasicMaterial({
+        color: '#58a6ff',
+        side: THREE.BackSide,
+        transparent: false,
+      }))
+    } else {
+      materialCache.set(key, new THREE.MeshPhongMaterial({
+        color: color,
+        shininess: 80,
+        transparent: true,
+        opacity: 0.95,
+        emissive: isSelected ? color : '#000000',
+        emissiveIntensity: isSelected ? 0.6 : 0,
+      }))
+    }
+  }
+  return materialCache.get(key)!
+}
+
 interface SavedCamera {
   pos: { x: number; y: number; z: number }
   lookAt: { x: number; y: number; z: number }
@@ -44,35 +80,40 @@ function createNodeObject(node: any) {
 
   const group = new THREE.Group()
 
-  const sphereGeo = new THREE.SphereGeometry(size, 24, 24)
-  const sphereMat = new THREE.MeshPhongMaterial({
-    color: color,
-    shininess: 80,
-    transparent: true,
-    opacity: 0.95,
-    emissive: isSelected ? color : '#000000',
-    emissiveIntensity: isSelected ? 0.6 : 0,
-  })
+  const sphereGeo = getCachedGeometry(size.toString())
+  const sphereMat = getCachedMaterial(color, isSelected)
   const sphere = new THREE.Mesh(sphereGeo, sphereMat)
   group.add(sphere)
 
   if (isSelected) {
-    const outlineGeo = new THREE.SphereGeometry(size * 1.18, 24, 24)
-    const outlineMat = new THREE.MeshBasicMaterial({
-      color: '#58a6ff',
-      side: THREE.BackSide,
-      transparent: false,
-    })
+    const outlineGeo = getCachedGeometry((size * 1.18).toString())
+    const outlineMat = getCachedMaterial(color, true, true)
     const outline = new THREE.Mesh(outlineGeo, outlineMat)
     group.add(outline)
   }
 
+  // Store reference for later updates
+  nodeObjects.set(node.id, group)
+
   return group
+}
+
+function updateSelectedNodeVisuals() {
+  const selectedId = props.selectedNode?.id
+  nodeObjects.forEach((group, nodeId) => {
+    const isSelected = nodeId === selectedId
+    const sphere = group.children[0] as any
+    if (sphere && sphere.material) {
+      sphere.material.emissive = new THREE.Color(isSelected ? sphere.material.color : '#000000')
+      sphere.material.emissiveIntensity = isSelected ? 0.6 : 0
+    }
+  })
 }
 
 function refreshNodes() {
   if (!graph) return
-  graph.nodeThreeObject((n: any) => createNodeObject(n))
+  // Only update visuals instead of recreating all node objects
+  updateSelectedNodeVisuals()
 }
 
 function getBackgroundColor(): string {
@@ -233,7 +274,10 @@ watch(() => props.highlightedCommunity, (communityIds) => {
 })
 
 watch(() => props.selectedNode, (node, prevNode) => {
-  refreshNodes()
+  // Only update visuals for selected node instead of rebuilding all nodes
+  if (graph) {
+    updateSelectedNodeVisuals()
+  }
 
   if (!graph) return
 
@@ -283,6 +327,22 @@ onUnmounted(() => {
     graph._destructor()
     graph = null
   }
+  
+  // Dispose all cached geometries
+  geometryCache.forEach((geometry) => {
+    geometry.dispose()
+  })
+  geometryCache.clear()
+  
+  // Dispose all cached materials
+  materialCache.forEach((material) => {
+    material.dispose()
+  })
+  materialCache.clear()
+  
+  // Clear node objects references
+  nodeObjects.clear()
+  
   if (themeObserver) {
     themeObserver.disconnect()
     themeObserver = null
