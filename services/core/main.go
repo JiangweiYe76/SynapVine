@@ -2,8 +2,12 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"core/internal/config"
 	"core/internal/db"
@@ -174,8 +178,25 @@ func main() {
 
 	slog.Info("core_server_starting", slog.String("port", cfg.Port))
 
-	if err := app.Listen(":" + cfg.Port); err != nil {
+	idleConnsClosed := make(chan struct{})
+	go func() {
+		sigint := make(chan os.Signal, 1)
+		signal.Notify(sigint, os.Interrupt, syscall.SIGTERM)
+		<-sigint
+
+		slog.Info("shutdown_signal_received", slog.String("action", "gracefully_stopping_server"))
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := app.ShutdownWithContext(shutdownCtx); err != nil {
+			slog.Error("server_shutdown_failed", slog.Any("error", err))
+		}
+		close(idleConnsClosed)
+	}()
+
+	if err := app.Listen(":" + cfg.Port); err != nil && !errors.Is(err, context.Canceled) {
 		slog.Error("server_failed", slog.Any("error", err))
 		os.Exit(1)
 	}
+
+	<-idleConnsClosed
 }
