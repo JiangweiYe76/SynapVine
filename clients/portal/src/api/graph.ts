@@ -77,10 +77,13 @@ async function fetchAPI<T>(path: string, params?: Record<string, string>): Promi
   }
 
   const queryParams = new URLSearchParams(params)
-  if (token) queryParams.set('token', token)
 
   const url = `/api/graph${path}?${queryParams.toString()}`
-  const response = await fetch(url)
+  const headers: Record<string, string> = {}
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+  const response = await fetch(url, { headers })
 
   if (response.status === 401) {
     token = null

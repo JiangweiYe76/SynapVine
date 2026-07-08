@@ -110,14 +110,10 @@ func main() {
 
 	// Protected API routes - require valid token
 	api := app.Group("/api/graph", func(c *fiber.Ctx) error {
-		// Try to get token from query param or Authorization header
-		token := c.Query("token", "")
-		if token == "" {
-			token = c.Get("Authorization")
-			token = strings.TrimPrefix(token, "Bearer ")
-		}
+		// Authenticate exclusively via the Authorization: Bearer <token> header
+		authToken := strings.TrimPrefix(c.Get("Authorization"), "Bearer ")
 		// Validate token
-		if token == "" || !tokenStore.Validate(token) {
+		if authToken == "" || !tokenStore.Validate(authToken) {
 			return c.Status(401).JSON(fiber.Map{
 				"error":   "invalid_token",
 				"message": "Token is invalid or expired",
