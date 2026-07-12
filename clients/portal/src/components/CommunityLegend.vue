@@ -46,6 +46,29 @@ function totalNodeCount(): number {
 }
 
 const topLevelChildren = computed(() => props.communities[0]?.children || [])
+
+interface FlatNode {
+  comm: HierarchicalCommunity
+  depth: number
+  hasChildren: boolean
+}
+
+// Flatten the community tree into a depth-annotated list so the
+// template can render arbitrary nesting levels without recursion.
+const flatList = computed<FlatNode[]>(() => {
+  const result: FlatNode[] = []
+  function walk(list: HierarchicalCommunity[], depth: number) {
+    for (const c of list) {
+      const hasChildren = !!(c.children && c.children.length > 0)
+      result.push({ comm: c, depth, hasChildren })
+      if (hasChildren && !collapsed.value.has(c.id)) {
+        walk(c.children!, depth + 1)
+      }
+    }
+  }
+  walk(topLevelChildren.value, 0)
+  return result
+})
 </script>
 
 <template>
@@ -96,63 +119,40 @@ const topLevelChildren = computed(() => props.communities[0]?.children || [])
 
         <div class="h-px bg-(--color-border-default) my-2" />
 
-        <template v-for="comm in topLevelChildren" :key="comm.id">
-          <div
-            class="flex items-center gap-1.5 cursor-pointer rounded-lg px-2 py-2 transition-colors"
-            :class="isHighlighted(comm.id)
-              ? 'bg-(--color-accent-blue)/10'
-              : 'hover:bg-(--color-bg-tertiary)'"
-            @click="handleClick(comm)"
+        <div
+          v-for="item in flatList"
+          :key="item.comm.id"
+          class="flex items-center gap-1.5 cursor-pointer rounded-lg py-1.5 transition-colors"
+          :class="isHighlighted(item.comm.id)
+            ? 'bg-(--color-accent-blue)/10'
+            : 'hover:bg-(--color-bg-tertiary)'"
+          :style="{ paddingLeft: `${item.depth * 16 + 8}px` }"
+          @click="handleClick(item.comm)"
+        >
+          <Button
+            v-if="item.hasChildren"
+            variant="ghost"
+            size="icon"
+            class="size-5 shrink-0"
+            @click.stop="toggleCollapse(item.comm.id)"
           >
-            <Button
-              v-if="comm.children && comm.children.length > 0"
-              variant="ghost"
-              size="icon"
-              class="size-5"
-              @click.stop="toggleCollapse(comm.id)"
-            >
-              <ChevronRight
-                class="size-3.5 transition-transform duration-200"
-                :class="{ 'rotate-90': !collapsed.has(comm.id) }"
-              />
-            </Button>
-            <div v-else class="w-5 shrink-0" />
-            <div
-              class="w-3 h-3 rounded-full shrink-0"
-              :style="{ backgroundColor: comm.color }"
+            <ChevronRight
+              class="size-3.5 transition-transform duration-200"
+              :class="{ 'rotate-90': !collapsed.has(item.comm.id) }"
             />
-            <span
-              class="flex-1 text-sm truncate"
-              :class="isHighlighted(comm.id) ? 'text-(--color-accent-blue) font-medium' : 'text-(--color-text-primary)'"
-            >{{ comm.name }}</span>
-            <span class="text-xs text-(--color-text-muted) tabular-nums">{{ comm.node_count }}</span>
-          </div>
-
+          </Button>
+          <div v-else class="w-5 shrink-0" />
           <div
-            v-if="comm.children && comm.children.length > 0 && !collapsed.has(comm.id)"
-            class="ml-4 border-l-2 border-(--color-border-muted) pl-3 mt-0.5"
-          >
-            <div
-              v-for="child in comm.children"
-              :key="child.id"
-              class="flex items-center gap-3 cursor-pointer rounded-lg px-2 py-1.5 transition-colors"
-              :class="isHighlighted(child.id)
-                ? 'bg-(--color-accent-blue)/10'
-                : 'hover:bg-(--color-bg-tertiary)'"
-              @click="handleClick(child)"
-            >
-              <div
-                class="w-2.5 h-2.5 rounded-full shrink-0"
-                :style="{ backgroundColor: child.color }"
-              />
-              <span
-                class="flex-1 text-sm truncate"
-                :class="isHighlighted(child.id) ? 'text-(--color-accent-blue) font-medium' : 'text-(--color-text-primary)'"
-              >{{ child.name }}</span>
-              <span class="text-xs text-(--color-text-muted) tabular-nums">{{ child.node_count }}</span>
-            </div>
-          </div>
-        </template>
+            class="rounded-full shrink-0"
+            :class="item.depth === 0 ? 'w-3 h-3' : 'w-2.5 h-2.5'"
+            :style="{ backgroundColor: item.comm.color }"
+          />
+          <span
+            class="flex-1 text-sm truncate"
+            :class="isHighlighted(item.comm.id) ? 'text-(--color-accent-blue) font-medium' : 'text-(--color-text-primary)'"
+          >{{ item.comm.name }}</span>
+          <span class="text-xs text-(--color-text-muted) tabular-nums">{{ item.comm.node_count }}</span>
+        </div>
       </div>
     </div>
   </Transition>

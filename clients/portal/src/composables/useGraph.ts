@@ -258,9 +258,7 @@ export function useGraph(): GraphComposable {
         if (c.id === targetId) {
           allIds.add(c.id)
           if (c.children) {
-            for (const child of c.children) {
-              allIds.add(child.id)
-            }
+            collectAllDescendants(c.children)
           }
           return true
         }
@@ -269,6 +267,13 @@ export function useGraph(): GraphComposable {
         }
       }
       return false
+    }
+    // Recursively collect every descendant id, not just direct children.
+    function collectAllDescendants(comms: HierarchicalCommunity[]) {
+      for (const c of comms) {
+        allIds.add(c.id)
+        if (c.children) collectAllDescendants(c.children)
+      }
     }
     collectDescendants(communities.value, id)
 
