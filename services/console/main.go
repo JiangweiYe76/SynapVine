@@ -18,6 +18,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/limiter"
 )
 
 func main() {
@@ -102,8 +103,26 @@ func main() {
 		AllowCredentials: true,
 	}))
 
+	// Rate-limit /api/auth/login to mitigate brute-force and CPU/memory
+	// amplification: each call runs argon2id password verification
+	// (~64 MiB, ~0.5 s per attempt, see internal/auth/password.go).
+	// Other public routes (/auth/refresh, /api/health) are cheap and
+	// left unthrottled so legitimate sessions are not affected. Uses
+	// c.IP() directly (the limiter default) to prevent clients from
+	// bypassing the limit by spoofing X-Forwarded-For.
+	loginLimiter := limiter.New(limiter.Config{
+		Max:        10,
+		Expiration: 1 * time.Minute,
+		LimitReached: func(c *fiber.Ctx) error {
+			return c.Status(429).JSON(model.ErrorResponse{
+				Error:   "rate_limit_exceeded",
+				Message: "Too many login attempts, please try again later",
+			})
+		},
+	})
+
 	// Public routes (no JWT required).
-	app.Post("/api/auth/login", authHandler.Login)
+	app.Post("/api/auth/login", loginLimiter, authHandler.Login)
 	app.Post("/api/auth/refresh", authHandler.Refresh)
 
 	// Health check endpoint (public, no auth required).
