@@ -75,8 +75,14 @@ router.beforeEach(async (to, _from, next) => {
 
   if (to.meta.requiresAuth) {
     if (!authStore.isAuthenticated) {
-      const hasUser = await authStore.fetchUser()
-      if (hasUser) {
+      // On a fresh page load the in-memory access token is empty even
+      // when a valid refresh cookie exists. Attempt one silent refresh
+      // (the browser attaches the httpOnly cookie automatically); the
+      // response carries a new access token + user, repopulating the
+      // in-memory session. If the cookie is absent/expired the refresh
+      // fails and we redirect to /login.
+      const refreshed = await authStore.refresh()
+      if (refreshed) {
         next()
       } else {
         next('/login')

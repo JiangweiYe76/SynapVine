@@ -1,17 +1,15 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { authAPI } from '../api/auth'
-import type { User, LoginRequest, LogoutRequest } from '../types/auth'
+import type { User, LoginRequest, LogoutRequest, SessionResponse } from '../types/auth'
 
-// Storage keys. Centralised so callers never have to know the wire
-// format. Stored in localStorage so the user stays signed in across
-// page reloads. The XSS-exposure of localStorage is a known trade-off
-// for dev; the production fix is to move the refresh token into an
-// httpOnly cookie (tracked separately).
-const STORAGE_TOKEN = 'token'
-const STORAGE_REFRESH = 'refresh_token'
+// Storage keys. Only the non-sensitive user profile is persisted, so a
+// reload avoids a flash of unauthenticated UI. The access token lives
+// in memory only (Pinia state, never localStorage) and the refresh
+// token lives in an httpOnly cookie the browser manages — JS cannot
+// read either token from storage, eliminating the localStorage XSS
+// surface that previously exposed a 7-day refresh token.
 const STORAGE_USER = 'user'
-const STORAGE_EXPIRES = 'token_expires_at'
 
 // Pre-emptively refresh this many milliseconds before the access token
 // expires. Keeps a 60s safety margin for clock skew and network latency.
@@ -19,9 +17,11 @@ const REFRESH_LEAD_MS = 60_000
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
-  const token = ref<string>(localStorage.getItem(STORAGE_TOKEN) || '')
-  const refreshToken = ref<string>(localStorage.getItem(STORAGE_REFRESH) || '')
-  const expiresAt = ref<number>(parseExpiresAt(localStorage.getItem(STORAGE_EXPIRES)))
+  // Access token lives in memory only. On reload it is repopulated by a
+  // silent /api/auth/refresh call driven by the router guard; the
+  // refresh token in the httpOnly cookie is sent automatically.
+  const token = ref<string>('')
+  const expiresAt = ref<number>(0)
   const loading = ref(false)
   const error = ref<string | null>(null)
 
@@ -45,6 +45,7 @@ export const useAuthStore = defineStore('auth', () => {
       clearTimeout(refreshTimer)
       refreshTimer = null
     }
+    if (at <= 0) return
     const delay = Math.max(at - Date.now() - REFRESH_LEAD_MS, 1_000)
     refreshTimer = setTimeout(() => {
       void doRefresh()
@@ -59,27 +60,14 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function persist() {
-    if (token.value) localStorage.setItem(STORAGE_TOKEN, token.value)
-    else localStorage.removeItem(STORAGE_TOKEN)
-    if (refreshToken.value) localStorage.setItem(STORAGE_REFRESH, refreshToken.value)
-    else localStorage.removeItem(STORAGE_REFRESH)
-    if (expiresAt.value > 0) {
-      localStorage.setItem(STORAGE_EXPIRES, new Date(expiresAt.value).toISOString())
-    } else {
-      localStorage.removeItem(STORAGE_EXPIRES)
-    }
+    // Only the user profile is persisted. Tokens are never written to
+    // localStorage.
     if (user.value) localStorage.setItem(STORAGE_USER, JSON.stringify(user.value))
     else localStorage.removeItem(STORAGE_USER)
   }
 
-  function applySession(payload: {
-    token: string
-    refresh_token: string
-    expires_at: string
-    user?: User
-  }) {
+  function applySession(payload: SessionResponse) {
     token.value = payload.token
-    refreshToken.value = payload.refresh_token
     expiresAt.value = parseExpiresAt(payload.expires_at)
     if (payload.user) user.value = payload.user
     persist()
@@ -101,15 +89,17 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  // doRefresh calls /api/auth/refresh with no body. The refresh token is
+  // sent automatically by the browser via the httpOnly cookie. On
+  // success a new access token + user are applied in memory; on failure
+  // the in-memory session is cleared so the next navigation redirects
+  // to /login.
   async function doRefresh(): Promise<boolean> {
-    if (!refreshToken.value) return false
     try {
-      const response = await authAPI.refresh({ refresh_token: refreshToken.value })
+      const response = await authAPI.refresh()
       applySession(response)
       return true
     } catch {
-      // Refresh failed (revoked / expired). Drop the session and let
-      // the next API call (or the router) redirect to /login.
       clearLocal()
       return false
     }
@@ -129,17 +119,14 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function logout(allDevices = false) {
-    const body: LogoutRequest = { refresh_token: refreshToken.value }
-    if (allDevices) body.all_devices = true
-    if (refreshToken.value) {
-      // Best-effort: the server might already consider this token
-      // invalid. Swallow network / auth errors so the local clear
-      // always happens.
-      try {
-        await authAPI.logout(body)
-      } catch {
-        // ignored
-      }
+    const body: LogoutRequest = { all_devices: allDevices }
+    // Best-effort: the server might already consider this session
+    // invalid. Swallow network / auth errors so the local clear always
+    // happens. The backend clears the refresh cookie on its end.
+    try {
+      await authAPI.logout(body)
+    } catch {
+      // ignored
     }
     clearLocal()
   }
@@ -147,32 +134,14 @@ export const useAuthStore = defineStore('auth', () => {
   function clearLocal() {
     user.value = null
     token.value = ''
-    refreshToken.value = ''
     expiresAt.value = 0
     clearRefreshTimer()
     persist()
   }
 
-  function init() {
-    const savedUser = localStorage.getItem(STORAGE_USER)
-    if (savedUser) {
-      try {
-        user.value = JSON.parse(savedUser) as User
-      } catch {
-        localStorage.removeItem(STORAGE_USER)
-      }
-    }
-    // If we have a token + refresh token, arm the pre-emptive refresh
-    // timer so the user doesn't get bounced on the next expired call.
-    if (token.value && refreshToken.value && expiresAt.value > 0) {
-      scheduleRefresh(expiresAt.value)
-    }
-  }
-
   return {
     user,
     token,
-    refreshToken,
     expiresAt,
     loading,
     error,
@@ -185,6 +154,5 @@ export const useAuthStore = defineStore('auth', () => {
     logout,
     refresh: doRefresh,
     clearLocal,
-    init,
   }
 })

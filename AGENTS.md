@@ -152,6 +152,7 @@ docker-compose up -d
 | `ALLOWED_ORIGIN` | `http://localhost:5174` | CORS allowed origin |
 | `CORE_URL` | *(none — required)* | Base URL of the core service |
 | `JWT_SECRET` | *(none — required)* | JWT signing secret |
+| `COOKIE_SECURE` | `true` | Whether the refresh-token cookie gets the `Secure` attribute. Set to `false` for dev over plain HTTP (`make dev` does this automatically). |
 | `MYSQL_DSN` | *(none — required)* | DSN for the console auth DB (e.g. `synapvine:synapvine123@tcp(localhost:3306)/synapvine_console?parseTime=true`) |
 | `ADMIN_USERNAME` | *(required for seed)* | Username of the bootstrap admin created by `cmd/seed` |
 | `ADMIN_PASSWORD` | *(required for seed)* | Plaintext password of the bootstrap admin |

@@ -140,7 +140,8 @@ if $need_console; then
     CORE_URL="$CORE_URL" \
     PORT="$CONSOLE_PORT" \
     MYSQL_DSN="synapvine:synapvine123@tcp(localhost:3306)/synapvine_console?parseTime=true" \
-    JWT_SECRET="console-dev-secret-key-change-in-production"
+    JWT_SECRET="console-dev-secret-key-change-in-production" \
+    COOKIE_SECURE="false"
   start_frontend console-fe clients/console "$CONSOLE_FE_PORT"
   # Discovery depends on core (papers, review queue) and console (LLM
   # provider config), so it starts after both are up. It only ships

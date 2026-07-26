@@ -1,8 +1,6 @@
 import { mockUser, mockCredentials, mockNodes, mockEdges, mockPapers, mockReviewItems, mockLLMProviders } from './data'
 import type {
   LoginRequest,
-  LogoutRequest,
-  RefreshRequest,
   SessionResponse,
   User,
 } from '../types/auth'
@@ -63,9 +61,12 @@ export function createMockServer() {
     const now = Date.now()
     access = { value: newToken('mock_access'), expiresAt: now + ACCESS_TTL_MS }
     refresh = { value: newToken('mock_refresh'), expiresAt: now + REFRESH_TTL_MS, revoked: false }
+    // The refresh token is intentionally absent from the response body,
+    // mirroring the real backend which delivers it via an HttpOnly
+    // Set-Cookie header. The mock keeps it in the internal `refresh`
+    // closure variable, simulating the browser cookie jar.
     return {
       token: access.value,
-      refresh_token: refresh.value,
       expires_at: new Date(access.expiresAt).toISOString(),
       user,
     }
@@ -82,20 +83,27 @@ export function createMockServer() {
       throw new Error('Invalid username or password')
     },
 
-    refresh(_req: RefreshRequest): SessionResponse {
+    refresh(): SessionResponse {
       if (!refresh || refresh.revoked || refresh.expiresAt < Date.now()) {
         refresh = null
         access = null
         throw new Error('Refresh token is invalid or has been revoked')
       }
       // Rotate: invalidate the old refresh token, mint a new pair.
+      // No body is expected — the mock uses its internal session state,
+      // mirroring the httpOnly cookie flow where the browser attaches
+      // the token automatically.
       const old = refresh
       const session = issueSession(mockUser)
       old.revoked = true
       return session
     },
 
-    logout(_req: LogoutRequest): void {
+    logout(allDevices = false): void {
+      // The mock only tracks a single session, so all_devices is a no-op
+      // beyond revoking the current token. The signature matches the real
+      // backend contract for consistency.
+      void allDevices
       if (refresh) refresh.revoked = true
       access = null
       refresh = null

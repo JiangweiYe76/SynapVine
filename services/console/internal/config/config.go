@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"strconv"
 )
 
 // Config holds the console server configuration settings
@@ -11,6 +12,7 @@ type Config struct {
 	JWTSecret     string // Secret key for JWT signing
 	CoreURL       string // URL of the core service (required)
 	MySQLDSN      string // MySQL DSN for the console auth database (required)
+	CookieSecure  bool   // Whether the refresh-token cookie gets the Secure attribute
 }
 
 // Load reads configuration from environment variables with fallback defaults.
@@ -44,11 +46,23 @@ func Load() *Config {
 	mysqlDSN := os.Getenv("MYSQL_DSN")
 	// Intentionally no default: MySQL is mandatory.
 
+	// COOKIE_SECURE controls the Secure attribute on the refresh-token
+	// cookie. Defaults to true (production-safe). Dev runs over plain
+	// HTTP on localhost, where the browser rejects Secure cookies, so
+	// the dev script sets COOKIE_SECURE=false.
+	cookieSecure := true
+	if raw := os.Getenv("COOKIE_SECURE"); raw != "" {
+		if parsed, err := strconv.ParseBool(raw); err == nil {
+			cookieSecure = parsed
+		}
+	}
+
 	return &Config{
 		Port:          port,
 		AllowedOrigin: allowedOrigin,
 		JWTSecret:     jwtSecret,
 		CoreURL:       coreURL,
 		MySQLDSN:      mysqlDSN,
+		CookieSecure:  cookieSecure,
 	}
 }

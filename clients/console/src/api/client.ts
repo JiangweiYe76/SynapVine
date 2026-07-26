@@ -29,13 +29,14 @@ async function mockFetch<T>(path: string, options?: RequestInit): Promise<T> {
   }
 
   if (pathname === 'auth/refresh' && method === 'POST') {
-    const body = JSON.parse(options!.body as string)
-    return mock.refresh(body) as T
+    // refresh sends no body in the real API; the mock uses its internal
+    // session state to rotate, mirroring the httpOnly cookie flow.
+    return mock.refresh() as T
   }
 
   if (pathname === 'auth/logout' && method === 'POST') {
     const body = options?.body ? JSON.parse(options.body as string) : {}
-    return mock.logout(body) as T
+    return mock.logout(body.all_devices ?? false) as T
   }
 
   if (pathname === 'me' && method === 'GET') {
@@ -214,12 +215,15 @@ export async function fetchAPI<T>(
     ...((rest.headers as Record<string, string>) || {}),
   }
 
-  const currentToken = authStore.token || localStorage.getItem('token') || ''
-  if (currentToken) {
-    headers['Authorization'] = `Bearer ${currentToken}`
+  // Access token lives in memory only (Pinia state); no localStorage
+  // fallback. credentials: 'include' is required so the httpOnly refresh
+  // cookie is sent on auth-adjacent requests and so Set-Cookie headers
+  // from /auth/refresh retries are honoured.
+  if (authStore.token) {
+    headers['Authorization'] = `Bearer ${authStore.token}`
   }
 
-  const response = await fetch(url, { ...rest, headers })
+  const response = await fetch(url, { ...rest, headers, credentials: 'include' })
 
   if (response.ok) {
     if (response.status === 204) return undefined as T
