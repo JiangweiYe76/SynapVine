@@ -1,15 +1,11 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
-import { useAuthStore } from './stores/auth'
 import { useRoute } from 'vue-router'
 import Layout from './components/Layout.vue'
 
-const authStore = useAuthStore()
+// Session restoration on reload is handled by the router guard in
+// router/index.ts (silent /api/auth/refresh via httpOnly cookie), not
+// by an onMounted hook here, so App.vue has no auth bootstrap logic.
 const route = useRoute()
-
-onMounted(() => {
-  authStore.init()
-})
 </script>
 
 <template>

@@ -82,7 +82,7 @@ func main() {
 	audit := store.NewAuditStore(dbConn)
 
 	// Handlers.
-	authHandler := handler.NewAuthHandler(cfg.JWTSecret, users, refreshTokens, audit)
+	authHandler := handler.NewAuthHandler(cfg.JWTSecret, cfg.CookieSecure, users, refreshTokens, audit)
 	nodeHandler := handler.NewNodeHandler(core)
 	edgeHandler := handler.NewEdgeHandler(core)
 	communityHandler := handler.NewCommunityHandler(core)

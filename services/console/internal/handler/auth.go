@@ -29,18 +29,21 @@ type AuthHandler struct {
 	users         *store.UserStore
 	refreshTokens *store.RefreshTokenStore
 	audit         *store.AuditStore
+	cookieSecure  bool
 }
 
 // NewAuthHandler creates a new AuthHandler. The previous constructor
 // signature took only a JWT secret; callers must now pass the user
 // store, refresh-token store, and audit store wired to the same MySQL
-// database.
-func NewAuthHandler(jwtSecret string, users *store.UserStore, refresh *store.RefreshTokenStore, audit *store.AuditStore) *AuthHandler {
+// database. cookieSecure controls the Secure attribute on the
+// refresh-token cookie (false for dev over plain HTTP, true in prod).
+func NewAuthHandler(jwtSecret string, cookieSecure bool, users *store.UserStore, refresh *store.RefreshTokenStore, audit *store.AuditStore) *AuthHandler {
 	return &AuthHandler{
 		jwtManager:    auth.NewJWTManager(jwtSecret),
 		users:         users,
 		refreshTokens: refresh,
 		audit:         audit,
+		cookieSecure:  cookieSecure,
 	}
 }
 
@@ -50,26 +53,22 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
-// RefreshRequest is the JSON body of POST /api/auth/refresh.
-type RefreshRequest struct {
-	RefreshToken string `json:"refresh_token"`
-}
-
-// LogoutRequest is the JSON body of POST /api/auth/logout. Pass the
-// refresh token so the server can hard-delete the row. Omitting it
-// still revokes the access JWT via token_ver bump but leaves the
-// refresh row intact.
+// LogoutRequest is the JSON body of POST /api/auth/logout. The refresh
+// token itself is read from the httpOnly cookie, not the body, so the
+// body only carries the all_devices flag. Omitting the body still
+// revokes the access JWT via token_ver bump and clears the cookie.
 type LogoutRequest struct {
-	RefreshToken string `json:"refresh_token"`
-	AllDevices   bool   `json:"all_devices"`
+	AllDevices bool `json:"all_devices"`
 }
 
-// LoginResponse is the success body for both /login and /refresh.
+// LoginResponse is the success body for both /login and /refresh. The
+// refresh token is delivered via an HttpOnly Set-Cookie header and is
+// intentionally absent from the JSON body so client-side JS can never
+// read it.
 type LoginResponse struct {
-	Token        string             `json:"token"`
-	RefreshToken string             `json:"refresh_token"`
-	User         model.UserResponse `json:"user"`
-	ExpiresAt    time.Time          `json:"expires_at"`
+	Token     string             `json:"token"`
+	User      model.UserResponse `json:"user"`
+	ExpiresAt time.Time          `json:"expires_at"`
 }
 
 // Login handles POST /api/auth/login.
@@ -132,20 +131,22 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 }
 
 // Refresh handles POST /api/auth/refresh. It rotates the refresh token:
-// the presented token is deleted and a new one is issued alongside a
-// fresh access JWT.
+// the presented cookie token is deleted and a new one is issued (and
+// written back to the cookie) alongside a fresh access JWT. The request
+// body is empty; the refresh token is read from the httpOnly cookie.
 func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
-	var req RefreshRequest
-	if err := c.BodyParser(&req); err != nil || req.RefreshToken == "" {
-		return c.Status(400).JSON(model.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "refresh_token is required",
+	refreshID := c.Cookie("refresh_token")
+	if refreshID == "" {
+		return c.Status(401).JSON(model.ErrorResponse{
+			Error:   "invalid_refresh_token",
+			Message: "Refresh token is invalid or has been revoked",
 		})
 	}
 
-	userID, expiresAt, err := h.refreshTokens.Lookup(c.Context(), req.RefreshToken)
+	userID, expiresAt, err := h.refreshTokens.Lookup(c.Context(), refreshID)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
+			h.clearRefreshCookie(c)
 			return c.Status(401).JSON(model.ErrorResponse{
 				Error:   "invalid_refresh_token",
 				Message: "Refresh token is invalid or has been revoked",
@@ -158,7 +159,8 @@ func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
 		})
 	}
 	if time.Now().After(expiresAt) {
-		_ = h.refreshTokens.Delete(c.Context(), req.RefreshToken)
+		_ = h.refreshTokens.Delete(c.Context(), refreshID)
+		h.clearRefreshCookie(c)
 		return c.Status(401).JSON(model.ErrorResponse{
 			Error:   "refresh_token_expired",
 			Message: "Refresh token has expired, please sign in again",
@@ -176,8 +178,9 @@ func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
 
 	// Rotate: delete the old refresh token row before issuing a new
 	// one. If the new insert fails, the user simply has to sign in
-	// again.
-	if err := h.refreshTokens.Delete(c.Context(), req.RefreshToken); err != nil {
+	// again. issueSession writes the new refresh token to the cookie as
+	// a side effect.
+	if err := h.refreshTokens.Delete(c.Context(), refreshID); err != nil {
 		slog.Error("refresh_delete_old_failed", slog.Any("error", err))
 	}
 
@@ -193,9 +196,9 @@ func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
 }
 
 // Logout handles POST /api/auth/logout. Requires a valid JWT (so the
-// user is already authenticated). Deletes the supplied refresh token
-// row and bumps token_ver so the current access JWT is rejected by
-// future requests.
+// user is already authenticated). Deletes the refresh token row read
+// from the httpOnly cookie, clears the cookie, and bumps token_ver so
+// the current access JWT is rejected by future requests.
 func (h *AuthHandler) Logout(c *fiber.Ctx) error {
 	claims, ok := c.Locals("claims").(*auth.Claims)
 	if !ok || claims == nil {
@@ -207,24 +210,31 @@ func (h *AuthHandler) Logout(c *fiber.Ctx) error {
 
 	var req LogoutRequest
 	// Body is optional. BodyParser failure is ignored: a client can
-	// log out by sending an empty body.
+	// log out by sending an empty body. Only all_devices is read from
+	// the body; the refresh token comes from the cookie.
 	_ = c.BodyParser(&req)
+
+	refreshID := c.Cookie("refresh_token")
 
 	if req.AllDevices {
 		if err := h.refreshTokens.DeleteAllForUser(c.Context(), claims.UserID); err != nil {
 			slog.Error("logout_revoke_all_failed", slog.Any("error", err))
 		}
-	} else if req.RefreshToken != "" {
+	} else if refreshID != "" {
 		// Only delete the row if it actually belongs to this user;
 		// otherwise an attacker with a stolen JWT could probe for
 		// other users' refresh tokens.
-		userID, _, lookupErr := h.refreshTokens.Lookup(c.Context(), req.RefreshToken)
+		userID, _, lookupErr := h.refreshTokens.Lookup(c.Context(), refreshID)
 		if lookupErr == nil && userID == claims.UserID {
-			if err := h.refreshTokens.Delete(c.Context(), req.RefreshToken); err != nil {
+			if err := h.refreshTokens.Delete(c.Context(), refreshID); err != nil {
 				slog.Error("logout_revoke_failed", slog.Any("error", err))
 			}
 		}
 	}
+
+	// Always clear the cookie so the browser drops any stale refresh
+	// token, even when no matching DB row was found.
+	h.clearRefreshCookie(c)
 
 	if err := h.users.BumpTokenVer(c.Context(), claims.UserID); err != nil {
 		slog.Error("logout_bump_tokenver_failed", slog.Any("error", err))
@@ -342,7 +352,9 @@ func (h *AuthHandler) JWTMiddleware() fiber.Handler {
 }
 
 // issueSession mints a new access JWT and refresh token pair for the
-// given user. Used by /login and /refresh.
+// given user. Used by /login and /refresh. The refresh token is written
+// to the httpOnly cookie as a side effect; the returned LoginResponse
+// carries only the access token, user, and expiry.
 func (h *AuthHandler) issueSession(c *fiber.Ctx, user *model.User) (LoginResponse, error) {
 	now := time.Now()
 	expiresAt := now.Add(AccessTokenTTL)
@@ -364,12 +376,48 @@ func (h *AuthHandler) issueSession(c *fiber.Ctx, user *model.User) (LoginRespons
 		return LoginResponse{}, err
 	}
 
+	// Deliver the refresh token via an HttpOnly cookie so client-side JS
+	// can never read it. The JSON body intentionally omits it.
+	h.setRefreshCookie(c, refreshID, refreshExpires)
+
 	return LoginResponse{
-		Token:        token,
-		RefreshToken: refreshID,
-		User:         user.ToResponse(),
-		ExpiresAt:    expiresAt,
+		Token:     token,
+		User:      user.ToResponse(),
+		ExpiresAt: expiresAt,
 	}, nil
+}
+
+// setRefreshCookie writes the refresh token as an HttpOnly cookie. Path
+// is scoped to /api/auth so the cookie is sent only to auth endpoints,
+// avoiding unnecessary transmission on every API call. SameSite=Strict
+// blocks cross-site CSRF on auth endpoints. Secure is env-controlled
+// (COOKIE_SECURE) so dev over plain HTTP still works.
+func (h *AuthHandler) setRefreshCookie(c *fiber.Ctx, id string, expiresAt time.Time) {
+	c.Cookie(&fiber.Cookie{
+		Name:     "refresh_token",
+		Value:    id,
+		Path:     "/api/auth",
+		Expires:  expiresAt,
+		HTTPOnly: true,
+		Secure:   h.cookieSecure,
+		SameSite: "Strict",
+	})
+}
+
+// clearRefreshCookie expires the refresh-token cookie immediately so the
+// browser removes it. The attributes (Path, SameSite, Secure) must
+// match the set cookie for the browser to honour the deletion.
+func (h *AuthHandler) clearRefreshCookie(c *fiber.Ctx) {
+	c.Cookie(&fiber.Cookie{
+		Name:     "refresh_token",
+		Value:    "",
+		Path:     "/api/auth",
+		Expires:  time.Unix(0, 0),
+		MaxAge:   -1,
+		HTTPOnly: true,
+		Secure:   h.cookieSecure,
+		SameSite: "Strict",
+	})
 }
 
 // newRefreshID returns a UUID v4 string. The DB column is VARCHAR(36),

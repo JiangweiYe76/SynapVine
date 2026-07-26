@@ -3,7 +3,6 @@ import type {
   LoginRequest,
   LoginResponse,
   LogoutRequest,
-  RefreshRequest,
   SessionResponse,
   User,
 } from '../types/auth'
@@ -17,6 +16,10 @@ import type {
 //     token state.
 // me() is intentionally routed through fetchAPI so a stale access
 // token is auto-refreshed before the call goes out.
+//
+// All auth POSTs use credentials: 'include' so the browser accepts the
+// Set-Cookie carrying the refresh token from /login and /refresh, and
+// attaches the httpOnly refresh cookie to /logout.
 
 const API_BASE = '/api'
 
@@ -24,6 +27,7 @@ async function rawPost<T>(path: string, body: unknown): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
     body: body == null ? undefined : JSON.stringify(body),
   })
   if (!response.ok) {
@@ -44,7 +48,9 @@ async function rawPost<T>(path: string, body: unknown): Promise<T> {
 
 export const authAPI = {
   login: (data: LoginRequest) => rawPost<LoginResponse>('/auth/login', data),
-  refresh: (data: RefreshRequest) => rawPost<SessionResponse>('/auth/refresh', data),
+  // refresh sends no body: the refresh token travels in the httpOnly
+  // cookie the browser attaches automatically.
+  refresh: () => rawPost<SessionResponse>('/auth/refresh', null),
   logout: (data: LogoutRequest) => rawPost<void>('/auth/logout', data),
   me: () => fetchAPI<User>('/me'),
 }
