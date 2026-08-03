@@ -45,12 +45,18 @@ function getCachedMaterial(color: string, isSelected: boolean, isOutline = false
         transparent: false,
       }))
     } else {
+      // getFilteredColor appends an alpha suffix (#RRGGBBAA) to dim
+      // non-highlighted community nodes. Three.js Color ignores the alpha
+      // channel, so parse it and map to material opacity instead.
+      const hasAlpha = color.length === 9
+      const baseColor = hasAlpha ? color.slice(0, 7) : color
+      const opacity = hasAlpha ? parseInt(color.slice(7, 9), 16) / 255 : 0.95
       materialCache.set(key, new THREE.MeshPhongMaterial({
-        color: color,
+        color: baseColor,
         shininess: 80,
         transparent: true,
-        opacity: 0.95,
-        emissive: isSelected ? color : '#000000',
+        opacity,
+        emissive: isSelected ? baseColor : '#000000',
         emissiveIntensity: isSelected ? 0.6 : 0,
       }))
     }
@@ -110,10 +116,25 @@ function updateSelectedNodeVisuals() {
   })
 }
 
-function refreshNodes() {
+// Re-apply community-filtered colors to all existing node objects.
+// Swaps each sphere's material reference to the appropriate cached
+// material so dimmed (non-highlighted) nodes become semi-transparent.
+function updateNodeColors() {
   if (!graph) return
-  // Only update visuals instead of recreating all node objects
-  updateSelectedNodeVisuals()
+  const communityIds = props.highlightedCommunity
+  const graphNodes = graph.graphData()?.nodes || []
+  const nodeMap = new Map<string, any>(graphNodes.map((n: any) => [n.id, n]))
+
+  nodeObjects.forEach((group, nodeId) => {
+    const sphere = group.children[0] as any
+    if (!sphere) return
+    const node = nodeMap.get(nodeId)
+    if (!node) return
+
+    const isSelected = props.selectedNode?.id === nodeId
+    const color = getFilteredColor(node, communityIds)
+    sphere.material = getCachedMaterial(color, isSelected)
+  })
 }
 
 function getBackgroundColor(): string {
@@ -182,7 +203,7 @@ function relationColor(relation: string): string {
 }
 
 function applyCommunityFilter(_communityIds: number[]) {
-  refreshNodes()
+  updateNodeColors()
 }
 
 function collectPositions() {
