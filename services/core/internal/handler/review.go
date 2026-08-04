@@ -9,6 +9,7 @@ import (
 
 	"core/internal/model"
 	"core/internal/repository"
+	"core/internal/service"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
@@ -16,13 +17,16 @@ import (
 
 // ReviewQueueHandler manages the review queue.
 type ReviewQueueHandler struct {
-	repo     *repository.ReviewQueueRepository
+	repo      *repository.ReviewQueueRepository
 	paperRepo *repository.PaperRepository
+	merge     *service.MergeService
 }
 
-// NewReviewQueueHandler creates a new ReviewQueueHandler.
-func NewReviewQueueHandler(repo *repository.ReviewQueueRepository, paperRepo *repository.PaperRepository) *ReviewQueueHandler {
-	return &ReviewQueueHandler{repo: repo, paperRepo: paperRepo}
+// NewReviewQueueHandler creates a new ReviewQueueHandler. The merge
+// service is used by Approve to persist the extracted nodes/edges into
+// Neo4j before the review item is marked as approved.
+func NewReviewQueueHandler(repo *repository.ReviewQueueRepository, paperRepo *repository.PaperRepository, merge *service.MergeService) *ReviewQueueHandler {
+	return &ReviewQueueHandler{repo: repo, paperRepo: paperRepo, merge: merge}
 }
 
 // List handles GET /api/review-queue
@@ -110,6 +114,12 @@ func (h *ReviewQueueHandler) Submit(c *fiber.Ctx) error {
 }
 
 // Approve handles POST /api/review-queue/:id/approve
+//
+// The extracted nodes/edges are merged into the Neo4j graph BEFORE the
+// review item's status is flipped to "approved". On merge failure the
+// item stays pending so the reviewer can retry; the merge runs in a
+// single transaction and is idempotent, so retrying after a partial
+// failure is safe.
 func (h *ReviewQueueHandler) Approve(c *fiber.Ctx) error {
 	id := c.Params("id")
 	var req model.ReviewQueueApproveRequest
@@ -129,6 +139,28 @@ func (h *ReviewQueueHandler) Approve(c *fiber.Ctx) error {
 		return c.Status(400).JSON(errorResponse("invalid_status", "Only pending items can be approved"))
 	}
 
+	// Unmarshal the extracted payload stored in MySQL.
+	var nodes []model.ExtractedNode
+	var edges []model.ExtractedEdge
+	if err := json.Unmarshal(item.ExtractedNodes, &nodes); err != nil {
+		slog.Error("review_approve_unmarshal_nodes_failed", slog.String("id", id), slog.Any("error", err))
+		return c.Status(400).JSON(errorResponse("invalid_extracted_data", "extracted_nodes is not valid JSON"))
+	}
+	if err := json.Unmarshal(item.ExtractedEdges, &edges); err != nil {
+		slog.Error("review_approve_unmarshal_edges_failed", slog.String("id", id), slog.Any("error", err))
+		return c.Status(400).JSON(errorResponse("invalid_extracted_data", "extracted_edges is not valid JSON"))
+	}
+
+	// Merge into Neo4j. Failure leaves the item pending for retry.
+	mergeResult, err := h.merge.Merge(c.Context(), item.PaperID, nodes, edges)
+	if err != nil {
+		slog.Error("review_approve_merge_failed",
+			slog.String("id", id),
+			slog.String("paper_id", item.PaperID),
+			slog.Any("error", err))
+		return c.Status(500).JSON(errorResponse("merge_failed", "Failed to merge extracted data into the graph"))
+	}
+
 	if err := h.repo.UpdateStatus(c.Context(), id, "approved", req.ReviewerID, req.ReviewNotes); err != nil {
 		slog.Error("review_approve_failed", slog.String("id", id), slog.Any("error", err))
 		return c.Status(500).JSON(errorResponse("internal_error", "Failed to approve review item"))
@@ -138,7 +170,13 @@ func (h *ReviewQueueHandler) Approve(c *fiber.Ctx) error {
 	paperStatus := "merged"
 	h.paperRepo.Update(c.Context(), item.PaperID, &model.PaperUpdateRequest{Status: &paperStatus})
 
-	slog.Info("review_item_approved", slog.String("id", id), slog.String("reviewer", req.ReviewerID))
+	slog.Info("review_item_approved",
+		slog.String("id", id),
+		slog.String("reviewer", req.ReviewerID),
+		slog.Int("created_nodes", mergeResult.CreatedNodes),
+		slog.Int("reused_nodes", mergeResult.ReusedNodes),
+		slog.Int("created_edges", mergeResult.CreatedEdges),
+		slog.Int("skipped_edges", mergeResult.SkippedEdges))
 
 	// Return updated item.
 	updated, _ := h.repo.GetByID(c.Context(), id)

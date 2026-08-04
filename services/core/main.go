@@ -73,7 +73,8 @@ func main() {
 		paperRepo := repository.NewPaperRepository(mysqlDB)
 		reviewRepo := repository.NewReviewQueueRepository(mysqlDB)
 		paperHandler = handler.NewPaperHandler(paperRepo)
-		reviewHandler = handler.NewReviewQueueHandler(reviewRepo, paperRepo)
+		mergeSvc := service.NewMergeService(neo)
+		reviewHandler = handler.NewReviewQueueHandler(reviewRepo, paperRepo, mergeSvc)
 
 		llmProviderRepo := repository.NewLLMProviderRepository(mysqlDB)
 		embeddingProviderRepo := repository.NewEmbeddingProviderRepository(mysqlDB)
