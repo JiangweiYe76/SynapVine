@@ -104,36 +104,42 @@ function createNodeObject(node: any) {
   return group
 }
 
-function updateSelectedNodeVisuals() {
-  const selectedId = props.selectedNode?.id
-  nodeObjects.forEach((group, nodeId) => {
-    const isSelected = nodeId === selectedId
-    const sphere = group.children[0] as any
-    if (sphere && sphere.material) {
-      sphere.material.emissive = new THREE.Color(isSelected ? sphere.material.color : '#000000')
-      sphere.material.emissiveIntensity = isSelected ? 0.6 : 0
-    }
-  })
-}
-
-// Re-apply community-filtered colors to all existing node objects.
+// Re-apply per-node visuals to all existing node objects: community
+// filter dimming, selection glow, and the selection border outline.
 // Swaps each sphere's material reference to the appropriate cached
-// material so dimmed (non-highlighted) nodes become semi-transparent.
-function updateNodeColors() {
+// material (instead of mutating shared cached materials in place, which
+// would affect every node of the same color), and adds/removes the blue
+// border outline for the selected node.
+function updateNodeVisuals() {
   if (!graph) return
   const communityIds = props.highlightedCommunity
+  const selectedId = props.selectedNode?.id
   const graphNodes = graph.graphData()?.nodes || []
   const nodeMap = new Map<string, any>(graphNodes.map((n: any) => [n.id, n]))
 
   nodeObjects.forEach((group, nodeId) => {
-    const sphere = group.children[0] as any
-    if (!sphere) return
     const node = nodeMap.get(nodeId)
     if (!node) return
 
-    const isSelected = props.selectedNode?.id === nodeId
+    const isSelected = nodeId === selectedId
     const color = getFilteredColor(node, communityIds)
-    sphere.material = getCachedMaterial(color, isSelected)
+
+    const sphere = group.children[0] as any
+    if (sphere) {
+      sphere.material = getCachedMaterial(color, isSelected)
+    }
+
+    // Toggle the border outline for the selected node.
+    const outline = group.children[1] as any
+    if (isSelected && !outline) {
+      const score = node.influence_score || 5
+      const size = Math.max(0.5, (score - 5) * 1.5)
+      const outlineGeo = getCachedGeometry((size * 1.18).toString())
+      const outlineMat = getCachedMaterial(color, true, true)
+      group.add(new THREE.Mesh(outlineGeo, outlineMat))
+    } else if (!isSelected && outline) {
+      group.remove(outline)
+    }
   })
 }
 
@@ -203,7 +209,7 @@ function relationColor(relation: string): string {
 }
 
 function applyCommunityFilter(_communityIds: number[]) {
-  updateNodeColors()
+  updateNodeVisuals()
 }
 
 function collectPositions() {
@@ -295,9 +301,10 @@ watch(() => props.highlightedCommunity, (communityIds) => {
 })
 
 watch(() => props.selectedNode, (node, prevNode) => {
-  // Only update visuals for selected node instead of rebuilding all nodes
+  // Update visuals (glow + outline) for the selected node instead of
+  // rebuilding all nodes.
   if (graph) {
-    updateSelectedNodeVisuals()
+    updateNodeVisuals()
   }
 
   if (!graph) return
