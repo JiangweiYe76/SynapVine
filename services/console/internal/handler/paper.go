@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"bytes"
 	"encoding/base64"
 	"io"
 	"log/slog"
@@ -9,6 +10,7 @@ import (
 
 	"console/internal/coreclient"
 	"console/internal/model"
+	"console/internal/pdf"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -118,7 +120,25 @@ func (h *PaperHandler) Create(c *fiber.Ctx) error {
 				req.Title = name
 			}
 
-			// Use a placeholder; the PDF is stored and can be viewed.
+			// Extract real text from the PDF so the discovery service can
+			// feed genuine content to the LLM instead of a placeholder.
+			// The extracted text overrides any raw_text form field (see
+			// the Create doc comment). Fall back to a form-provided
+			// raw_text or a placeholder when extraction fails (e.g.
+			// scanned/image-only PDFs).
+			extracted, extractErr := pdf.ExtractText(bytes.NewReader(pdfBytes))
+			if extractErr != nil {
+				slog.Warn("pdf_extract_failed",
+					slog.String("filename", fileHeader.Filename),
+					slog.Any("error", extractErr),
+				)
+			} else {
+				req.RawText = extracted
+				slog.Info("pdf_extracted",
+					slog.String("filename", fileHeader.Filename),
+					slog.Int("text_length", len(extracted)),
+				)
+			}
 			if req.RawText == "" {
 				req.RawText = "(PDF uploaded — text extraction pending)"
 			}
