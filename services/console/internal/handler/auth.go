@@ -135,7 +135,7 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 // written back to the cookie) alongside a fresh access JWT. The request
 // body is empty; the refresh token is read from the httpOnly cookie.
 func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
-	refreshID := c.Cookie("refresh_token")
+	refreshID := c.Cookies("refresh_token")
 	if refreshID == "" {
 		return c.Status(401).JSON(model.ErrorResponse{
 			Error:   "invalid_refresh_token",
@@ -214,7 +214,7 @@ func (h *AuthHandler) Logout(c *fiber.Ctx) error {
 	// the body; the refresh token comes from the cookie.
 	_ = c.BodyParser(&req)
 
-	refreshID := c.Cookie("refresh_token")
+	refreshID := c.Cookies("refresh_token")
 
 	if req.AllDevices {
 		if err := h.refreshTokens.DeleteAllForUser(c.Context(), claims.UserID); err != nil {
