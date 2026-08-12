@@ -2,13 +2,16 @@ package handler
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"io"
 	"log/slog"
 	"strconv"
 	"strings"
+	"time"
 
 	"console/internal/coreclient"
+	"console/internal/discoveryclient"
 	"console/internal/model"
 	"console/internal/pdf"
 
@@ -17,12 +20,14 @@ import (
 
 // PaperHandler proxies paper-related HTTP requests to the core service.
 type PaperHandler struct {
-	core *coreclient.Client
+	core      *coreclient.Client
+	discovery *discoveryclient.Client
 }
 
-// NewPaperHandler creates a new PaperHandler.
-func NewPaperHandler(core *coreclient.Client) *PaperHandler {
-	return &PaperHandler{core: core}
+// NewPaperHandler creates a new PaperHandler. When discovery is nil,
+// automatic paper analysis is disabled.
+func NewPaperHandler(core *coreclient.Client, discovery *discoveryclient.Client) *PaperHandler {
+	return &PaperHandler{core: core, discovery: discovery}
 }
 
 // List handles GET /api/papers
@@ -175,7 +180,71 @@ func (h *PaperHandler) Create(c *fiber.Ctx) error {
 	}
 
 	slog.Info("paper_created", slog.String("id", paper.ID), slog.String("title", paper.Title))
+
+	// Asynchronously trigger LLM analysis via discovery service.
+	// Fire-and-forget: response returns immediately to the user while
+	// extraction runs in the background. Errors are logged but not
+	// returned to the client since the paper was successfully created.
+	h.triggerAnalysisAsync(paper.ID)
+
 	return c.Status(201).JSON(paper)
+}
+
+// triggerAnalysisAsync fires a goroutine to call the discovery service.
+// It uses a background context with a timeout so the request is not
+// tied to the HTTP request's lifecycle.
+func (h *PaperHandler) triggerAnalysisAsync(paperID string) {
+	if h.discovery == nil {
+		return
+	}
+	go func() {
+		slog.Info("paper_analysis_triggered", slog.String("paper_id", paperID))
+		ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
+		defer cancel()
+		if err := h.discovery.TriggerAnalyze(ctx, paperID); err != nil {
+			slog.Error("paper_analysis_trigger_failed",
+				slog.String("paper_id", paperID),
+				slog.Any("error", err),
+			)
+		} else {
+			slog.Info("paper_analysis_trigger_succeeded", slog.String("paper_id", paperID))
+		}
+	}()
+}
+
+// Analyze handles POST /api/papers/:id/analyze — manually triggers
+// LLM analysis for a paper (useful for retrying failed extractions).
+func (h *PaperHandler) Analyze(c *fiber.Ctx) error {
+	id := c.Params("id")
+
+	// Verify the paper exists.
+	paper, err := h.core.GetPaper(c.Context(), id)
+	if err != nil {
+		slog.Error("paper_get_for_analyze_failed", slog.String("id", id), slog.Any("error", err))
+		return c.Status(502).JSON(model.ErrorResponse{
+			Error:   "core_unavailable",
+			Message: "Failed to fetch paper from core service",
+		})
+	}
+	if paper == nil {
+		return c.Status(404).JSON(model.ErrorResponse{
+			Error:   "paper_not_found",
+			Message: "Paper not found",
+		})
+	}
+
+	if h.discovery == nil {
+		return c.Status(503).JSON(model.ErrorResponse{
+			Error:   "discovery_unavailable",
+			Message: "Discovery service is not configured",
+		})
+	}
+
+	h.triggerAnalysisAsync(id)
+	return c.JSON(fiber.Map{
+		"status":  "triggered",
+		"message": "Analysis started in background",
+	})
 }
 
 // Update handles PUT /api/papers/:id

@@ -40,6 +40,11 @@ export const papersAPI = {
       method: 'DELETE',
     }),
 
+  analyze: (id: string) =>
+    fetchAPI<{ status: string; message: string }>(`/papers/${id}/analyze`, {
+      method: 'POST',
+    }),
+
   downloadPDF: async (id: string): Promise<void> => {
     const token = localStorage.getItem('token') || ''
     const res = await fetch(`/api/papers/${id}/pdf`, {

@@ -12,6 +12,7 @@ import (
 	"console/internal/config"
 	"console/internal/coreclient"
 	"console/internal/db"
+	"console/internal/discoveryclient"
 	"console/internal/handler"
 	"console/internal/model"
 	"console/internal/store"
@@ -76,6 +77,24 @@ func main() {
 	}
 	slog.Info("core_health_check_passed")
 
+	// Discovery service: optional client for auto-triggering paper analysis.
+	// When DISCOVERY_URL is not set, discovery will be nil and auto-trigger is disabled.
+	var discovery *discoveryclient.Client
+	if cfg.DiscoveryURL != "" {
+		discovery = discoveryclient.New(cfg.DiscoveryURL)
+		if err := discovery.Health(context.Background()); err != nil {
+			slog.Warn("discovery_health_check_failed_auto_trigger_disabled",
+				slog.String("discovery_url", cfg.DiscoveryURL),
+				slog.Any("error", err),
+			)
+			discovery = nil
+		} else {
+			slog.Info("discovery_health_check_passed", slog.String("discovery_url", cfg.DiscoveryURL))
+		}
+	} else {
+		slog.Info("discovery_url_not_configured_auto_trigger_disabled")
+	}
+
 	// Stores: each wraps the shared *sql.DB.
 	users := store.NewUserStore(dbConn)
 	refreshTokens := store.NewRefreshTokenStore(dbConn)
@@ -88,7 +107,7 @@ func main() {
 	communityHandler := handler.NewCommunityHandler(core)
 	llmHandler := handler.NewLLMHandler(core)
 	embeddingHandler := handler.NewEmbeddingHandler(core)
-	paperHandler := handler.NewPaperHandler(core)
+	paperHandler := handler.NewPaperHandler(core, discovery)
 	reviewHandler := handler.NewReviewQueueHandler(core)
 
 	app := fiber.New(fiber.Config{
@@ -216,6 +235,7 @@ func main() {
 	// Paper mutations (editor+).
 	api.Post("/papers", editorOnly, paperHandler.Create)
 	api.Put("/papers/:id", editorOnly, paperHandler.Update)
+	api.Post("/papers/:id/analyze", editorOnly, paperHandler.Analyze)
 	api.Delete("/papers/:id", adminOnly, paperHandler.Delete)
 
 	// Review queue (viewer+ for read, editor+ for actions).

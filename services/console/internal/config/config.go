@@ -11,6 +11,7 @@ type Config struct {
 	AllowedOrigin string // Allowed CORS origin
 	JWTSecret     string // Secret key for JWT signing
 	CoreURL       string // URL of the core service (required)
+	DiscoveryURL  string // URL of the discovery service (optional, for auto-triggering paper analysis)
 	MySQLDSN      string // MySQL DSN for the console auth database (required)
 	CookieSecure  bool   // Whether the refresh-token cookie gets the Secure attribute
 }
@@ -43,6 +44,9 @@ func Load() *Config {
 	coreURL := os.Getenv("CORE_URL")
 	// Intentionally no default: core is mandatory.
 
+	discoveryURL := os.Getenv("DISCOVERY_URL")
+	// Optional: defaults to empty string (auto-trigger disabled) when not set.
+
 	mysqlDSN := os.Getenv("MYSQL_DSN")
 	// Intentionally no default: MySQL is mandatory.
 
@@ -62,6 +66,7 @@ func Load() *Config {
 		AllowedOrigin: allowedOrigin,
 		JWTSecret:     jwtSecret,
 		CoreURL:       coreURL,
+		DiscoveryURL:  discoveryURL,
 		MySQLDSN:      mysqlDSN,
 		CookieSecure:  cookieSecure,
 	}
