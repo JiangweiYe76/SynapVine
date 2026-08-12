@@ -136,21 +136,23 @@ if $need_console; then
     ADMIN_PASSWORD="admin123"
   wait $!
   rm -f "$PID_DIR/console-seed.pid"
+
+  # Discovery depends only on core (papers, review queue, internal LLM
+  # provider API). Start it before console so console can health-check
+  # it and enable auto-trigger.
+  start_backend discovery services/discovery "$DISCOVERY_PORT" \
+    PORT="$DISCOVERY_PORT" \
+    CORE_URL="$CORE_URL"
+  wait_for "http://localhost:$DISCOVERY_PORT/health" "healthy" 30 || exit 1
+
   start_backend console services/console "$CONSOLE_PORT" \
     CORE_URL="$CORE_URL" \
+    DISCOVERY_URL="http://localhost:$DISCOVERY_PORT" \
     PORT="$CONSOLE_PORT" \
     MYSQL_DSN="synapvine:synapvine123@tcp(localhost:3306)/synapvine_console?parseTime=true" \
     JWT_SECRET="console-dev-secret-key-change-in-production" \
     COOKIE_SECURE="false"
   start_frontend console-fe clients/console "$CONSOLE_FE_PORT"
-  # Discovery depends on core (papers, review queue) and console (LLM
-  # provider config), so it starts after both are up. It only ships
-  # with the console stack; the portal-only stack does not start it.
-  start_backend discovery services/discovery "$DISCOVERY_PORT" \
-    PORT="$DISCOVERY_PORT" \
-    CORE_URL="$CORE_URL" \
-    CONSOLE_URL="http://localhost:$CONSOLE_PORT"
-  wait_for "http://localhost:$DISCOVERY_PORT/health" "healthy" 30 || exit 1
 fi
 
 if $need_portal; then

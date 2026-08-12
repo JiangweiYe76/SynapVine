@@ -14,6 +14,8 @@ import {
   Pencil,
   Trash2,
   Eye,
+  Play,
+  Loader2,
 } from '@lucide/vue'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -40,6 +42,7 @@ const error = ref<string | null>(null)
 const formDialogOpen = ref(false)
 const deleteDialogOpen = ref(false)
 const selectedPaper = ref<Paper | null>(null)
+const analyzingPaperId = ref<string | null>(null)
 
 const statusColors: Record<string, string> = {
   uploaded: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
@@ -90,6 +93,20 @@ function openDeleteDialog(paper: Paper) {
   deleteDialogOpen.value = true
 }
 
+async function triggerAnalyze(paper: Paper) {
+  analyzingPaperId.value = paper.id
+  error.value = null
+  try {
+    await papersAPI.analyze(paper.id)
+    // Refresh after a short delay to show status change
+    setTimeout(fetchPapers, 1500)
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : 'Failed to trigger analysis'
+  } finally {
+    analyzingPaperId.value = null
+  }
+}
+
 const columnHelper = createColumnHelper<Paper>()
 
 const columns = [
@@ -124,12 +141,24 @@ const columns = [
     cell: (info) => {
       const paper = info.row.original
       if (!authStore.isEditor) return null
+      const isAnalyzing = analyzingPaperId.value === paper.id
+      const canAnalyze = paper.status === 'uploaded'
       return h('div', { class: 'flex items-center justify-end gap-1' }, [
         h(Button, {
           variant: 'ghost',
           size: 'icon-sm',
           onClick: () => viewPaperPDF(paper),
         }, () => h(Eye, { class: 'h-4 w-4' })),
+        canAnalyze ? h(Button, {
+          variant: 'ghost',
+          size: 'icon-sm',
+          onClick: () => triggerAnalyze(paper),
+          disabled: isAnalyzing,
+          title: 'Trigger analysis',
+        }, () => isAnalyzing
+          ? h(Loader2, { class: 'h-4 w-4 animate-spin' })
+          : h(Play, { class: 'h-4 w-4 text-green-600' })
+        ) : null,
         h(Button, {
           variant: 'ghost',
           size: 'icon-sm',
