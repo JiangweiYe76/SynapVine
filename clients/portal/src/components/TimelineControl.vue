@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { inject, computed } from 'vue'
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { TimelineState, TimelineActions } from '../composables/useTimeline'
+import { injectTimeline } from '../composables/useGraph'
 import {
   SkipBack, ChevronLeft, Play, Pause, ChevronRight, SkipForward,
   ChevronDown, ChevronUp, Clock,
@@ -14,7 +14,7 @@ import {
 
 const { t } = useI18n()
 
-const timeline = inject('timeline') as TimelineState & TimelineActions
+const timeline = injectTimeline()
 
 const props = defineProps<{
   modelValue?: boolean
