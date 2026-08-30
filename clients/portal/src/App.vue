@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, provide, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import GraphCanvas from './components/GraphCanvas.vue'
 import SearchBar from './components/SearchBar.vue'
@@ -8,9 +8,8 @@ import NodeDetail from './components/NodeDetail.vue'
 import StatusBar from './components/StatusBar.vue'
 import TimelineControl from './components/TimelineControl.vue'
 import SettingsDialog from './components/SettingsDialog.vue'
-import { useGraph } from './composables/useGraph'
-import { useTimeline } from './composables/useTimeline'
-import { useTheme } from './composables/useTheme'
+import { provideGraph } from './composables/useGraph'
+import { provideTheme } from './composables/useTheme'
 import type { SearchResult, NodeDetail as NodeDetailType } from './types/graph'
 import { searchNodes, getNodeDetail } from './api/graph'
 import { Zap, Sun, Moon, Settings, X } from 'lucide-vue-next'
@@ -22,6 +21,10 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 
+const theme = provideTheme()
+
+const { t, locale } = useI18n()
+
 const {
   nodes,
   edges,
@@ -31,20 +34,12 @@ const {
   highlightedCommunity,
   loading,
   error,
-  timelineRange,
+  timeline,
   loadInitial,
   selectNode,
   highlightCommunity,
   clearError,
-} = useGraph()
-
-const theme = useTheme()
-provide('theme', theme)
-
-const { t, locale } = useI18n()
-
-const timeline = useTimeline(nodes, edges, timelineRange)
-provide('timeline', timeline)
+} = provideGraph()
 
 const searchResults = ref<SearchResult[]>([])
 const nodeDetail = ref<NodeDetailType | null>(null)
