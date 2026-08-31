@@ -67,7 +67,7 @@ async function mockFetch(path: string, params?: Record<string, string>): Promise
   }
 }
 
-async function fetchAPI<T>(path: string, params?: Record<string, string>): Promise<T> {
+async function fetchAPI<T>(path: string, params?: Record<string, string>, retried = false): Promise<T> {
   if (USE_MOCK) {
     return mockFetch(path, params) as T
   }
@@ -86,9 +86,17 @@ async function fetchAPI<T>(path: string, params?: Record<string, string>): Promi
   const response = await fetch(url, { headers })
 
   if (response.status === 401) {
+    // Only refresh once per logical request. Without this guard a
+    // persistently rejected token (clock skew, proxy stripping the
+    // Authorization header, token endpoint returning an empty token)
+    // would recurse forever, hammering the API until the rate limiter
+    // kicks in and masking the real auth failure.
+    if (retried) {
+      throw new Error('Authentication failed after token refresh')
+    }
     token = null
     await getToken()
-    return fetchAPI<T>(path, params)
+    return fetchAPI<T>(path, params, true)
   }
 
   if (!response.ok) {
@@ -110,8 +118,14 @@ export async function getToken(): Promise<string> {
     throw new Error('Failed to get token')
   }
   const data = await response.json()
-  token = data.token
-  return token ?? ''
+  // An empty or missing token must fail loudly: returning '' would make
+  // every subsequent request omit the Authorization header, loop back
+  // here on 401, and recurse indefinitely.
+  if (!data.token) {
+    throw new Error('Token endpoint returned an empty token')
+  }
+  token = data.token as string
+  return data.token as string
 }
 
 export async function getSummary(): Promise<GraphSummary> {
