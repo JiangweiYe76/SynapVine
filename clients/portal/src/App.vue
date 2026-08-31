@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, defineAsyncComponent, h } from 'vue'
 import { useI18n } from 'vue-i18n'
-import GraphCanvas from './components/GraphCanvas.vue'
 import SearchBar from './components/SearchBar.vue'
 import CommunityLegend from './components/CommunityLegend.vue'
 import NodeDetail from './components/NodeDetail.vue'
@@ -22,6 +21,17 @@ import {
 } from '@/components/ui/tooltip'
 
 const theme = provideTheme()
+
+// Lazy-load the 3D graph canvas so three.js and 3d-force-graph are split
+// into a separate chunk that does not block first paint.
+const GraphCanvas = defineAsyncComponent({
+  loader: () => import('./components/GraphCanvas.vue'),
+  delay: 200,
+  loadingComponent: () =>
+    h('div', { class: 'flex-1 flex items-center justify-center' }, [
+      h('div', { class: 'w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin' }),
+    ]),
+})
 
 const { t, locale } = useI18n()
 
