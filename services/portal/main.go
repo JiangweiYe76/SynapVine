@@ -1,9 +1,13 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"log/slog"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"ai-graph-server/internal/config"
@@ -44,13 +48,19 @@ func main() {
 	// Initialize token store for API authentication
 	tokenStore := security.NewTokenStore()
 
-	// Start background goroutine to clean expired tokens every minute
+	// Start background goroutine to clean expired tokens every minute.
+	// The goroutine exits when the shutdown signal closes cleanerDone.
+	cleanerDone := make(chan struct{})
 	go func() {
 		for {
-			time.Sleep(1 * time.Minute)
-			cleaned := tokenStore.CleanExpired()
-			if cleaned > 0 {
-				slog.Info("tokens_cleaned", slog.Int("count", cleaned))
+			select {
+			case <-cleanerDone:
+				return
+			case <-time.After(1 * time.Minute):
+				cleaned := tokenStore.CleanExpired()
+				if cleaned > 0 {
+					slog.Info("tokens_cleaned", slog.Int("count", cleaned))
+				}
 			}
 		}
 	}()
@@ -134,9 +144,29 @@ func main() {
 	// Log startup information
 	slog.Info("server_starting", slog.String("port", cfg.Port))
 
+	// Graceful shutdown on SIGINT/SIGTERM, mirroring the pattern used by
+	// the core service.
+	idleConnsClosed := make(chan struct{})
+	go func() {
+		sigint := make(chan os.Signal, 1)
+		signal.Notify(sigint, os.Interrupt, syscall.SIGTERM)
+		<-sigint
+
+		slog.Info("shutdown_signal_received", slog.String("action", "gracefully_stopping_server"))
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := app.ShutdownWithContext(shutdownCtx); err != nil {
+			slog.Error("server_shutdown_failed", slog.Any("error", err))
+		}
+		close(idleConnsClosed)
+		close(cleanerDone)
+	}()
+
 	// Start HTTP server
-	if err := app.Listen(":" + cfg.Port); err != nil {
+	if err := app.Listen(":" + cfg.Port); err != nil && !errors.Is(err, context.Canceled) {
 		slog.Error("server_failed", slog.Any("error", err))
 		os.Exit(1)
 	}
+
+	<-idleConnsClosed
 }
