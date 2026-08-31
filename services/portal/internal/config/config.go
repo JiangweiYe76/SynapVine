@@ -9,6 +9,7 @@ type Config struct {
 	Port          string // HTTP server port
 	AllowedOrigin string // Allowed CORS origin
 	CoreURL       string // URL of the core service
+	ServiceToken  string // Token presented to core via X-Service-Token
 }
 
 // Load reads configuration from environment variables with fallback defaults
@@ -36,5 +37,6 @@ func Load() *Config {
 		Port:          port,
 		AllowedOrigin: allowedOrigin,
 		CoreURL:       coreURL,
+		ServiceToken:  os.Getenv("SERVICE_TOKEN"),
 	}
 }

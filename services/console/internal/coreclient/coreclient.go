@@ -21,14 +21,19 @@ import (
 
 // Client is an HTTP client for the core service REST API.
 type Client struct {
-	baseURL string
-	http    *http.Client
+	baseURL      string
+	serviceToken string
+	http         *http.Client
 }
 
-// New creates a new core client targeting the given base URL (e.g. "http://localhost:8001").
-func New(baseURL string) *Client {
+// New creates a new core client targeting the given base URL (e.g.
+// "http://localhost:8001"). The serviceToken is presented to core via
+// the X-Service-Token header on every request; it identifies the
+// console as the caller and grants write-tier access.
+func New(baseURL, serviceToken string) *Client {
 	return &Client{
-		baseURL: baseURL,
+		baseURL:      baseURL,
+		serviceToken: serviceToken,
 		http: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -343,6 +348,9 @@ func (c *Client) GetPaperPDF(ctx context.Context, id string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to build pdf request: %w", err)
 	}
+	if c.serviceToken != "" {
+		req.Header.Set("X-Service-Token", c.serviceToken)
+	}
 	resp, err := c.http.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("core request failed: %w", err)
@@ -624,6 +632,9 @@ func (c *Client) doJSONStatus(ctx context.Context, method, path string, body any
 	}
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
+	}
+	if c.serviceToken != "" {
+		req.Header.Set("X-Service-Token", c.serviceToken)
 	}
 
 	resp, err := c.http.Do(req)

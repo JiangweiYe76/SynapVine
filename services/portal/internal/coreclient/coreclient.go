@@ -16,14 +16,18 @@ import (
 
 // Client provides read-only access to the core service.
 type Client struct {
-	baseURL string
-	client  *http.Client
+	baseURL      string
+	serviceToken string
+	client       *http.Client
 }
 
-// New creates a new core client.
-func New(baseURL string) *Client {
+// New creates a new core client. The serviceToken is presented to core
+// via the X-Service-Token header on every request; it identifies the
+// portal as the caller and grants read-tier access.
+func New(baseURL, serviceToken string) *Client {
 	return &Client{
-		baseURL: baseURL,
+		baseURL:      baseURL,
+		serviceToken: serviceToken,
 		client: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -259,6 +263,9 @@ func (c *Client) do(ctx context.Context, method, url string, body io.Reader) (*h
 	req, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {
 		return nil, err
+	}
+	if c.serviceToken != "" {
+		req.Header.Set("X-Service-Token", c.serviceToken)
 	}
 	return c.client.Do(req)
 }

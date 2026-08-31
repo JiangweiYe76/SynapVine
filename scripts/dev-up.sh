@@ -27,6 +27,15 @@ COMPOSE_PROJECT="${10}"
 
 mkdir -p "$PID_DIR"
 
+# Dev service tokens for service-to-service authentication. Core maps
+# caller names to tokens via SERVICE_TOKENS; each caller presents its
+# own token via SERVICE_TOKEN. These are dev-only values; production
+# deployments must generate strong per-service secrets.
+DEV_TOKEN_PORTAL="dev-portal-service-token"
+DEV_TOKEN_CONSOLE="dev-console-service-token"
+DEV_TOKEN_DISCOVERY="dev-discovery-service-token"
+SERVICE_TOKENS_CORE="portal=$DEV_TOKEN_PORTAL,console=$DEV_TOKEN_CONSOLE,discovery=$DEV_TOKEN_DISCOVERY"
+
 cleanup() {
   echo
   echo "==> Shutting down dev processes... (Neo4j + MySQL left running; use make dev-down to stop them)"
@@ -107,7 +116,8 @@ done
 # 2. Core (always started; both portals and consoles need it)
 start_backend core services/core "$CORE_PORT" \
   PORT="$CORE_PORT" \
-  MYSQL_DSN="synapvine:synapvine123@tcp(localhost:3306)/synapvine_console?parseTime=true"
+  MYSQL_DSN="synapvine:synapvine123@tcp(localhost:3306)/synapvine_console?parseTime=true" \
+  SERVICE_TOKENS="$SERVICE_TOKENS_CORE"
 wait_for "$CORE_URL/health" "healthy" 30 || exit 1
 
 # 3. Frontends and (optional) extra backends per stack
@@ -142,7 +152,10 @@ if $need_console; then
   # it and enable auto-trigger.
   start_backend discovery services/discovery "$DISCOVERY_PORT" \
     PORT="$DISCOVERY_PORT" \
-    CORE_URL="$CORE_URL"
+    CORE_URL="$CORE_URL" \
+    SERVICE_TOKEN="$DEV_TOKEN_DISCOVERY" \
+    SERVICE_TOKENS="console=$DEV_TOKEN_CONSOLE" \
+    ALLOWED_ORIGIN="http://localhost:$CONSOLE_FE_PORT"
   wait_for "http://localhost:$DISCOVERY_PORT/health" "healthy" 30 || exit 1
 
   start_backend console services/console "$CONSOLE_PORT" \
@@ -151,12 +164,13 @@ if $need_console; then
     PORT="$CONSOLE_PORT" \
     MYSQL_DSN="synapvine:synapvine123@tcp(localhost:3306)/synapvine_console?parseTime=true" \
     JWT_SECRET="console-dev-secret-key-change-in-production" \
-    COOKIE_SECURE="false"
+    COOKIE_SECURE="false" \
+    SERVICE_TOKEN="$DEV_TOKEN_CONSOLE"
   start_frontend console-fe clients/console "$CONSOLE_FE_PORT"
 fi
 
 if $need_portal; then
-  start_backend portal services/portal "$PORTAL_PORT" CORE_URL="$CORE_URL" PORT="$PORTAL_PORT"
+  start_backend portal services/portal "$PORTAL_PORT" CORE_URL="$CORE_URL" PORT="$PORTAL_PORT" SERVICE_TOKEN="$DEV_TOKEN_PORTAL"
   start_frontend portal-fe clients/portal "$PORTAL_FE_PORT"
 fi
 

@@ -14,7 +14,7 @@ import (
 
 func newTestClient(handler http.HandlerFunc) (*Client, *httptest.Server) {
 	server := httptest.NewServer(handler)
-	return New(server.URL), server
+	return New(server.URL, ""), server
 }
 
 func TestHealth_OK(t *testing.T) {
@@ -279,7 +279,7 @@ func TestGraphData_InvalidJSON(t *testing.T) {
 }
 
 func TestGraphData_ConnectionError(t *testing.T) {
-	c := New("http://127.0.0.1:1")
+	c := New("http://127.0.0.1:1", "")
 	_, err := c.GraphData(context.Background())
 	if err == nil {
 		t.Fatal("expected connection error, got nil")

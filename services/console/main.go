@@ -69,8 +69,15 @@ func main() {
 	}
 	slog.Info("mysql_connected_and_migrated")
 
+	// The service token authenticates the console to core and discovery;
+	// without it every core request is rejected with 401.
+	if cfg.ServiceToken == "" {
+		slog.Warn("service_token_not_configured",
+			slog.String("hint", "Set SERVICE_TOKEN to the console token configured in core's SERVICE_TOKENS"))
+	}
+
 	// Core service: health check.
-	core := coreclient.New(cfg.CoreURL)
+	core := coreclient.New(cfg.CoreURL, cfg.ServiceToken)
 	if err := core.Health(context.Background()); err != nil {
 		slog.Error("core_health_check_failed", slog.Any("error", err))
 		os.Exit(1)
@@ -81,7 +88,7 @@ func main() {
 	// When DISCOVERY_URL is not set, discovery will be nil and auto-trigger is disabled.
 	var discovery *discoveryclient.Client
 	if cfg.DiscoveryURL != "" {
-		discovery = discoveryclient.New(cfg.DiscoveryURL)
+		discovery = discoveryclient.New(cfg.DiscoveryURL, cfg.ServiceToken)
 		if err := discovery.Health(context.Background()); err != nil {
 			slog.Warn("discovery_health_check_failed_auto_trigger_disabled",
 				slog.String("discovery_url", cfg.DiscoveryURL),
