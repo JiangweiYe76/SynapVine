@@ -134,6 +134,7 @@ docker-compose up -d
 | `PORT` | `8000` | Server port |
 | `ALLOWED_ORIGIN` | `http://localhost:5173` | CORS allowed origin |
 | `CORE_URL` | `http://localhost:8001` | Base URL of the core service. The portal requires core to be reachable. |
+| `SERVICE_TOKEN` | *(none — required by core)* | The portal's service token, presented to core via the `X-Service-Token` header (read-tier access). |
 
 ### `services/core`
 
@@ -143,6 +144,7 @@ docker-compose up -d
 | `NEO4J_URI` | `bolt://localhost:7687` | Neo4j Bolt URI |
 | `NEO4J_USER` | `neo4j` | Neo4j username |
 | `NEO4J_PASSWORD` | `synapvine123` | Neo4j password |
+| `SERVICE_TOKENS` | *(none — required)* | Service-to-service tokens in `portal=<token>,console=<token>,discovery=<token>` format. Core refuses to start without it (fail-closed). |
 
 ### `services/console`
 
@@ -156,8 +158,19 @@ docker-compose up -d
 | `MYSQL_DSN` | *(none — required)* | DSN for the console auth DB (e.g. `synapvine:synapvine123@tcp(localhost:3306)/synapvine_console?parseTime=true`) |
 | `ADMIN_USERNAME` | *(required for seed)* | Username of the bootstrap admin created by `cmd/seed` |
 | `ADMIN_PASSWORD` | *(required for seed)* | Plaintext password of the bootstrap admin |
+| `SERVICE_TOKEN` | *(none — required by core)* | The console's service token, presented to core (write-tier) and discovery via the `X-Service-Token` header. |
 
 The console service is **stateless across restarts** for users: all users, refresh tokens, and audit events live in MySQL. Migrations are applied automatically on startup. The first admin is created by running `cd services/console && go run ./cmd/seed` (the dev script `make dev` does this for you).
+
+### `services/discovery`
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `8003` | Server port |
+| `CORE_URL` | `http://localhost:8001` | Base URL of the core service |
+| `ALLOWED_ORIGIN` | `http://localhost:5174` | CORS allowed origin (console frontend) |
+| `SERVICE_TOKEN` | *(none — required by core)* | The discovery service's token, presented to core (write + internal tier) via the `X-Service-Token` header. |
+| `SERVICE_TOKENS` | *(none — required)* | Tokens accepted on `/api/analyze`, in `console=<token>` format. Discovery refuses to start without it (fail-closed). |
 
 ### `clients/portal`
 

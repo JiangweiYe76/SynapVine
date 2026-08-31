@@ -12,6 +12,7 @@ import (
 	"core/internal/config"
 	"core/internal/db"
 	"core/internal/handler"
+	"core/internal/middleware"
 	"core/internal/repository"
 	"core/internal/service"
 
@@ -37,7 +38,18 @@ func main() {
 		slog.String("allowed_origin", cfg.AllowedOrigin),
 		slog.String("neo4j_uri", cfg.Neo4jURI),
 		slog.String("mysql_dsn", cfg.MySQLDSN),
+		slog.Int("service_token_count", len(cfg.ServiceTokens)),
 	)
+
+	// Fail closed: core is the authoritative data store and must never
+	// serve unauthenticated traffic. Without service tokens every API
+	// request would be rejected, so refuse to start with a clear hint
+	// instead of failing per-request at runtime.
+	if len(cfg.ServiceTokens) == 0 {
+		slog.Error("service_tokens_not_configured",
+			slog.String("hint", "Set SERVICE_TOKENS=portal=<token>,console=<token>,discovery=<token>"))
+		os.Exit(1)
+	}
 
 	// Neo4j: always required.
 	neoCfg := db.Config{
@@ -114,67 +126,80 @@ func main() {
 
 	app.Get("/health", healthHandler.Check)
 
-	app.Get("/api/graph/data", nodeHandler.GraphData)
-	app.Get("/api/graph/timeline", nodeHandler.Timeline)
+	// Service-token middleware for the three permission tiers. Every
+	// /api route requires a valid token; the tier determines which
+	// services may call it.
+	//
+	//   read     any first-party service (graph data is public via portal)
+	//   write    console (user-facing RBAC proxy) and discovery (review
+	//            queue submissions, paper status updates)
+	//   internal discovery only (endpoints that return secrets, e.g. the
+	//            LLM provider API key)
+	readAuth := middleware.RequireServiceToken(cfg.ServiceTokens, "portal", "console", "discovery")
+	writeAuth := middleware.RequireServiceToken(cfg.ServiceTokens, "console", "discovery")
+	internalAuth := middleware.RequireServiceToken(cfg.ServiceTokens, "discovery")
 
-	app.Get("/api/nodes", nodeHandler.List)
-	app.Get("/api/nodes/:id", nodeHandler.Get)
-	app.Post("/api/nodes", nodeHandler.Create)
-	app.Put("/api/nodes/:id", nodeHandler.Update)
-	app.Delete("/api/nodes/:id", nodeHandler.Delete)
+	app.Get("/api/graph/data", readAuth, nodeHandler.GraphData)
+	app.Get("/api/graph/timeline", readAuth, nodeHandler.Timeline)
 
-	app.Get("/api/edges", edgeHandler.List)
-	app.Get("/api/edges/:source/:target", edgeHandler.Get)
-	app.Post("/api/edges", edgeHandler.Create)
-	app.Put("/api/edges/:source/:target", edgeHandler.Update)
-	app.Delete("/api/edges/:source/:target", edgeHandler.Delete)
+	app.Get("/api/nodes", readAuth, nodeHandler.List)
+	app.Get("/api/nodes/:id", readAuth, nodeHandler.Get)
+	app.Post("/api/nodes", writeAuth, nodeHandler.Create)
+	app.Put("/api/nodes/:id", writeAuth, nodeHandler.Update)
+	app.Delete("/api/nodes/:id", writeAuth, nodeHandler.Delete)
 
-	app.Get("/api/communities", commHandler.List)
-	app.Get("/api/communities/tree", commHandler.Tree)
-	app.Get("/api/communities/:id", commHandler.Get)
-	app.Post("/api/communities", commHandler.Create)
-	app.Put("/api/communities/:id", commHandler.Update)
-	app.Delete("/api/communities/:id", commHandler.Delete)
-	app.Post("/api/communities/detect", commHandler.Detect)
+	app.Get("/api/edges", readAuth, edgeHandler.List)
+	app.Get("/api/edges/:source/:target", readAuth, edgeHandler.Get)
+	app.Post("/api/edges", writeAuth, edgeHandler.Create)
+	app.Put("/api/edges/:source/:target", writeAuth, edgeHandler.Update)
+	app.Delete("/api/edges/:source/:target", writeAuth, edgeHandler.Delete)
+
+	app.Get("/api/communities", readAuth, commHandler.List)
+	app.Get("/api/communities/tree", readAuth, commHandler.Tree)
+	app.Get("/api/communities/:id", readAuth, commHandler.Get)
+	app.Post("/api/communities", writeAuth, commHandler.Create)
+	app.Put("/api/communities/:id", writeAuth, commHandler.Update)
+	app.Delete("/api/communities/:id", writeAuth, commHandler.Delete)
+	app.Post("/api/communities/detect", writeAuth, commHandler.Detect)
 
 	// Paper and review queue routes (only when MySQL is configured).
 	if paperHandler != nil && reviewHandler != nil {
-		app.Get("/api/papers", paperHandler.List)
-		app.Get("/api/papers/:id", paperHandler.Get)
-		app.Get("/api/papers/:id/pdf", paperHandler.GetPDF)
-		app.Post("/api/papers", paperHandler.Create)
-		app.Put("/api/papers/:id", paperHandler.Update)
-		app.Delete("/api/papers/:id", paperHandler.Delete)
+		app.Get("/api/papers", readAuth, paperHandler.List)
+		app.Get("/api/papers/:id", readAuth, paperHandler.Get)
+		app.Get("/api/papers/:id/pdf", readAuth, paperHandler.GetPDF)
+		app.Post("/api/papers", writeAuth, paperHandler.Create)
+		app.Put("/api/papers/:id", writeAuth, paperHandler.Update)
+		app.Delete("/api/papers/:id", writeAuth, paperHandler.Delete)
 
-		app.Get("/api/review-queue", reviewHandler.List)
-		app.Get("/api/review-queue/:id", reviewHandler.Get)
-		app.Post("/api/review-queue", reviewHandler.Submit)
-		app.Post("/api/review-queue/:id/approve", reviewHandler.Approve)
-		app.Post("/api/review-queue/:id/reject", reviewHandler.Reject)
+		app.Get("/api/review-queue", readAuth, reviewHandler.List)
+		app.Get("/api/review-queue/:id", readAuth, reviewHandler.Get)
+		app.Post("/api/review-queue", writeAuth, reviewHandler.Submit)
+		app.Post("/api/review-queue/:id/approve", writeAuth, reviewHandler.Approve)
+		app.Post("/api/review-queue/:id/reject", writeAuth, reviewHandler.Reject)
 	}
 
 	// LLM and embedding provider routes (only when MySQL is configured).
 	if provHandlers != nil {
 		// LLM provider routes
-		app.Get("/api/llm/providers", provHandlers.llm.List)
-		app.Get("/api/llm/providers/default", provHandlers.llm.GetDefault)
-		app.Get("/api/llm/providers/:id", provHandlers.llm.Get)
-		app.Post("/api/llm/providers", provHandlers.llm.Create)
-		app.Put("/api/llm/providers/:id", provHandlers.llm.Update)
-		app.Delete("/api/llm/providers/:id", provHandlers.llm.Delete)
-		app.Post("/api/llm/providers/:id/test", provHandlers.llm.Test)
+		app.Get("/api/llm/providers", readAuth, provHandlers.llm.List)
+		app.Get("/api/llm/providers/default", readAuth, provHandlers.llm.GetDefault)
+		app.Get("/api/llm/providers/:id", readAuth, provHandlers.llm.Get)
+		app.Post("/api/llm/providers", writeAuth, provHandlers.llm.Create)
+		app.Put("/api/llm/providers/:id", writeAuth, provHandlers.llm.Update)
+		app.Delete("/api/llm/providers/:id", writeAuth, provHandlers.llm.Delete)
+		app.Post("/api/llm/providers/:id/test", writeAuth, provHandlers.llm.Test)
 
 		// Internal LLM provider route (includes API key for service-to-service use)
-		app.Get("/api/internal/llm/providers/default", provHandlers.llm.GetDefaultInternal)
+		app.Get("/api/internal/llm/providers/default", internalAuth, provHandlers.llm.GetDefaultInternal)
 
 		// Embedding provider routes
-		app.Get("/api/embedding/providers", provHandlers.embedding.List)
-		app.Get("/api/embedding/providers/default", provHandlers.embedding.GetDefault)
-		app.Get("/api/embedding/providers/:id", provHandlers.embedding.Get)
-		app.Post("/api/embedding/providers", provHandlers.embedding.Create)
-		app.Put("/api/embedding/providers/:id", provHandlers.embedding.Update)
-		app.Delete("/api/embedding/providers/:id", provHandlers.embedding.Delete)
-		app.Post("/api/embedding/providers/:id/test", provHandlers.embedding.Test)
+		app.Get("/api/embedding/providers", readAuth, provHandlers.embedding.List)
+		app.Get("/api/embedding/providers/default", readAuth, provHandlers.embedding.GetDefault)
+		app.Get("/api/embedding/providers/:id", readAuth, provHandlers.embedding.Get)
+		app.Post("/api/embedding/providers", writeAuth, provHandlers.embedding.Create)
+		app.Put("/api/embedding/providers/:id", writeAuth, provHandlers.embedding.Update)
+		app.Delete("/api/embedding/providers/:id", writeAuth, provHandlers.embedding.Delete)
+		app.Post("/api/embedding/providers/:id/test", writeAuth, provHandlers.embedding.Test)
 	}
 
 	slog.Info("core_server_starting", slog.String("port", cfg.Port))

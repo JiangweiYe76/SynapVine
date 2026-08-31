@@ -14,18 +14,23 @@ import (
 
 // Client is an HTTP client for the discovery service REST API.
 type Client struct {
-	baseURL string
-	http    *http.Client
+	baseURL     string
+	serviceToken string
+	http        *http.Client
 }
 
-// New creates a new discovery client targeting the given base URL (e.g. "http://localhost:8003").
+// New creates a new discovery client targeting the given base URL (e.g.
+// "http://localhost:8003"). The serviceToken is presented to discovery
+// via the X-Service-Token header; discovery requires the console token
+// on /api/analyze because it triggers paid LLM extraction.
 // Returns nil if baseURL is empty (auto-trigger disabled).
-func New(baseURL string) *Client {
+func New(baseURL, serviceToken string) *Client {
 	if baseURL == "" {
 		return nil
 	}
 	return &Client{
-		baseURL: baseURL,
+		baseURL:     baseURL,
+		serviceToken: serviceToken,
 		http: &http.Client{
 			Timeout: 120 * time.Second, // LLM extraction can take a while
 		},
@@ -61,6 +66,9 @@ func (c *Client) TriggerAnalyze(ctx context.Context, paperID string) error {
 		return fmt.Errorf("build request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	if c.serviceToken != "" {
+		req.Header.Set("X-Service-Token", c.serviceToken)
+	}
 
 	resp, err := c.http.Do(req)
 	if err != nil {

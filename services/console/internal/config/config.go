@@ -14,6 +14,7 @@ type Config struct {
 	DiscoveryURL  string // URL of the discovery service (optional, for auto-triggering paper analysis)
 	MySQLDSN      string // MySQL DSN for the console auth database (required)
 	CookieSecure  bool   // Whether the refresh-token cookie gets the Secure attribute
+	ServiceToken  string // Token presented to core and discovery via X-Service-Token
 }
 
 // Load reads configuration from environment variables with fallback defaults.
@@ -69,5 +70,6 @@ func Load() *Config {
 		DiscoveryURL:  discoveryURL,
 		MySQLDSN:      mysqlDSN,
 		CookieSecure:  cookieSecure,
+		ServiceToken:  os.Getenv("SERVICE_TOKEN"),
 	}
 }

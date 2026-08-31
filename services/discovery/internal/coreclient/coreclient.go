@@ -16,14 +16,19 @@ import (
 
 // Client is an HTTP client for the core service REST API.
 type Client struct {
-	baseURL string
-	http    *http.Client
+	baseURL     string
+	serviceToken string
+	http        *http.Client
 }
 
-// New creates a new core client targeting the given base URL.
-func New(baseURL string) *Client {
+// New creates a new core client targeting the given base URL. The
+// serviceToken is presented to core via the X-Service-Token header on
+// every request; it identifies discovery as the caller and grants
+// write-tier and internal-tier access.
+func New(baseURL, serviceToken string) *Client {
 	return &Client{
-		baseURL: baseURL,
+		baseURL:     baseURL,
+		serviceToken: serviceToken,
 		http: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -92,6 +97,9 @@ func (c *Client) doJSON(ctx context.Context, method, path string, body any, out 
 	}
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
+	}
+	if c.serviceToken != "" {
+		req.Header.Set("X-Service-Token", c.serviceToken)
 	}
 
 	resp, err := c.http.Do(req)

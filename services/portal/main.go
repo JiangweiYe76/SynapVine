@@ -39,7 +39,13 @@ func main() {
 
 	// Core is a stateless dependency; the portal reads through it on
 	// every request, so console writes are visible without a restart.
-	core := coreclient.New(cfg.CoreURL)
+	// The service token authenticates the portal to core; without it
+	// every core request is rejected with 401.
+	if cfg.ServiceToken == "" {
+		slog.Warn("service_token_not_configured",
+			slog.String("hint", "Set SERVICE_TOKEN to the portal token configured in core's SERVICE_TOKENS"))
+	}
+	core := coreclient.New(cfg.CoreURL, cfg.ServiceToken)
 
 	// Initialize service and handler
 	svc := service.New(core)

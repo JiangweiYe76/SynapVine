@@ -29,7 +29,7 @@ func TestFetchGraphData_Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	c := New(server.URL)
+	c := New(server.URL, "")
 	data, err := c.FetchGraphData(context.Background())
 	if err != nil {
 		t.Fatalf("FetchGraphData failed: %v", err)
@@ -56,7 +56,7 @@ func TestFetchGraphData_Empty(t *testing.T) {
 	}))
 	defer server.Close()
 
-	c := New(server.URL)
+	c := New(server.URL, "")
 	data, err := c.FetchGraphData(context.Background())
 	if err != nil {
 		t.Fatalf("FetchGraphData failed: %v", err)
@@ -73,7 +73,7 @@ func TestFetchGraphData_NonOKStatus(t *testing.T) {
 	}))
 	defer server.Close()
 
-	c := New(server.URL)
+	c := New(server.URL, "")
 	_, err := c.FetchGraphData(context.Background())
 	if err == nil {
 		t.Fatal("expected error on 500 response, got nil")
@@ -91,7 +91,7 @@ func TestFetchGraphData_InvalidJSON(t *testing.T) {
 	}))
 	defer server.Close()
 
-	c := New(server.URL)
+	c := New(server.URL, "")
 	_, err := c.FetchGraphData(context.Background())
 	if err == nil {
 		t.Fatal("expected decode error, got nil")
@@ -102,7 +102,7 @@ func TestFetchGraphData_InvalidJSON(t *testing.T) {
 }
 
 func TestFetchGraphData_ConnectionError(t *testing.T) {
-	c := New("http://127.0.0.1:1")
+	c := New("http://127.0.0.1:1", "")
 	_, err := c.FetchGraphData(context.Background())
 	if err == nil {
 		t.Fatal("expected connection error, got nil")
@@ -122,7 +122,7 @@ func TestFetchTimelineRange_Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	c := New(server.URL)
+	c := New(server.URL, "")
 	tr, err := c.FetchTimelineRange(context.Background())
 	if err != nil {
 		t.Fatalf("FetchTimelineRange failed: %v", err)
@@ -143,7 +143,7 @@ func TestFetchTimelineRange_Empty(t *testing.T) {
 	}))
 	defer server.Close()
 
-	c := New(server.URL)
+	c := New(server.URL, "")
 	tr, err := c.FetchTimelineRange(context.Background())
 	if err != nil {
 		t.Fatalf("FetchTimelineRange failed: %v", err)
@@ -160,7 +160,7 @@ func TestFetchTimelineRange_NonOKStatus(t *testing.T) {
 	}))
 	defer server.Close()
 
-	c := New(server.URL)
+	c := New(server.URL, "")
 	_, err := c.FetchTimelineRange(context.Background())
 	if err == nil {
 		t.Fatal("expected error on 500 response, got nil")
@@ -178,7 +178,7 @@ func TestFetchTimelineRange_InvalidJSON(t *testing.T) {
 	}))
 	defer server.Close()
 
-	c := New(server.URL)
+	c := New(server.URL, "")
 	_, err := c.FetchTimelineRange(context.Background())
 	if err == nil {
 		t.Fatal("expected decode error, got nil")
@@ -189,9 +189,47 @@ func TestFetchTimelineRange_InvalidJSON(t *testing.T) {
 }
 
 func TestFetchTimelineRange_ConnectionError(t *testing.T) {
-	c := New("http://127.0.0.1:1")
+	c := New("http://127.0.0.1:1", "")
 	_, err := c.FetchTimelineRange(context.Background())
 	if err == nil {
 		t.Fatal("expected connection error, got nil")
+	}
+}
+
+func TestServiceTokenHeader(t *testing.T) {
+	tests := []struct {
+		name        string
+		serviceToken string
+		wantHeader  string
+	}{
+		{
+			name:        "configured token is sent",
+			serviceToken: "portal-token",
+			wantHeader:  "portal-token",
+		},
+		{
+			name:        "empty token omits the header",
+			serviceToken: "",
+			wantHeader:  "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if got := r.Header.Get("X-Service-Token"); got != tt.wantHeader {
+					t.Errorf("X-Service-Token = %q, want %q", got, tt.wantHeader)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`{"nodes":[], "edges":[]}`))
+			}))
+			defer server.Close()
+
+			c := New(server.URL, tt.serviceToken)
+			if _, err := c.FetchGraphData(context.Background()); err != nil {
+				t.Fatalf("FetchGraphData failed: %v", err)
+			}
+		})
 	}
 }
