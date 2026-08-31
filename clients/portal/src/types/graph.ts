@@ -6,16 +6,10 @@ export interface GraphNode {
   description: string
   degree: number
   first_appeared?: string    // First appearance date (YYYY-MM)
-  milestones?: Milestone[]   // Key milestones
+  milestones?: string[]      // Key milestone dates (YYYY-MM), matches backend []string
   x?: number
   y?: number
   z?: number
-}
-
-export interface Milestone {
-  year: number
-  event: string
-  impact?: number
 }
 
 export interface TimelineRange {
