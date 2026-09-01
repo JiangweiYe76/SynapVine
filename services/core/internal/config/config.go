@@ -7,25 +7,27 @@ import (
 
 // Config holds application configuration.
 type Config struct {
-	Port          string
-	AllowedOrigin string
-	Neo4jURI      string
-	Neo4jUser     string
-	Neo4jPassword string
-	MySQLDSN      string // MySQL DSN for papers and review queue (optional)
-	ServiceTokens map[string]string
+	Port                  string
+	AllowedOrigin         string
+	Neo4jURI              string
+	Neo4jUser             string
+	Neo4jPassword         string
+	MySQLDSN              string // MySQL DSN for papers and review queue (optional)
+	ServiceTokens         map[string]string
+	ProviderEncryptionKey string // base64-encoded 32-byte AES-256 key for provider API keys (required when MySQL is enabled)
 }
 
 // Load reads configuration from environment variables.
 func Load() Config {
 	return Config{
-		Port:          getEnv("PORT", "8001"),
-		AllowedOrigin: getEnv("ALLOWED_ORIGIN", "http://localhost:5174"),
-		Neo4jURI:      getEnv("NEO4J_URI", "bolt://localhost:7687"),
-		Neo4jUser:     getEnv("NEO4J_USER", "neo4j"),
-		Neo4jPassword: getEnv("NEO4J_PASSWORD", "synapvine123"),
-		MySQLDSN:      os.Getenv("MYSQL_DSN"),
-		ServiceTokens: ParseServiceTokens(os.Getenv("SERVICE_TOKENS")),
+		Port:                  getEnv("PORT", "8001"),
+		AllowedOrigin:         getEnv("ALLOWED_ORIGIN", "http://localhost:5174"),
+		Neo4jURI:              getEnv("NEO4J_URI", "bolt://localhost:7687"),
+		Neo4jUser:             getEnv("NEO4J_USER", "neo4j"),
+		Neo4jPassword:         getEnv("NEO4J_PASSWORD", "synapvine123"),
+		MySQLDSN:              os.Getenv("MYSQL_DSN"),
+		ServiceTokens:         ParseServiceTokens(os.Getenv("SERVICE_TOKENS")),
+		ProviderEncryptionKey: os.Getenv("PROVIDER_ENCRYPTION_KEY"),
 	}
 }
 

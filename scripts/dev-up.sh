@@ -36,6 +36,11 @@ DEV_TOKEN_CONSOLE="dev-console-service-token"
 DEV_TOKEN_DISCOVERY="dev-discovery-service-token"
 SERVICE_TOKENS_CORE="portal=$DEV_TOKEN_PORTAL,console=$DEV_TOKEN_CONSOLE,discovery=$DEV_TOKEN_DISCOVERY"
 
+# Dev AES-256 key for encrypting provider API keys at rest (base64 of
+# 32 zero bytes). Dev-only; production must supply a strong random key
+# via PROVIDER_ENCRYPTION_KEY.
+DEV_PROVIDER_ENCRYPTION_KEY="AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+
 cleanup() {
   echo
   echo "==> Shutting down dev processes... (Neo4j + MySQL left running; use make dev-down to stop them)"
@@ -117,7 +122,8 @@ done
 start_backend core services/core "$CORE_PORT" \
   PORT="$CORE_PORT" \
   MYSQL_DSN="synapvine:synapvine123@tcp(localhost:3306)/synapvine_console?parseTime=true" \
-  SERVICE_TOKENS="$SERVICE_TOKENS_CORE"
+  SERVICE_TOKENS="$SERVICE_TOKENS_CORE" \
+  PROVIDER_ENCRYPTION_KEY="$DEV_PROVIDER_ENCRYPTION_KEY"
 wait_for "$CORE_URL/health" "healthy" 30 || exit 1
 
 # 3. Frontends and (optional) extra backends per stack
