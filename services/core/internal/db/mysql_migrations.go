@@ -83,6 +83,16 @@ var mysqlMigrations = []mysqlMigration{
 			UNIQUE KEY uq_embedding_providers_name (name)
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 	},
+	{
+		// API keys are encrypted at rest (AES-256-GCM, base64 envelope).
+		// Widen the column to fit nonce + ciphertext + tag + encoding.
+		name: "widen_llm_providers_api_key",
+		stmt: `ALTER TABLE llm_providers MODIFY COLUMN api_key VARCHAR(1024) NOT NULL`,
+	},
+	{
+		name: "widen_embedding_providers_api_key",
+		stmt: `ALTER TABLE embedding_providers MODIFY COLUMN api_key VARCHAR(1024) NOT NULL`,
+	},
 }
 
 // MigrateMySQL applies all known MySQL migrations.

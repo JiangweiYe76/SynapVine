@@ -22,7 +22,7 @@ type PaperCreateRequest struct {
 	Authors   string `json:"authors"`
 	SourceURL string `json:"source_url"`
 	RawText   string `json:"raw_text"`
-	PDFBase64 string  `json:"pdf_base64,omitempty"` // Base64-encoded PDF
+	PDFBase64 string `json:"pdf_base64,omitempty"` // Base64-encoded PDF
 }
 
 // PaperUpdateRequest is the payload for updating a paper.

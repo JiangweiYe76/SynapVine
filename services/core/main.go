@@ -14,6 +14,7 @@ import (
 	"core/internal/handler"
 	"core/internal/middleware"
 	"core/internal/repository"
+	"core/internal/security"
 	"core/internal/service"
 
 	"github.com/gofiber/fiber/v2"
@@ -69,6 +70,21 @@ func main() {
 	var reviewHandler *handler.ReviewQueueHandler
 	var provHandlers *providerHandlers
 	if cfg.MySQLDSN != "" {
+		// Fail closed: provider API keys are stored in MySQL and must be
+		// encrypted at rest. Without a key the only options would be to
+		// store plaintext or refuse provider features at runtime; refuse
+		// to start instead so the misconfiguration is explicit.
+		if cfg.ProviderEncryptionKey == "" {
+			slog.Error("provider_encryption_key_not_configured",
+				slog.String("hint", "Set PROVIDER_ENCRYPTION_KEY to a base64-encoded 32-byte key (required when MYSQL_DSN is set)"))
+			os.Exit(1)
+		}
+		keyCipher, err := security.NewKeyCipherFromBase64(cfg.ProviderEncryptionKey)
+		if err != nil {
+			slog.Error("invalid_provider_encryption_key", slog.Any("error", err))
+			os.Exit(1)
+		}
+
 		mysqlDB, err := db.OpenMySQL(cfg.MySQLDSN)
 		if err != nil {
 			slog.Error("failed_to_connect_mysql", slog.Any("error", err))
@@ -88,8 +104,8 @@ func main() {
 		mergeSvc := service.NewMergeService(neo)
 		reviewHandler = handler.NewReviewQueueHandler(reviewRepo, paperRepo, mergeSvc)
 
-		llmProviderRepo := repository.NewLLMProviderRepository(mysqlDB)
-		embeddingProviderRepo := repository.NewEmbeddingProviderRepository(mysqlDB)
+		llmProviderRepo := repository.NewLLMProviderRepository(mysqlDB, keyCipher)
+		embeddingProviderRepo := repository.NewEmbeddingProviderRepository(mysqlDB, keyCipher)
 		provHandlers = &providerHandlers{
 			llm:       handler.NewLLMProviderHandler(llmProviderRepo),
 			embedding: handler.NewEmbeddingProviderHandler(embeddingProviderRepo),

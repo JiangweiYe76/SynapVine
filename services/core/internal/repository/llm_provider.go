@@ -7,25 +7,35 @@ import (
 	"time"
 
 	"core/internal/model"
+	"core/internal/security"
 )
 
-// LLMProviderRepository persists LLMProvider rows in MySQL.
+// LLMProviderRepository persists LLMProvider rows in MySQL. API keys are
+// encrypted at rest via the injected KeyCipher; callers always see
+// plaintext.
 type LLMProviderRepository struct {
-	db *sql.DB
+	db     *sql.DB
+	cipher *security.KeyCipher
 }
 
-// NewLLMProviderRepository returns an LLMProviderRepository backed by the given *sql.DB.
-func NewLLMProviderRepository(db *sql.DB) *LLMProviderRepository {
-	return &LLMProviderRepository{db: db}
+// NewLLMProviderRepository returns an LLMProviderRepository backed by the
+// given *sql.DB. The cipher encrypts API keys on write and decrypts them
+// on read.
+func NewLLMProviderRepository(db *sql.DB, cipher *security.KeyCipher) *LLMProviderRepository {
+	return &LLMProviderRepository{db: db, cipher: cipher}
 }
 
 // Create inserts a new LLM provider. Returns ErrDuplicate when the name
 // is already taken.
 func (r *LLMProviderRepository) Create(ctx context.Context, p *model.LLMProvider) error {
-	_, err := r.db.ExecContext(ctx,
+	encryptedKey, err := r.cipher.Encrypt(p.APIKey)
+	if err != nil {
+		return fmt.Errorf("encrypt api_key: %w", err)
+	}
+	_, err = r.db.ExecContext(ctx,
 		`INSERT INTO llm_providers (id, name, base_url, api_key, model, max_tokens, temperature, is_default, is_enabled, created_at, updated_at)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		p.ID, p.Name, p.BaseURL, p.APIKey, p.Model, p.MaxTokens, p.Temperature, p.IsDefault, p.IsEnabled, p.CreatedAt, p.UpdatedAt,
+		p.ID, p.Name, p.BaseURL, encryptedKey, p.Model, p.MaxTokens, p.Temperature, p.IsDefault, p.IsEnabled, p.CreatedAt, p.UpdatedAt,
 	)
 	if err != nil {
 		if isDuplicateKey(err) {
@@ -43,7 +53,7 @@ func (r *LLMProviderRepository) GetByID(ctx context.Context, id string) (*model.
 		`SELECT id, name, base_url, api_key, model, max_tokens, temperature, is_default, is_enabled, created_at, updated_at
 		 FROM llm_providers WHERE id = ?`, id,
 	)
-	return scanLLMProvider(row)
+	return scanLLMProvider(row, r.cipher)
 }
 
 // GetDefault fetches the provider marked as default. Returns ErrNotFound
@@ -53,7 +63,7 @@ func (r *LLMProviderRepository) GetDefault(ctx context.Context) (*model.LLMProvi
 		`SELECT id, name, base_url, api_key, model, max_tokens, temperature, is_default, is_enabled, created_at, updated_at
 		 FROM llm_providers WHERE is_default = TRUE LIMIT 1`,
 	)
-	return scanLLMProvider(row)
+	return scanLLMProvider(row, r.cipher)
 }
 
 // List returns all providers ordered by name.
@@ -73,6 +83,11 @@ func (r *LLMProviderRepository) List(ctx context.Context) ([]model.LLMProvider, 
 		if err := rows.Scan(&p.ID, &p.Name, &p.BaseURL, &p.APIKey, &p.Model, &p.MaxTokens, &p.Temperature, &p.IsDefault, &p.IsEnabled, &p.CreatedAt, &p.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scan llm_provider: %w", err)
 		}
+		plaintext, err := r.cipher.Decrypt(p.APIKey)
+		if err != nil {
+			return nil, fmt.Errorf("decrypt llm_provider api_key (id=%s): %w", p.ID, err)
+		}
+		p.APIKey = plaintext
 		providers = append(providers, p)
 	}
 	return providers, rows.Err()
@@ -92,8 +107,12 @@ func (r *LLMProviderRepository) Update(ctx context.Context, id string, req *mode
 		args = append(args, *req.BaseURL)
 	}
 	if req.APIKey != nil {
+		encryptedKey, err := r.cipher.Encrypt(*req.APIKey)
+		if err != nil {
+			return nil, fmt.Errorf("encrypt api_key: %w", err)
+		}
 		setClauses = append(setClauses, "api_key = ?")
-		args = append(args, *req.APIKey)
+		args = append(args, encryptedKey)
 	}
 	if req.Model != nil {
 		setClauses = append(setClauses, "model = ?")
@@ -171,7 +190,7 @@ func (r *LLMProviderRepository) ClearDefault(ctx context.Context) error {
 	return nil
 }
 
-func scanLLMProvider(row *sql.Row) (*model.LLMProvider, error) {
+func scanLLMProvider(row *sql.Row, cipher *security.KeyCipher) (*model.LLMProvider, error) {
 	var p model.LLMProvider
 	err := row.Scan(&p.ID, &p.Name, &p.BaseURL, &p.APIKey, &p.Model, &p.MaxTokens, &p.Temperature, &p.IsDefault, &p.IsEnabled, &p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
@@ -180,6 +199,11 @@ func scanLLMProvider(row *sql.Row) (*model.LLMProvider, error) {
 		}
 		return nil, fmt.Errorf("scan llm_provider: %w", err)
 	}
+	plaintext, err := cipher.Decrypt(p.APIKey)
+	if err != nil {
+		return nil, fmt.Errorf("decrypt llm_provider api_key (id=%s): %w", p.ID, err)
+	}
+	p.APIKey = plaintext
 	return &p, nil
 }
 

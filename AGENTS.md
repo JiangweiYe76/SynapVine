@@ -145,6 +145,7 @@ docker-compose up -d
 | `NEO4J_USER` | `neo4j` | Neo4j username |
 | `NEO4J_PASSWORD` | `synapvine123` | Neo4j password |
 | `SERVICE_TOKENS` | *(none — required)* | Service-to-service tokens in `portal=<token>,console=<token>,discovery=<token>` format. Core refuses to start without it (fail-closed). |
+| `PROVIDER_ENCRYPTION_KEY` | *(none — required when `MYSQL_DSN` is set)* | Base64-encoded 32-byte AES-256 key used to encrypt LLM/embedding provider API keys at rest in MySQL. Core refuses to start with MySQL enabled and no key (fail-closed). Generate with `openssl rand -base64 32`. |
 
 ### `services/console`
 

@@ -18,17 +18,17 @@ import (
 // edgeSvcStub is a stub EdgeService used by the EdgeHandler tests.
 // It records the most recent call so individual tests can assert on it.
 type edgeSvcStub struct {
-	listResp   *model.EdgesListResponse
-	listErr    error
+	listResp      *model.EdgesListResponse
+	listErr       error
 	listByIDsResp []model.Edge
 	listByIDsErr  error
-	getResp    *model.Edge
-	getErr     error
-	createResp *model.Edge
-	createErr  error
-	updateResp *model.Edge
-	updateErr  error
-	deleteErr  error
+	getResp       *model.Edge
+	getErr        error
+	createResp    *model.Edge
+	createErr     error
+	updateResp    *model.Edge
+	updateErr     error
+	deleteErr     error
 
 	lastCreate model.EdgeCreateRequest
 	lastUpdate model.EdgeUpdateRequest
