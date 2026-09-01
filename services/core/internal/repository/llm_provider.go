@@ -113,6 +113,19 @@ func (r *LLMProviderRepository) Update(ctx context.Context, id string, req *mode
 		}
 		setClauses = append(setClauses, "api_key = ?")
 		args = append(args, encryptedKey)
+	} else {
+		// Re-seal the existing key on every other update so legacy
+		// plaintext rows converge to ciphertext on their next write.
+		existing, err := r.GetByID(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		encryptedKey, err := r.cipher.Encrypt(existing.APIKey)
+		if err != nil {
+			return nil, fmt.Errorf("encrypt api_key: %w", err)
+		}
+		setClauses = append(setClauses, "api_key = ?")
+		args = append(args, encryptedKey)
 	}
 	if req.Model != nil {
 		setClauses = append(setClauses, "model = ?")
