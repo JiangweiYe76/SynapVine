@@ -1,5 +1,5 @@
 // Package llm provides an OpenAI-compatible HTTP client for calling LLM
-// providers. This is a standalone copy of the console's llm client,
+// providers. This is a standalone copy of the core service's llm client,
 // keeping the discovery service self-contained.
 package llm
 

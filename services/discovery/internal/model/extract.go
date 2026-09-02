@@ -37,7 +37,7 @@ type ReviewQueueItem struct {
 	ExtractedEdges []ExtractedEdge `json:"extracted_edges"`
 }
 
-// LLMProvider is the minimal representation fetched from console.
+// LLMProvider is the minimal representation fetched from the core service.
 type LLMProvider struct {
 	ID          string  `json:"id"`
 	Name        string  `json:"name"`
