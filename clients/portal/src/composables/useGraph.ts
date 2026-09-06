@@ -1,4 +1,4 @@
-import { ref, computed, provide, inject, type InjectionKey, type Ref } from 'vue'
+import { ref, shallowRef, triggerRef, computed, provide, inject, type InjectionKey, type Ref } from 'vue'
 import type {
   GraphNode,
   GraphEdge,
@@ -52,8 +52,11 @@ export const TimelineKey: InjectionKey<TimelineComposable> = Symbol('timeline')
 const EXPAND_BATCH_SIZE = 50
 
 export function useGraph(): GraphComposable {
-  const nodes = ref<GraphNode[]>([])
-  const edges = ref<GraphEdge[]>([])
+  // Shallow refs: node/edge arrays can grow large, so deep reactivity
+  // (traversed on every render dependency check) is not worth its cost.
+  // Mutations in place must be followed by triggerRef to notify watchers.
+  const nodes = shallowRef<GraphNode[]>([])
+  const edges = shallowRef<GraphEdge[]>([])
   const communities = ref<HierarchicalCommunity[]>([])
   const stats = ref<GraphStats | null>(null)
   const selectedNode = ref<GraphNode | null>(null)
@@ -146,12 +149,15 @@ export function useGraph(): GraphComposable {
       const offset = nodes.value.length
       const response = await getNodes({ offset, limit: 50 })
       const newNodes = response.nodes.filter(n => !nodeMap.value.has(n.id))
-      nodes.value.push(...newNodes)
 
       if (newNodes.length > 0) {
+        nodes.value.push(...newNodes)
+        triggerRef(nodes)
+
         const newIds = newNodes.map(n => n.id)
         const { edges: newEdges } = await expandNodesBatched(newIds, { include_edges: true })
         mergeEdges(edges.value, newEdges)
+        triggerRef(edges)
       }
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to load more nodes'
@@ -165,12 +171,15 @@ export function useGraph(): GraphComposable {
     try {
       const response = await getNodes({ community_id: communityId, limit: 200 })
       const newNodes = response.nodes.filter(n => !nodeMap.value.has(n.id))
-      nodes.value.push(...newNodes)
 
       if (newNodes.length > 0) {
+        nodes.value.push(...newNodes)
+        triggerRef(nodes)
+
         const newIds = newNodes.map(n => n.id)
         const { edges: newEdges } = await expandNodesBatched(newIds, { include_edges: true })
         mergeEdges(edges.value, newEdges)
+        triggerRef(edges)
       }
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to load community'
@@ -192,8 +201,12 @@ export function useGraph(): GraphComposable {
         })
 
         const newNodes = expandResponse.nodes.filter(n => !nodeMap.value.has(n.id))
-        nodes.value.push(...newNodes)
+        if (newNodes.length > 0) {
+          nodes.value.push(...newNodes)
+          triggerRef(nodes)
+        }
         mergeEdges(edges.value, expandResponse.edges)
+        triggerRef(edges)
       }
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Search failed'
@@ -220,6 +233,7 @@ export function useGraph(): GraphComposable {
       if (detail) {
         if (!nodeMap.value.has(detail.node.id)) {
           nodes.value.push(detail.node)
+          triggerRef(nodes)
         }
         selectedNode.value = detail.node
 
@@ -232,7 +246,9 @@ export function useGraph(): GraphComposable {
             include_edges: true,
           })
           nodes.value.push(...expandResponse.nodes.filter(n => !nodeMap.value.has(n.id)))
+          triggerRef(nodes)
           edges.value.push(...expandResponse.edges)
+          triggerRef(edges)
         }
       }
     } catch (e) {

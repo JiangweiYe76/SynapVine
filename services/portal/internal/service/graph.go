@@ -13,6 +13,7 @@ import (
 )
 
 const graphDataCacheTTL = 30 * time.Second
+const communityCacheTTL = 30 * time.Second
 
 // graphDataCache holds a cached copy of the full graph data (nodes +
 // edges) returned by core's /api/graph/data endpoint. The cache is
@@ -24,12 +25,22 @@ type graphDataCache struct {
 	fetchedAt time.Time
 }
 
+// communityCache holds a cached copy of the community tree returned by
+// core's /api/communities/tree endpoint. The tree is nearly static, so
+// caching it avoids a core round-trip on every portal request.
+type communityCache struct {
+	mu        sync.RWMutex
+	tree      []coreclient.CoreCommunity
+	fetchedAt time.Time
+}
+
 // GraphService is a read-through adapter in front of the core service.
-// It caches the full graph data for a short TTL to avoid repeated
-// full-graph fetches within the same request window.
+// It caches the full graph data and the community tree for a short TTL
+// to avoid repeated core fetches within the same request window.
 type GraphService struct {
 	core  *coreclient.Client
 	cache *graphDataCache
+	comms *communityCache
 }
 
 // New creates a GraphService that proxies reads to the given core client.
@@ -37,6 +48,7 @@ func New(core *coreclient.Client) *GraphService {
 	return &GraphService{
 		core:  core,
 		cache: &graphDataCache{},
+		comms: &communityCache{},
 	}
 }
 
@@ -67,6 +79,33 @@ func (s *GraphService) fetchGraphDataCached(ctx context.Context) (*coreclient.Co
 	return data, nil
 }
 
+// fetchCommunityTreeCached returns the community tree, using a
+// short-lived in-memory cache to avoid a core round-trip per request.
+func (s *GraphService) fetchCommunityTreeCached(ctx context.Context) ([]coreclient.CoreCommunity, error) {
+	s.comms.mu.RLock()
+	if s.comms.tree != nil && time.Since(s.comms.fetchedAt) < communityCacheTTL {
+		tree := s.comms.tree
+		s.comms.mu.RUnlock()
+		return tree, nil
+	}
+	s.comms.mu.RUnlock()
+
+	s.comms.mu.Lock()
+	defer s.comms.mu.Unlock()
+	// Double-check after acquiring write lock.
+	if s.comms.tree != nil && time.Since(s.comms.fetchedAt) < communityCacheTTL {
+		return s.comms.tree, nil
+	}
+
+	tree, err := s.core.FetchCommunityTree(ctx)
+	if err != nil {
+		return nil, err
+	}
+	s.comms.tree = tree
+	s.comms.fetchedAt = time.Now()
+	return tree, nil
+}
+
 // Summary returns a summary of the graph including communities, stats,
 // and the top N nodes by influence score.
 func (s *GraphService) Summary(ctx context.Context, topN int) (model.SummaryResponse, error) {
@@ -78,7 +117,7 @@ func (s *GraphService) Summary(ctx context.Context, topN int) (model.SummaryResp
 	if err != nil {
 		return model.SummaryResponse{}, err
 	}
-	coreComms, err := s.core.FetchCommunityTree(ctx)
+	coreComms, err := s.fetchCommunityTreeCached(ctx)
 	if err != nil {
 		return model.SummaryResponse{}, err
 	}
@@ -120,7 +159,7 @@ func (s *GraphService) Nodes(ctx context.Context, offset, limit int, sortBy, com
 	if err != nil {
 		return model.NodesResponse{}, err
 	}
-	coreComms, err := s.core.FetchCommunityTree(ctx)
+	coreComms, err := s.fetchCommunityTreeCached(ctx)
 	if err != nil {
 		return model.NodesResponse{}, err
 	}
@@ -201,7 +240,7 @@ func (s *GraphService) NodeDetail(ctx context.Context, id string) (model.NodeDet
 		return model.NodeDetail{}, false, nil
 	}
 
-	coreComms, err := s.core.FetchCommunityTree(ctx)
+	coreComms, err := s.fetchCommunityTreeCached(ctx)
 	if err != nil {
 		return model.NodeDetail{}, false, err
 	}
@@ -301,7 +340,7 @@ func (s *GraphService) Search(ctx context.Context, query string, limit int) (mod
 	if err != nil {
 		return model.SearchResponse{}, err
 	}
-	coreComms, err := s.core.FetchCommunityTree(ctx)
+	coreComms, err := s.fetchCommunityTreeCached(ctx)
 	if err != nil {
 		return model.SearchResponse{}, err
 	}
@@ -372,7 +411,7 @@ func (s *GraphService) Expand(ctx context.Context, ids []string, includeEdges, i
 	}
 
 	// Fetch only the nodes we need.
-	coreComms, err := s.core.FetchCommunityTree(ctx)
+	coreComms, err := s.fetchCommunityTreeCached(ctx)
 	if err != nil {
 		return model.ExpandResponse{}, err
 	}
