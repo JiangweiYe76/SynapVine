@@ -294,7 +294,7 @@ watch([() => props.nodes, () => props.edges], ([newNodes, newEdges]) => {
     graph.backgroundColor(getBackgroundColor())
     applyCommunityFilter(props.highlightedCommunity)
   }
-}, { deep: true })
+})
 
 watch(() => props.highlightedCommunity, (communityIds) => {
   applyCommunityFilter(communityIds)
