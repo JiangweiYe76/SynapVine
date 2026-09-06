@@ -18,6 +18,7 @@ import (
 	"ai-graph-server/internal/service"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/compress"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/limiter"
 )
@@ -71,10 +72,53 @@ func main() {
 		}
 	}()
 
-	// Create Fiber app instance
+	// Build the HTTP stack and start listening.
+	app := newApp(cfg, gh, tokenStore)
+
+	// Log startup information
+	slog.Info("server_starting", slog.String("port", cfg.Port))
+
+	// Graceful shutdown on SIGINT/SIGTERM, mirroring the pattern used by
+	// the core service.
+	idleConnsClosed := make(chan struct{})
+	go func() {
+		sigint := make(chan os.Signal, 1)
+		signal.Notify(sigint, os.Interrupt, syscall.SIGTERM)
+		<-sigint
+
+		slog.Info("shutdown_signal_received", slog.String("action", "gracefully_stopping_server"))
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := app.ShutdownWithContext(shutdownCtx); err != nil {
+			slog.Error("server_shutdown_failed", slog.Any("error", err))
+		}
+		close(idleConnsClosed)
+		close(cleanerDone)
+	}()
+
+	// Start HTTP server
+	if err := app.Listen(":" + cfg.Port); err != nil && !errors.Is(err, context.Canceled) {
+		slog.Error("server_failed", slog.Any("error", err))
+		os.Exit(1)
+	}
+
+	<-idleConnsClosed
+}
+
+// newApp builds the Fiber application: middleware stack, token endpoint,
+// and graph routes. It is separated from main so the HTTP stack can be
+// exercised directly in tests.
+func newApp(cfg *config.Config, gh *handler.GraphHandler, tokenStore *security.TokenStore) *fiber.App {
 	app := fiber.New(fiber.Config{
 		AppName: "AI-Graph Server",
 	})
+
+	// Compress responses with gzip when the client advertises support.
+	// Graph JSON payloads are large, so this meaningfully cuts transfer
+	// size; registered before the routes it applies to.
+	app.Use(compress.New(compress.Config{
+		Level: compress.LevelDefault,
+	}))
 
 	// Apply rate limiting middleware (60 requests per minute per IP).
 	// Uses c.IP() directly to prevent clients from bypassing rate limits
@@ -147,32 +191,5 @@ func main() {
 	api.Get("/search", gh.Search)
 	api.Get("/expand", gh.Expand)
 
-	// Log startup information
-	slog.Info("server_starting", slog.String("port", cfg.Port))
-
-	// Graceful shutdown on SIGINT/SIGTERM, mirroring the pattern used by
-	// the core service.
-	idleConnsClosed := make(chan struct{})
-	go func() {
-		sigint := make(chan os.Signal, 1)
-		signal.Notify(sigint, os.Interrupt, syscall.SIGTERM)
-		<-sigint
-
-		slog.Info("shutdown_signal_received", slog.String("action", "gracefully_stopping_server"))
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		if err := app.ShutdownWithContext(shutdownCtx); err != nil {
-			slog.Error("server_shutdown_failed", slog.Any("error", err))
-		}
-		close(idleConnsClosed)
-		close(cleanerDone)
-	}()
-
-	// Start HTTP server
-	if err := app.Listen(":" + cfg.Port); err != nil && !errors.Is(err, context.Canceled) {
-		slog.Error("server_failed", slog.Any("error", err))
-		os.Exit(1)
-	}
-
-	<-idleConnsClosed
+	return app
 }
