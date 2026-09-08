@@ -61,6 +61,22 @@ func (h *PaperHandler) Get(c *fiber.Ctx) error {
 	return c.JSON(paper)
 }
 
+// GetByArxivID handles GET /api/papers/by-arxiv/:arxivID. It lets the
+// discovery service look up an ingested ArXiv paper before creating a
+// duplicate record for the same source.
+func (h *PaperHandler) GetByArxivID(c *fiber.Ctx) error {
+	arxivID := c.Params("arxivID")
+	paper, err := h.repo.GetByArxivID(c.Context(), arxivID)
+	if err != nil {
+		if errors.Is(err, repository.ErrPaperNotFound) {
+			return c.Status(404).JSON(errorResponse("paper_not_found", "Paper not found"))
+		}
+		slog.Error("paper_get_by_arxiv_id_failed", slog.String("arxiv_id", arxivID), slog.Any("error", err))
+		return c.Status(500).JSON(errorResponse("internal_error", "Failed to get paper"))
+	}
+	return c.JSON(paper)
+}
+
 // Create handles POST /api/papers
 func (h *PaperHandler) Create(c *fiber.Ctx) error {
 	var req model.PaperCreateRequest
@@ -77,6 +93,7 @@ func (h *PaperHandler) Create(c *fiber.Ctx) error {
 		Title:     req.Title,
 		Authors:   req.Authors,
 		SourceURL: req.SourceURL,
+		ArxivID:   req.ArxivID,
 		RawText:   req.RawText,
 		Status:    "uploaded",
 		CreatedAt: now,

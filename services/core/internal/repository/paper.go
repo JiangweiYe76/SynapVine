@@ -25,9 +25,9 @@ var ErrPaperNotFound = errors.New("paper not found")
 // Create inserts a new paper.
 func (r *PaperRepository) Create(ctx context.Context, p *model.Paper) error {
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO papers (id, title, authors, source_url, raw_text, pdf_data, status, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		p.ID, p.Title, p.Authors, p.SourceURL, p.RawText, p.PDFData, p.Status, p.CreatedAt, p.UpdatedAt,
+		`INSERT INTO papers (id, title, authors, source_url, arxiv_id, raw_text, pdf_data, status, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		p.ID, p.Title, p.Authors, p.SourceURL, p.ArxivID, p.RawText, p.PDFData, p.Status, p.CreatedAt, p.UpdatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("insert paper: %w", err)
@@ -38,8 +38,18 @@ func (r *PaperRepository) Create(ctx context.Context, p *model.Paper) error {
 // GetByID fetches a paper by ID (without PDF binary).
 func (r *PaperRepository) GetByID(ctx context.Context, id string) (*model.Paper, error) {
 	row := r.db.QueryRowContext(ctx,
-		`SELECT id, title, authors, source_url, raw_text, (pdf_data IS NOT NULL AND LENGTH(pdf_data) > 0), status, created_at, updated_at
+		`SELECT id, title, authors, source_url, arxiv_id, raw_text, (pdf_data IS NOT NULL AND LENGTH(pdf_data) > 0), status, created_at, updated_at
 		 FROM papers WHERE id = ?`, id,
+	)
+	return scanPaper(row)
+}
+
+// GetByArxivID fetches a paper by its ArXiv identifier (without PDF
+// binary). Returns ErrPaperNotFound when no paper carries that ID.
+func (r *PaperRepository) GetByArxivID(ctx context.Context, arxivID string) (*model.Paper, error) {
+	row := r.db.QueryRowContext(ctx,
+		`SELECT id, title, authors, source_url, arxiv_id, raw_text, (pdf_data IS NOT NULL AND LENGTH(pdf_data) > 0), status, created_at, updated_at
+		 FROM papers WHERE arxiv_id = ?`, arxivID,
 	)
 	return scanPaper(row)
 }
@@ -71,7 +81,7 @@ func (r *PaperRepository) List(ctx context.Context, offset, limit int) ([]model.
 	}
 
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, title, authors, source_url, raw_text, (pdf_data IS NOT NULL AND LENGTH(pdf_data) > 0), status, created_at, updated_at
+		`SELECT id, title, authors, source_url, arxiv_id, raw_text, (pdf_data IS NOT NULL AND LENGTH(pdf_data) > 0), status, created_at, updated_at
 		 FROM papers ORDER BY created_at DESC LIMIT ? OFFSET ?`, limit, offset,
 	)
 	if err != nil {
@@ -82,7 +92,7 @@ func (r *PaperRepository) List(ctx context.Context, offset, limit int) ([]model.
 	papers := make([]model.Paper, 0)
 	for rows.Next() {
 		var p model.Paper
-		if err := rows.Scan(&p.ID, &p.Title, &p.Authors, &p.SourceURL, &p.RawText, &p.HasPDF, &p.Status, &p.CreatedAt, &p.UpdatedAt); err != nil {
+		if err := rows.Scan(&p.ID, &p.Title, &p.Authors, &p.SourceURL, &p.ArxivID, &p.RawText, &p.HasPDF, &p.Status, &p.CreatedAt, &p.UpdatedAt); err != nil {
 			return nil, 0, fmt.Errorf("scan paper: %w", err)
 		}
 		papers = append(papers, p)
@@ -155,7 +165,7 @@ func (r *PaperRepository) Delete(ctx context.Context, id string) error {
 
 func scanPaper(row *sql.Row) (*model.Paper, error) {
 	var p model.Paper
-	err := row.Scan(&p.ID, &p.Title, &p.Authors, &p.SourceURL, &p.RawText, &p.HasPDF, &p.Status, &p.CreatedAt, &p.UpdatedAt)
+	err := row.Scan(&p.ID, &p.Title, &p.Authors, &p.SourceURL, &p.ArxivID, &p.RawText, &p.HasPDF, &p.Status, &p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrPaperNotFound

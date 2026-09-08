@@ -189,6 +189,7 @@ func main() {
 	// Paper and review queue routes (only when MySQL is configured).
 	if paperHandler != nil && reviewHandler != nil {
 		app.Get("/api/papers", readAuth, paperHandler.List)
+		app.Get("/api/papers/by-arxiv/:arxivID", readAuth, paperHandler.GetByArxivID)
 		app.Get("/api/papers/:id", readAuth, paperHandler.Get)
 		app.Get("/api/papers/:id/pdf", readAuth, paperHandler.GetPDF)
 		app.Post("/api/papers", writeAuth, paperHandler.Create)
