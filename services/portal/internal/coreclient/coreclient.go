@@ -97,6 +97,12 @@ type CoreTimelineRange struct {
 	MaxYear int `json:"max_year"`
 }
 
+// CoreGraphMeta matches the core /api/graph/meta response shape.
+// LastUpdated is nil when the graph has never been mutated.
+type CoreGraphMeta struct {
+	LastUpdated *string `json:"last_updated"`
+}
+
 // FetchGraphData retrieves the full graph (nodes + edges) from the core service.
 // The returned nodes use the core's string community identifiers; callers must
 // map them to portal integer IDs using the community tree from FetchCommunityTree.
@@ -234,6 +240,27 @@ func (c *Client) ListEdgesByNodeIDs(ctx context.Context, nodeIDs []string) ([]mo
 	}
 
 	return payload.Edges, nil
+}
+
+// FetchGraphMeta retrieves graph-level metadata (the last-updated
+// timestamp) from the core service.
+func (c *Client) FetchGraphMeta(ctx context.Context) (*CoreGraphMeta, error) {
+	resp, err := c.do(ctx, "GET", c.baseURL+"/api/graph/meta", nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to core: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("core returned status %d", resp.StatusCode)
+	}
+
+	var payload CoreGraphMeta
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		return nil, fmt.Errorf("failed to decode core response: %w", err)
+	}
+
+	return &payload, nil
 }
 
 // FetchTimelineRange retrieves the [minYear, maxYear] span of every

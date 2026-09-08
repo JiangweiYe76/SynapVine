@@ -58,7 +58,7 @@ func recordFloat(rec *neo4j.Record, key string) float64 {
 func TestMerge_CreatesNewNodesAndEdges(t *testing.T) {
 	neo := testutil.NewTestNeo4j(t)
 	testutil.CleanupAllData(t, neo)
-	svc := NewMergeService(neo)
+	svc := NewMergeService(neo, repository.NewGraphMetaRepository(neo))
 
 	nodes := []model.ExtractedNode{
 		{Name: "Transformer", Description: "Attention-based model", Relevance: 9.0},
@@ -146,7 +146,7 @@ func TestMerge_ReusesExistingNodesByCaseInsensitiveName(t *testing.T) {
 		t.Fatalf("pre-create node failed: %v", err)
 	}
 
-	svc := NewMergeService(neo)
+	svc := NewMergeService(neo, repository.NewGraphMetaRepository(neo))
 	nodes := []model.ExtractedNode{
 		{Name: "transformer", Description: "from paper", Relevance: 5.0}, // lowercase, should reuse
 		{Name: "BERT", Description: "new", Relevance: 7.0},
@@ -202,7 +202,7 @@ func TestMerge_DoesNotOverwriteExistingFields(t *testing.T) {
 		t.Fatalf("pre-create node failed: %v", err)
 	}
 
-	svc := NewMergeService(neo)
+	svc := NewMergeService(neo, repository.NewGraphMetaRepository(neo))
 	nodes := []model.ExtractedNode{
 		{Name: "gan", Description: "SHOULD NOT OVERWRITE", Relevance: 1.0},
 	}
@@ -236,7 +236,7 @@ func TestMerge_DoesNotOverwriteExistingFields(t *testing.T) {
 func TestMerge_IdempotentRetry(t *testing.T) {
 	neo := testutil.NewTestNeo4j(t)
 	testutil.CleanupAllData(t, neo)
-	svc := NewMergeService(neo)
+	svc := NewMergeService(neo, repository.NewGraphMetaRepository(neo))
 
 	nodes := []model.ExtractedNode{
 		{Name: "CNN", Description: "Convolutional", Relevance: 8.0},
@@ -283,7 +283,7 @@ func TestMerge_IdempotentRetry(t *testing.T) {
 func TestMerge_SkipsEdgesWithUnresolvedEndpointsAndSelfLoops(t *testing.T) {
 	neo := testutil.NewTestNeo4j(t)
 	testutil.CleanupAllData(t, neo)
-	svc := NewMergeService(neo)
+	svc := NewMergeService(neo, repository.NewGraphMetaRepository(neo))
 
 	nodes := []model.ExtractedNode{
 		{Name: "Alpha", Description: "a", Relevance: 5.0},

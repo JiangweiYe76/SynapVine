@@ -155,13 +155,18 @@ if $need_console; then
 
   # Discovery depends only on core (papers, review queue, internal LLM
   # provider API). Start it before console so console can health-check
-  # it and enable auto-trigger.
+  # it and enable auto-trigger. ARXIV_ENABLED=true turns on the
+  # scheduled ArXiv ingestion (hourly, 5 papers per cycle into the
+  # review queue); disable by exporting ARXIV_ENABLED=false before
+  # `make dev`.
+  ARXIV_ENABLED="${ARXIV_ENABLED:-true}"
   start_backend discovery services/discovery "$DISCOVERY_PORT" \
     PORT="$DISCOVERY_PORT" \
     CORE_URL="$CORE_URL" \
     SERVICE_TOKEN="$DEV_TOKEN_DISCOVERY" \
     SERVICE_TOKENS="console=$DEV_TOKEN_CONSOLE" \
-    ALLOWED_ORIGIN="http://localhost:$CONSOLE_FE_PORT"
+    ALLOWED_ORIGIN="http://localhost:$CONSOLE_FE_PORT" \
+    ARXIV_ENABLED="$ARXIV_ENABLED"
   wait_for "http://localhost:$DISCOVERY_PORT/health" "healthy" 30 || exit 1
 
   start_backend console services/console "$CONSOLE_PORT" \

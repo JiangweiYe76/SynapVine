@@ -213,16 +213,34 @@ func (r *CommunityRepository) CreateBatchTx(ctx context.Context, tx neo4j.Manage
 	return err
 }
 
+// NodeAssignment maps a node to the community it belongs to. A named
+// type with explicit parameter conversion is required because the Neo4j
+// driver cannot serialize Go anonymous structs as query parameters.
+type NodeAssignment struct {
+	NodeID      string
+	CommunityID string
+}
+
+func (a NodeAssignment) toParams() map[string]any {
+	return map[string]any{"node_id": a.NodeID, "community_id": a.CommunityID}
+}
+
+// assignmentParams converts assignments into driver-serializable maps.
+func assignmentParams(assignments []NodeAssignment) []map[string]any {
+	params := make([]map[string]any, len(assignments))
+	for i, a := range assignments {
+		params[i] = a.toParams()
+	}
+	return params
+}
+
 // AssignNodesBatchTx is the transactional variant of AssignNodesBatch.
-func (r *CommunityRepository) AssignNodesBatchTx(ctx context.Context, tx neo4j.ManagedTransaction, assignments []struct {
-	NodeID      string `json:"node_id"`
-	CommunityID string `json:"community_id"`
-}) error {
+func (r *CommunityRepository) AssignNodesBatchTx(ctx context.Context, tx neo4j.ManagedTransaction, assignments []NodeAssignment) error {
 	_, err := tx.Run(ctx, `
 		UNWIND $assignments AS a
 		MATCH (n:Concept {id: a.node_id}), (c:Community {id: a.community_id})
 		MERGE (n)-[:BELONGS_TO]->(c)
-	`, map[string]any{"assignments": assignments})
+	`, map[string]any{"assignments": assignmentParams(assignments)})
 	return err
 }
 
@@ -264,16 +282,13 @@ func (r *CommunityRepository) HasChildren(ctx context.Context, id string) (bool,
 }
 
 // AssignNodesBatch creates BELONGS_TO relationships between Concepts and Communities.
-func (r *CommunityRepository) AssignNodesBatch(ctx context.Context, assignments []struct {
-	NodeID      string `json:"node_id"`
-	CommunityID string `json:"community_id"`
-}) error {
+func (r *CommunityRepository) AssignNodesBatch(ctx context.Context, assignments []NodeAssignment) error {
 	cypher := `
 		UNWIND $assignments AS a
 		MATCH (n:Concept {id: a.node_id}), (c:Community {id: a.community_id})
 		MERGE (n)-[:BELONGS_TO]->(c)
 	`
-	return r.neo.Execute(ctx, cypher, map[string]any{"assignments": assignments})
+	return r.neo.Execute(ctx, cypher, map[string]any{"assignments": assignmentParams(assignments)})
 }
 
 func recordToCommunity(rec *neo4j.Record) model.Community {

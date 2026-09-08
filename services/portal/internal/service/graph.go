@@ -34,6 +34,12 @@ type communityCache struct {
 	fetchedAt time.Time
 }
 
+type metaCache struct {
+	mu          sync.RWMutex
+	lastUpdated *string // nil when the graph has never been mutated
+	fetchedAt   time.Time
+}
+
 // GraphService is a read-through adapter in front of the core service.
 // It caches the full graph data and the community tree for a short TTL
 // to avoid repeated core fetches within the same request window.
@@ -41,6 +47,7 @@ type GraphService struct {
 	core  *coreclient.Client
 	cache *graphDataCache
 	comms *communityCache
+	meta  *metaCache
 }
 
 // New creates a GraphService that proxies reads to the given core client.
@@ -49,7 +56,39 @@ func New(core *coreclient.Client) *GraphService {
 		core:  core,
 		cache: &graphDataCache{},
 		comms: &communityCache{},
+		meta:  &metaCache{},
 	}
+}
+
+// fetchGraphMetaCached returns the graph last-updated timestamp (nil
+// when the graph has never been mutated), cached with the same short
+// TTL as the other core-backed reads. A meta fetch failure is not an
+// error for callers: it only means the timestamp is omitted.
+func (s *GraphService) fetchGraphMetaCached(ctx context.Context) *string {
+	s.meta.mu.RLock()
+	if time.Since(s.meta.fetchedAt) < graphDataCacheTTL {
+		ts := s.meta.lastUpdated
+		s.meta.mu.RUnlock()
+		return ts
+	}
+	s.meta.mu.RUnlock()
+
+	s.meta.mu.Lock()
+	defer s.meta.mu.Unlock()
+	// Double-check after acquiring write lock.
+	if time.Since(s.meta.fetchedAt) < graphDataCacheTTL {
+		return s.meta.lastUpdated
+	}
+
+	meta, err := s.core.FetchGraphMeta(ctx)
+	if err != nil {
+		// Serve whatever we have (possibly nil) and retry after the TTL.
+		s.meta.fetchedAt = time.Now()
+		return s.meta.lastUpdated
+	}
+	s.meta.lastUpdated = meta.LastUpdated
+	s.meta.fetchedAt = time.Now()
+	return s.meta.lastUpdated
 }
 
 // fetchGraphDataCached returns the full graph data, using a short-lived
@@ -144,6 +183,7 @@ func (s *GraphService) Summary(ctx context.Context, topN int) (model.SummaryResp
 			TotalEdges:     len(data.Edges),
 			CommunityCount: len(communities),
 			MaxLevel:       computeMaxLevel(communities),
+			LastUpdated:    s.fetchGraphMetaCached(ctx),
 		},
 		TopNodes: nodes[:topN],
 	}, nil

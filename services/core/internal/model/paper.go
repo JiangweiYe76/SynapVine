@@ -8,6 +8,7 @@ type Paper struct {
 	Title     string    `json:"title"`
 	Authors   string    `json:"authors"`
 	SourceURL string    `json:"source_url"`
+	ArxivID   string    `json:"arxiv_id,omitempty"` // ArXiv identifier for ingested papers
 	RawText   string    `json:"raw_text"`
 	PDFData   []byte    `json:"-"` // Not included in JSON responses
 	HasPDF    bool      `json:"has_pdf"`
@@ -21,6 +22,7 @@ type PaperCreateRequest struct {
 	Title     string `json:"title"`
 	Authors   string `json:"authors"`
 	SourceURL string `json:"source_url"`
+	ArxivID   string `json:"arxiv_id,omitempty"`
 	RawText   string `json:"raw_text"`
 	PDFBase64 string `json:"pdf_base64,omitempty"` // Base64-encoded PDF
 }

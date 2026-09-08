@@ -1,15 +1,13 @@
 package handler
 
 import (
+	"errors"
 	"log/slog"
 
-	"discovery/internal/coreclient"
-	"discovery/internal/extractor"
-	"discovery/internal/llm"
 	"discovery/internal/model"
+	"discovery/internal/pipeline"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/google/uuid"
 )
 
 // ErrorResponse is the standard error JSON shape.
@@ -20,20 +18,17 @@ type ErrorResponse struct {
 
 // AnalyzeHandler handles paper analysis requests.
 type AnalyzeHandler struct {
-	core      *coreclient.Client
-	extractor *extractor.Service
+	pipeline *pipeline.Service
 }
 
 // NewAnalyzeHandler creates a new AnalyzeHandler.
-func NewAnalyzeHandler(core *coreclient.Client, ext *extractor.Service) *AnalyzeHandler {
-	return &AnalyzeHandler{
-		core:      core,
-		extractor: ext,
-	}
+func NewAnalyzeHandler(pipe *pipeline.Service) *AnalyzeHandler {
+	return &AnalyzeHandler{pipeline: pipe}
 }
 
-// Analyze handles POST /api/analyze. It triggers the full extraction
-// pipeline: fetch paper → get LLM provider → extract → submit review.
+// Analyze handles POST /api/analyze. It runs the extraction pipeline
+// (fetch paper → LLM extract → submit review) for the given paper; the
+// pipeline is shared with the ArXiv scheduler.
 func (h *AnalyzeHandler) Analyze(c *fiber.Ctx) error {
 	var req model.AnalyzeRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -49,86 +44,46 @@ func (h *AnalyzeHandler) Analyze(c *fiber.Ctx) error {
 		})
 	}
 
-	ctx := c.Context()
-	paperID := req.PaperID
-
-	// 1. Fetch paper from core.
-	slog.Info("analyze_fetch_paper", slog.String("paper_id", paperID))
-	paper, err := h.core.GetPaper(ctx, paperID)
-	if err != nil {
-		slog.Error("analyze_fetch_paper_failed", slog.String("paper_id", paperID), slog.Any("error", err))
-		return c.Status(502).JSON(ErrorResponse{
-			Error:   "paper_fetch_failed",
-			Message: "Failed to fetch paper from core service",
-		})
+	if err := h.pipeline.RunPaper(c.Context(), req.PaperID); err != nil {
+		return analyzeErrorResponse(c, err)
 	}
-
-	// 2. Update paper status to "analyzing".
-	if err := h.core.UpdatePaperStatus(ctx, paperID, "analyzing"); err != nil {
-		slog.Warn("analyze_status_update_failed", slog.String("paper_id", paperID), slog.Any("error", err))
-		// Non-fatal: continue with analysis.
-	}
-
-	// 3. Get default LLM provider from core.
-	slog.Info("analyze_fetch_provider")
-	provider, err := h.core.GetDefaultLLMProvider(ctx)
-	if err != nil {
-		slog.Error("analyze_fetch_provider_failed", slog.Any("error", err))
-		h.core.UpdatePaperStatus(ctx, paperID, "uploaded") // Rollback status.
-		return c.Status(502).JSON(ErrorResponse{
-			Error:   "provider_fetch_failed",
-			Message: "Failed to fetch LLM provider configuration",
-		})
-	}
-
-	// 4. Run extraction pipeline.
-	llmClient := llm.NewClient(provider)
-	result, err := h.extractor.Extract(ctx, llmClient, paper)
-	if err != nil {
-		slog.Error("analyze_extraction_failed", slog.String("paper_id", paperID), slog.Any("error", err))
-		h.core.UpdatePaperStatus(ctx, paperID, "uploaded") // Rollback status.
-		return c.Status(500).JSON(ErrorResponse{
-			Error:   "extraction_failed",
-			Message: "LLM extraction failed: " + err.Error(),
-		})
-	}
-
-	// 5. Submit to review queue.
-	slog.Info("analyze_submit_review",
-		slog.String("paper_id", paperID),
-		slog.Int("nodes", len(result.Nodes)),
-		slog.Int("edges", len(result.Edges)),
-	)
-	reviewItem := model.ReviewQueueItem{
-		PaperID:        paperID,
-		ExtractedNodes: result.Nodes,
-		ExtractedEdges: result.Edges,
-	}
-	if err := h.core.SubmitReviewItem(ctx, reviewItem); err != nil {
-		slog.Error("analyze_submit_review_failed", slog.String("paper_id", paperID), slog.Any("error", err))
-		h.core.UpdatePaperStatus(ctx, paperID, "analyzed") // Mark as analyzed but not submitted.
-		return c.Status(502).JSON(ErrorResponse{
-			Error:   "review_submit_failed",
-			Message: "Failed to submit extraction result to review queue",
-		})
-	}
-
-	// 6. Update paper status to "analyzed".
-	if err := h.core.UpdatePaperStatus(ctx, paperID, "analyzed"); err != nil {
-		slog.Warn("analyze_final_status_update_failed", slog.String("paper_id", paperID), slog.Any("error", err))
-	}
-
-	slog.Info("analyze_completed",
-		slog.String("paper_id", paperID),
-		slog.Int("nodes", len(result.Nodes)),
-		slog.Int("edges", len(result.Edges)),
-		slog.String("review_item_id", uuid.New().String()), // Placeholder; actual ID comes from core.
-	)
 
 	return c.JSON(model.AnalyzeResponse{
 		Status:  "completed",
 		Message: "Extraction completed successfully",
 	})
+}
+
+// analyzeErrorResponse maps pipeline stage errors to HTTP codes.
+func analyzeErrorResponse(c *fiber.Ctx, err error) error {
+	switch {
+	case errors.Is(err, pipeline.ErrPaperFetch):
+		return c.Status(502).JSON(ErrorResponse{
+			Error:   "paper_fetch_failed",
+			Message: "Failed to fetch paper from core service",
+		})
+	case errors.Is(err, pipeline.ErrProviderFetch):
+		return c.Status(502).JSON(ErrorResponse{
+			Error:   "provider_fetch_failed",
+			Message: "Failed to fetch LLM provider configuration",
+		})
+	case errors.Is(err, pipeline.ErrExtraction):
+		return c.Status(500).JSON(ErrorResponse{
+			Error:   "extraction_failed",
+			Message: "LLM extraction failed: " + err.Error(),
+		})
+	case errors.Is(err, pipeline.ErrReviewSubmit):
+		return c.Status(502).JSON(ErrorResponse{
+			Error:   "review_submit_failed",
+			Message: "Failed to submit extraction result to review queue",
+		})
+	default:
+		slog.Error("analyze_unexpected_error", slog.Any("error", err))
+		return c.Status(500).JSON(ErrorResponse{
+			Error:   "internal_error",
+			Message: "Unexpected analysis failure",
+		})
+	}
 }
 
 // Health handles GET /health.
