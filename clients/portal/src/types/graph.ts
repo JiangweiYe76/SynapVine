@@ -46,6 +46,8 @@ export interface GraphStats {
   total_edges: number
   community_count: number
   max_level: number
+  /** RFC3339 timestamp of the last graph mutation, null when never mutated */
+  last_updated: string | null
 }
 
 export interface GraphSummary {

@@ -38,6 +38,7 @@ export function createMockServer() {
           total_edges: mockData.edges.length,
           community_count: mockData.communities.length,
           max_level: 2,
+          last_updated: new Date().toISOString(),
         },
         top_nodes: topNodes,
       }

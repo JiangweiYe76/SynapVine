@@ -1,11 +1,26 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-const { t } = useI18n()
+import type { GraphStats } from '../types/graph'
+const { t, locale } = useI18n()
 
 const props = defineProps<{
-  stats: { total_nodes: number; total_edges: number; community_count: number } | null
+  stats: GraphStats | null
   loading: boolean
 }>()
+
+// Format the last-updated timestamp using the active UI locale; the
+// em dash placeholder covers both "loading" and "never mutated".
+const lastUpdated = computed(() => {
+  const raw = props.stats?.last_updated
+  if (!raw) return '—'
+  const date = new Date(raw)
+  if (Number.isNaN(date.getTime())) return '—'
+  return new Intl.DateTimeFormat(locale.value, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(date)
+})
 </script>
 
 <template>
@@ -21,6 +36,10 @@ const props = defineProps<{
     <div class="flex items-center gap-3">
       <span class="text-sm text-(--color-text-secondary)">{{ t('statusBar.communities') }}:</span>
       <span class="text-base text-(--color-text-primary) font-mono tabular-nums font-medium">{{ stats?.community_count || 0 }}</span>
+    </div>
+    <div class="flex items-center gap-3">
+      <span class="text-sm text-(--color-text-secondary)">{{ t('statusBar.updated') }}:</span>
+      <span class="text-base text-(--color-text-primary) font-mono tabular-nums font-medium">{{ lastUpdated }}</span>
     </div>
     <div v-if="loading" class="flex items-center gap-3 ml-auto">
       <div class="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />

@@ -49,10 +49,11 @@ type HierarchicalCommunity struct {
 
 // GraphStats provides statistical information about the graph
 type GraphStats struct {
-	TotalNodes     int `json:"total_nodes"`     // Total number of nodes
-	TotalEdges     int `json:"total_edges"`     // Total number of edges
-	CommunityCount int `json:"community_count"` // Total number of communities
-	MaxLevel       int `json:"max_level"`       // Maximum hierarchy depth
+	TotalNodes     int     `json:"total_nodes"`     // Total number of nodes
+	TotalEdges     int     `json:"total_edges"`     // Total number of edges
+	CommunityCount int     `json:"community_count"` // Total number of communities
+	MaxLevel       int     `json:"max_level"`       // Maximum hierarchy depth
+	LastUpdated    *string `json:"last_updated"`    // RFC3339 timestamp of the last graph mutation, nil when never mutated
 }
 
 // SummaryResponse is the response for the graph summary endpoint

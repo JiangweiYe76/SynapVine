@@ -15,6 +15,7 @@
     "nodes": "Nodes",
     "edges": "Edges",
     "communities": "Communities",
+    "updated": "Updated",
     "loading": "Loading..."
   },
   "nodeDetail": {
