@@ -65,6 +65,21 @@ func main() {
 	}
 	defer neo.Close(context.Background())
 
+	graphMetaRepo := repository.NewGraphMetaRepository(neo)
+
+	nodeRepo := repository.NewNodeRepository(neo)
+	edgeRepo := repository.NewEdgeRepository(neo)
+	commRepo := repository.NewCommunityRepository(neo)
+
+	nodeSvc := service.NewNodeService(nodeRepo, commRepo)
+	edgeSvc := service.NewEdgeService(edgeRepo)
+	commSvc := service.NewCommunityService(commRepo)
+	detectorSvc := service.NewCommunityDetectorService(nodeRepo, commRepo, graphMetaRepo)
+
+	// Re-detection is triggered asynchronously after review approvals
+	// merge new extraction results into the graph.
+	redetectScheduler := service.NewDetectionScheduler(detectorSvc)
+
 	// MySQL: optional (for papers, review queue, and provider management).
 	var paperHandler *handler.PaperHandler
 	var reviewHandler *handler.ReviewQueueHandler
@@ -101,8 +116,8 @@ func main() {
 		paperRepo := repository.NewPaperRepository(mysqlDB)
 		reviewRepo := repository.NewReviewQueueRepository(mysqlDB)
 		paperHandler = handler.NewPaperHandler(paperRepo)
-		mergeSvc := service.NewMergeService(neo)
-		reviewHandler = handler.NewReviewQueueHandler(reviewRepo, paperRepo, mergeSvc)
+		mergeSvc := service.NewMergeService(neo, graphMetaRepo)
+		reviewHandler = handler.NewReviewQueueHandler(reviewRepo, paperRepo, mergeSvc, redetectScheduler)
 
 		llmProviderRepo := repository.NewLLMProviderRepository(mysqlDB, keyCipher)
 		embeddingProviderRepo := repository.NewEmbeddingProviderRepository(mysqlDB, keyCipher)
@@ -114,18 +129,10 @@ func main() {
 		slog.Warn("mysql_not_configured", slog.String("hint", "Set MYSQL_DSN to enable papers, review queue, and provider management"))
 	}
 
-	nodeRepo := repository.NewNodeRepository(neo)
-	edgeRepo := repository.NewEdgeRepository(neo)
-	commRepo := repository.NewCommunityRepository(neo)
-
-	nodeSvc := service.NewNodeService(nodeRepo, commRepo)
-	edgeSvc := service.NewEdgeService(edgeRepo)
-	commSvc := service.NewCommunityService(commRepo)
-	detectorSvc := service.NewCommunityDetectorService(nodeRepo, commRepo)
-
 	nodeHandler := handler.NewNodeHandler(nodeSvc)
 	edgeHandler := handler.NewEdgeHandler(edgeSvc)
 	commHandler := handler.NewCommunityHandler(commSvc, detectorSvc)
+	metaHandler := handler.NewGraphMetaHandler(graphMetaRepo)
 	healthHandler := handler.NewHealthHandler()
 
 	app := fiber.New(fiber.Config{
@@ -156,6 +163,7 @@ func main() {
 	internalAuth := middleware.RequireServiceToken(cfg.ServiceTokens, "discovery")
 
 	app.Get("/api/graph/data", readAuth, nodeHandler.GraphData)
+	app.Get("/api/graph/meta", readAuth, metaHandler.Get)
 	app.Get("/api/graph/timeline", readAuth, nodeHandler.Timeline)
 
 	app.Get("/api/nodes", readAuth, nodeHandler.List)

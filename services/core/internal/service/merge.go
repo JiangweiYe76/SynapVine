@@ -24,18 +24,22 @@ import (
 
 	"core/internal/db"
 	"core/internal/model"
+	"core/internal/repository"
 
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 )
 
 // MergeService writes approved extraction results into Neo4j.
 type MergeService struct {
-	neo *db.Neo4j
+	neo  *db.Neo4j
+	meta *repository.GraphMetaRepository
 }
 
 // NewMergeService creates a MergeService backed by the given Neo4j client.
-func NewMergeService(neo *db.Neo4j) *MergeService {
-	return &MergeService{neo: neo}
+// meta is used to bump the graph last-updated timestamp after a successful
+// merge; it may be nil in tests that do not care about metadata.
+func NewMergeService(neo *db.Neo4j, meta *repository.GraphMetaRepository) *MergeService {
+	return &MergeService{neo: neo, meta: meta}
 }
 
 // Merge writes the given extracted nodes and edges into the Neo4j graph
@@ -211,6 +215,14 @@ func (s *MergeService) Merge(ctx context.Context, paperID string, nodes []model.
 	})
 	if err != nil {
 		return nil, fmt.Errorf("merge extracted data: %w", err)
+	}
+
+	// The graph changed, so bump the last-updated timestamp. A meta write
+	// failure is logged but not fatal: the graph data itself is committed.
+	if s.meta != nil {
+		if err := s.meta.Touch(ctx); err != nil {
+			slog.Warn("merge_meta_touch_failed", slog.String("paper_id", paperID), slog.Any("error", err))
+		}
 	}
 
 	slog.Info("merge_completed",

@@ -15,13 +15,17 @@ import (
 type CommunityDetectorService struct {
 	nodeRepo *repository.NodeRepository
 	commRepo *repository.CommunityRepository
+	meta     *repository.GraphMetaRepository
 }
 
 // NewCommunityDetectorService creates a new CommunityDetectorService.
-func NewCommunityDetectorService(nodeRepo *repository.NodeRepository, commRepo *repository.CommunityRepository) *CommunityDetectorService {
+// meta is used to bump the graph last-updated timestamp after detection
+// succeeds; it may be nil in tests that do not care about metadata.
+func NewCommunityDetectorService(nodeRepo *repository.NodeRepository, commRepo *repository.CommunityRepository, meta *repository.GraphMetaRepository) *CommunityDetectorService {
 	return &CommunityDetectorService{
 		nodeRepo: nodeRepo,
 		commRepo: commRepo,
+		meta:     meta,
 	}
 }
 
@@ -105,6 +109,15 @@ func (s *CommunityDetectorService) DetectAndStore(ctx context.Context) error {
 		slog.Int("communities_created", len(allComms)),
 		slog.Int("assignments_created", len(assignments)),
 	)
+
+	// Community assignments are part of the graph, so bump the
+	// last-updated timestamp. A meta write failure is logged but not
+	// fatal: the detection results themselves are committed.
+	if s.meta != nil {
+		if err := s.meta.Touch(ctx); err != nil {
+			slog.Warn("detect_meta_touch_failed", slog.Any("error", err))
+		}
+	}
 
 	return nil
 }
