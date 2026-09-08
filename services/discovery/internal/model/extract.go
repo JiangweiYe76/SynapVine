@@ -23,11 +23,11 @@ type ExtractionResult struct {
 
 // Paper is a minimal representation of a paper fetched from the core service.
 type Paper struct {
-	ID       string `json:"id"`
-	Title    string `json:"title"`
-	Authors  string `json:"authors"`
-	RawText  string `json:"raw_text"`
-	Status   string `json:"status"`
+	ID      string `json:"id"`
+	Title   string `json:"title"`
+	Authors string `json:"authors"`
+	RawText string `json:"raw_text"`
+	Status  string `json:"status"`
 }
 
 // ReviewQueueItem is the payload submitted to core's review queue.

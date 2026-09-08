@@ -9,11 +9,14 @@ import (
 	"syscall"
 	"time"
 
+	"discovery/internal/arxiv"
 	"discovery/internal/config"
 	"discovery/internal/coreclient"
 	"discovery/internal/extractor"
 	"discovery/internal/handler"
 	"discovery/internal/middleware"
+	"discovery/internal/pipeline"
+	"discovery/internal/scheduler"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -60,8 +63,12 @@ func main() {
 	// Extractor service.
 	ext := extractor.NewService()
 
+	// Shared extraction pipeline: the HTTP handler and the ArXiv
+	// scheduler both push papers through it.
+	pipe := pipeline.NewService(core, ext)
+
 	// Handler.
-	analyzeHandler := handler.NewAnalyzeHandler(core, ext)
+	analyzeHandler := handler.NewAnalyzeHandler(pipe)
 
 	app := fiber.New(fiber.Config{
 		AppName: "AI-Graph Discovery Server",
@@ -80,6 +87,38 @@ func main() {
 
 	slog.Info("discovery_server_starting", slog.String("port", cfg.Port))
 
+	// Scheduler stop handles; nil when ArXiv ingestion is disabled.
+	var schedulerCancel context.CancelFunc
+	var schedulerDone chan struct{}
+
+	// ArXiv ingestion scheduler (opt-in via ARXIV_ENABLED=true). It runs
+	// its first cycle immediately and then once per interval; shutdown
+	// cancels it and waits for the in-flight cycle to finish before the
+	// server is considered stopped.
+	if cfg.ArxivEnabled {
+		// The scheduler talks to core as discovery; without a token its
+		// paper creation and lookups would be rejected on every cycle.
+		if cfg.ServiceToken == "" {
+			slog.Error("arxiv_scheduler_requires_service_token",
+				slog.String("hint", "Set SERVICE_TOKEN to the discovery token configured in core's SERVICE_TOKENS, or disable ARXIV_ENABLED"))
+			os.Exit(1)
+		}
+		sched := scheduler.New(arxiv.NewClient(), core, pipe, scheduler.Config{
+			Categories: cfg.ArxivCategories,
+			Interval:   cfg.ArxivInterval,
+			MaxPerRun:  cfg.ArxivMaxPerRun,
+		})
+		schedCtx, schedCancel := context.WithCancel(context.Background())
+		schedDone := make(chan struct{})
+		go func() {
+			defer close(schedDone)
+			sched.Run(schedCtx)
+		}()
+		defer schedCancel()
+		schedulerDone = schedDone
+		schedulerCancel = schedCancel
+	}
+
 	idleConnsClosed := make(chan struct{})
 	go func() {
 		sigint := make(chan os.Signal, 1)
@@ -91,6 +130,12 @@ func main() {
 		defer cancel()
 		if err := app.ShutdownWithContext(shutdownCtx); err != nil {
 			slog.Error("server_shutdown_failed", slog.Any("error", err))
+		}
+		// Stop the ingestion scheduler, if any, and wait for the
+		// current cycle to wrap up before declaring shutdown complete.
+		if schedulerCancel != nil {
+			schedulerCancel()
+			<-schedulerDone
 		}
 		close(idleConnsClosed)
 	}()
