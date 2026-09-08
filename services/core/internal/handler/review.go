@@ -20,13 +20,16 @@ type ReviewQueueHandler struct {
 	repo      *repository.ReviewQueueRepository
 	paperRepo *repository.PaperRepository
 	merge     *service.MergeService
+	scheduler *service.DetectionScheduler
 }
 
 // NewReviewQueueHandler creates a new ReviewQueueHandler. The merge
 // service is used by Approve to persist the extracted nodes/edges into
-// Neo4j before the review item is marked as approved.
-func NewReviewQueueHandler(repo *repository.ReviewQueueRepository, paperRepo *repository.PaperRepository, merge *service.MergeService) *ReviewQueueHandler {
-	return &ReviewQueueHandler{repo: repo, paperRepo: paperRepo, merge: merge}
+// Neo4j before the review item is marked as approved. The scheduler
+// then triggers an asynchronous community re-detection; it may be nil
+// to disable that behavior.
+func NewReviewQueueHandler(repo *repository.ReviewQueueRepository, paperRepo *repository.PaperRepository, merge *service.MergeService, scheduler *service.DetectionScheduler) *ReviewQueueHandler {
+	return &ReviewQueueHandler{repo: repo, paperRepo: paperRepo, merge: merge, scheduler: scheduler}
 }
 
 // List handles GET /api/review-queue
@@ -169,6 +172,11 @@ func (h *ReviewQueueHandler) Approve(c *fiber.Ctx) error {
 	// Update paper status to "merged".
 	paperStatus := "merged"
 	h.paperRepo.Update(c.Context(), item.PaperID, &model.PaperUpdateRequest{Status: &paperStatus})
+
+	// The graph changed: kick off an asynchronous community
+	// re-detection. Failures inside the scheduler only affect
+	// community assignments, not the approval itself.
+	h.scheduler.Trigger()
 
 	slog.Info("review_item_approved",
 		slog.String("id", id),
