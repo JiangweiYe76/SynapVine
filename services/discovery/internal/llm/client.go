@@ -31,9 +31,11 @@ type CompletionRequest struct {
 
 // CompletionResponse is the parsed LLM response.
 type CompletionResponse struct {
-	Content      string `json:"content"`
-	TokensUsed   int    `json:"tokens_used"`
-	FinishReason string `json:"finish_reason"`
+	Content          string `json:"content"`
+	TokensUsed       int    `json:"tokens_used"`
+	PromptTokens     int    `json:"prompt_tokens"`
+	CompletionTokens int    `json:"completion_tokens"`
+	FinishReason     string `json:"finish_reason"`
 }
 
 // Client calls a single OpenAI-compatible LLM provider.
@@ -80,7 +82,9 @@ type wireResponse struct {
 		FinishReason string `json:"finish_reason"`
 	} `json:"choices"`
 	Usage struct {
-		TotalTokens int `json:"total_tokens"`
+		PromptTokens     int `json:"prompt_tokens"`
+		CompletionTokens int `json:"completion_tokens"`
+		TotalTokens      int `json:"total_tokens"`
 	} `json:"usage"`
 	Error *struct {
 		Message string `json:"message"`
@@ -156,8 +160,10 @@ func (c *Client) Complete(ctx context.Context, req CompletionRequest) (*Completi
 	}
 
 	return &CompletionResponse{
-		Content:      wire.Choices[0].Message.Content,
-		TokensUsed:   wire.Usage.TotalTokens,
-		FinishReason: wire.Choices[0].FinishReason,
+		Content:          wire.Choices[0].Message.Content,
+		TokensUsed:       wire.Usage.TotalTokens,
+		PromptTokens:     wire.Usage.PromptTokens,
+		CompletionTokens: wire.Usage.CompletionTokens,
+		FinishReason:     wire.Choices[0].FinishReason,
 	}, nil
 }

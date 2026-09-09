@@ -76,6 +76,23 @@ func (s *Service) RunPaper(ctx context.Context, paperID string) error {
 		return fmt.Errorf("%w: %v", ErrExtraction, err)
 	}
 
+	// 4b. Record token usage. Non-fatal: accounting failures must not
+	// affect the analysis outcome.
+	usage := coreclient.UsageRecord{
+		PaperID:          paperID,
+		ProviderID:       provider.ID,
+		Model:            provider.Model,
+		PromptTokens:     result.PromptTokens,
+		CompletionTokens: result.CompletionTokens,
+		TotalTokens:      result.TotalTokens,
+	}
+	if err := s.core.RecordUsage(ctx, usage); err != nil {
+		slog.Warn("analyze_usage_record_failed",
+			slog.String("paper_id", paperID),
+			slog.Int("total_tokens", usage.TotalTokens),
+			slog.Any("error", err))
+	}
+
 	// 5. Submit to review queue.
 	slog.Info("analyze_submit_review",
 		slog.String("paper_id", paperID),

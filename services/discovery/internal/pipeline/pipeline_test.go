@@ -27,6 +27,7 @@ type fakeCore struct {
 
 	statusLog []string // ordered UpdatePaperStatus payloads
 	review    []model.ReviewQueueItem
+	usage     []coreclient.UsageRecord
 }
 
 const extractionJSON = `{"nodes":[{"name":"Attention","description":"Mechanism","relevance":9}],"edges":[]}`
@@ -47,7 +48,7 @@ func newEnv(t *testing.T) (*fakeCore, *Service) {
 		// the message content field, matching the real client protocol.
 		content, _ := json.Marshal(extractionJSON)
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":` + string(content) + `}}],"usage":{"total_tokens":10}}`))
+		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":` + string(content) + `}}],"usage":{"prompt_tokens":100,"completion_tokens":20,"total_tokens":120}}`))
 	}
 
 	mux := http.NewServeMux()
@@ -93,6 +94,16 @@ func newEnv(t *testing.T) (*fakeCore, *Service) {
 	mux.HandleFunc("POST /v1/chat/completions", chat)
 	mux.HandleFunc("POST /chat/completions", chat)
 
+	mux.HandleFunc("POST /api/internal/llm/usage", func(w http.ResponseWriter, r *http.Request) {
+		var rec coreclient.UsageRecord
+		_ = json.NewDecoder(r.Body).Decode(&rec)
+		fc.mu.Lock()
+		fc.usage = append(fc.usage, rec)
+		fc.mu.Unlock()
+		w.WriteHeader(201)
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	})
+
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 
@@ -116,6 +127,12 @@ func (fc *fakeCore) reviews() []model.ReviewQueueItem {
 	return append([]model.ReviewQueueItem(nil), fc.review...)
 }
 
+func (fc *fakeCore) usages() []coreclient.UsageRecord {
+	fc.mu.Lock()
+	defer fc.mu.Unlock()
+	return append([]coreclient.UsageRecord(nil), fc.usage...)
+}
+
 // TestRunPaper_HappyPath verifies the full sequence: analyze status,
 // review submission carrying the extracted payload, analyzed status.
 func TestRunPaper_HappyPath(t *testing.T) {
@@ -137,6 +154,17 @@ func TestRunPaper_HappyPath(t *testing.T) {
 	}
 	if len(reviews[0].ExtractedNodes) != 1 || reviews[0].ExtractedNodes[0].Name != "Attention" {
 		t.Errorf("review nodes = %+v, want one 'Attention' node", reviews[0].ExtractedNodes)
+	}
+	usages := fc.usages()
+	if len(usages) != 1 {
+		t.Fatalf("usage records = %d, want 1", len(usages))
+	}
+	u := usages[0]
+	if u.PaperID != "p1" || u.ProviderID != "prov1" || u.Model != "m" {
+		t.Errorf("usage refs = %+v, want paper p1 / provider prov1 / model m", u)
+	}
+	if u.PromptTokens != 100 || u.CompletionTokens != 20 || u.TotalTokens != 120 {
+		t.Errorf("usage tokens = %d/%d/%d, want 100/20/120", u.PromptTokens, u.CompletionTokens, u.TotalTokens)
 	}
 }
 
@@ -191,7 +219,12 @@ func TestRunPaper_ReviewSubmitFailureKeepsAnalyzed(t *testing.T) {
 	if !errors.Is(err, ErrReviewSubmit) {
 		t.Fatalf("err = %v, want ErrReviewSubmit", err)
 	}
-	if got := fc.statuses(); len(got) != 2 || got[0] != "analyzing" || got[1] != "analyzed" {
+	if got := fc.statusLog; len(got) != 2 || got[0] != "analyzing" || got[1] != "analyzed" {
 		t.Errorf("statuses = %v, want [analyzing analyzed]", got)
+	}
+	// Usage is recorded before the review submission, so the spent
+	// tokens must still be accounted for.
+	if got := fc.usages(); len(got) != 1 {
+		t.Errorf("usage records = %d, want 1 (recorded despite review failure)", len(got))
 	}
 }

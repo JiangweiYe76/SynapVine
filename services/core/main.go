@@ -84,6 +84,7 @@ func main() {
 	var paperHandler *handler.PaperHandler
 	var reviewHandler *handler.ReviewQueueHandler
 	var provHandlers *providerHandlers
+	var llmUsageHandler *handler.LLMUsageHandler
 	if cfg.MySQLDSN != "" {
 		// Fail closed: provider API keys are stored in MySQL and must be
 		// encrypted at rest. Without a key the only options would be to
@@ -125,6 +126,9 @@ func main() {
 			llm:       handler.NewLLMProviderHandler(llmProviderRepo),
 			embedding: handler.NewEmbeddingProviderHandler(embeddingProviderRepo),
 		}
+
+		llmUsageRepo := repository.NewLLMUsageRepository(mysqlDB)
+		llmUsageHandler = handler.NewLLMUsageHandler(llmUsageRepo)
 	} else {
 		slog.Warn("mysql_not_configured", slog.String("hint", "Set MYSQL_DSN to enable papers, review queue, and provider management"))
 	}
@@ -161,6 +165,7 @@ func main() {
 	readAuth := middleware.RequireServiceToken(cfg.ServiceTokens, "portal", "console", "discovery")
 	writeAuth := middleware.RequireServiceToken(cfg.ServiceTokens, "console", "discovery")
 	internalAuth := middleware.RequireServiceToken(cfg.ServiceTokens, "discovery")
+	consoleAuth := middleware.RequireServiceToken(cfg.ServiceTokens, "console")
 
 	app.Get("/api/graph/data", readAuth, nodeHandler.GraphData)
 	app.Get("/api/graph/meta", readAuth, metaHandler.Get)
@@ -216,6 +221,11 @@ func main() {
 
 		// Internal LLM provider route (includes API key for service-to-service use)
 		app.Get("/api/internal/llm/providers/default", internalAuth, provHandlers.llm.GetDefaultInternal)
+
+		// LLM usage accounting: discovery records consumption, console
+		// reads aggregates for its usage overview.
+		app.Post("/api/internal/llm/usage", internalAuth, llmUsageHandler.Record)
+		app.Get("/api/internal/llm/usage/summary", consoleAuth, llmUsageHandler.Summary)
 
 		// Embedding provider routes
 		app.Get("/api/embedding/providers", readAuth, provHandlers.embedding.List)

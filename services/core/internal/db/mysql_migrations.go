@@ -127,6 +127,25 @@ var mysqlMigrations = []mysqlMigration{
 			return columnExists(ctx, conn, "papers", "arxiv_id")
 		},
 	},
+	{
+		// LLM token usage accounting: one row per analysis call,
+		// submitted by the discovery service after a successful
+		// extraction. Consumed by the console usage overview.
+		name: "create_llm_usage",
+		stmt: `CREATE TABLE IF NOT EXISTS llm_usage (
+			id                VARCHAR(36)  NOT NULL,
+			paper_id          VARCHAR(36)  NOT NULL,
+			provider_id       VARCHAR(36)  NOT NULL,
+			model             VARCHAR(100) NOT NULL,
+			prompt_tokens     INT          NOT NULL DEFAULT 0,
+			completion_tokens INT          NOT NULL DEFAULT 0,
+			total_tokens      INT          NOT NULL DEFAULT 0,
+			created_at        TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (id),
+			KEY idx_llm_usage_provider_time (provider_id, created_at),
+			KEY idx_llm_usage_paper (paper_id)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+	},
 }
 
 // MigrateMySQL applies all known MySQL migrations.
