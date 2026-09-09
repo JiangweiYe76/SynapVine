@@ -54,6 +54,11 @@ func (s *Service) Extract(ctx context.Context, client *llm.Client, paper *model.
 		return nil, fmt.Errorf("parse llm response: %w", err)
 	}
 
+	// Carry token consumption for usage accounting in core.
+	result.PromptTokens = resp.PromptTokens
+	result.CompletionTokens = resp.CompletionTokens
+	result.TotalTokens = resp.TokensUsed
+
 	slog.Info("extraction_completed",
 		slog.String("paper_id", paper.ID),
 		slog.Int("nodes", len(result.Nodes)),

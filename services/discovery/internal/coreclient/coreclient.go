@@ -103,6 +103,21 @@ func (c *Client) UpdatePaperStatus(ctx context.Context, id, status string) error
 	return c.doJSON(ctx, http.MethodPut, "/api/papers/"+id, body, nil)
 }
 
+// UsageRecord is the payload for recording one LLM consumption event.
+type UsageRecord struct {
+	PaperID          string `json:"paper_id"`
+	ProviderID       string `json:"provider_id"`
+	Model            string `json:"model"`
+	PromptTokens     int    `json:"prompt_tokens"`
+	CompletionTokens int    `json:"completion_tokens"`
+	TotalTokens      int    `json:"total_tokens"`
+}
+
+// RecordUsage reports one LLM usage event to core for accounting.
+func (c *Client) RecordUsage(ctx context.Context, rec UsageRecord) error {
+	return c.doJSON(ctx, http.MethodPost, "/api/internal/llm/usage", rec, nil)
+}
+
 // GetDefaultLLMProvider fetches the default LLM provider (including API key) from core.
 func (c *Client) GetDefaultLLMProvider(ctx context.Context) (*model.LLMProvider, error) {
 	var provider model.LLMProvider

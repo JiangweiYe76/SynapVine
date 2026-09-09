@@ -19,6 +19,12 @@ type ExtractedEdge struct {
 type ExtractionResult struct {
 	Nodes []ExtractedNode `json:"nodes"`
 	Edges []ExtractedEdge `json:"edges"`
+
+	// Token consumption of the extraction call, used for usage
+	// accounting in core.
+	PromptTokens     int `json:"-"`
+	CompletionTokens int `json:"-"`
+	TotalTokens      int `json:"-"`
 }
 
 // Paper is a minimal representation of a paper fetched from the core service.
