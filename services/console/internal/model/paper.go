@@ -24,7 +24,7 @@ type PaperCreateRequest struct {
 	Authors   string `json:"authors"`
 	SourceURL string `json:"source_url"`
 	RawText   string `json:"raw_text"`
-	PDFBase64 string  `json:"pdf_base64,omitempty"`
+	PDFBase64 string `json:"pdf_base64,omitempty"`
 }
 
 // PaperUpdateRequest is the payload for updating a paper via core.

@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	"log/slog"
+	"time"
 
 	"console/internal/coreclient"
 	"console/internal/model"
@@ -194,4 +195,33 @@ func (h *LLMHandler) Test(c *fiber.Ctx) error {
 		})
 	}
 	return c.JSON(resp)
+}
+
+// UsageSummary handles GET /api/llm/usage/summary — proxies the
+// aggregated token usage report from core. Optional from/to query
+// params (YYYY-MM-DD) bound the window; to is inclusive.
+func (h *LLMHandler) UsageSummary(c *fiber.Ctx) error {
+	from := c.Query("from")
+	to := c.Query("to")
+	for name, value := range map[string]string{"from": from, "to": to} {
+		if value == "" {
+			continue
+		}
+		if _, err := time.Parse("2006-01-02", value); err != nil {
+			return c.Status(400).JSON(model.ErrorResponse{
+				Error:   "invalid_" + name,
+				Message: name + " must be a YYYY-MM-DD date",
+			})
+		}
+	}
+
+	summary, err := h.core.GetLLMUsageSummary(c.Context(), from, to)
+	if err != nil {
+		slog.Error("llm_usage_summary_core_failed", slog.Any("error", err))
+		return c.Status(502).JSON(model.ErrorResponse{
+			Error:   "core_unavailable",
+			Message: "Failed to fetch LLM usage summary from core service",
+		})
+	}
+	return c.JSON(summary)
 }

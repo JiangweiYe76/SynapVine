@@ -59,7 +59,6 @@ var migrations = []migration{
 			KEY idx_audit_created (created_at)
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 	},
-
 }
 
 // Migrate applies all known migrations to the connected database. MySQL

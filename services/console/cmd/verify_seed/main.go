@@ -17,7 +17,8 @@ import (
 // running cmd/seed) to confirm the seeded credentials work.
 //
 // Usage:
-//   MYSQL_DSN="..." go run ./cmd/verify_seed
+//
+//	MYSQL_DSN="..." go run ./cmd/verify_seed
 func main() {
 	dsn := os.Getenv("MYSQL_DSN")
 	if dsn == "" {
