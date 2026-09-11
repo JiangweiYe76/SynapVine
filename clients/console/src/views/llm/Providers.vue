@@ -30,6 +30,7 @@ import { llmAPI } from '@/api/llm'
 import { useAuthStore } from '@/stores/auth'
 import type { LLMProvider } from '@/types/llm'
 import LLMProviderFormDialog from '@/components/LLMProviderFormDialog.vue'
+import LLMUsageCard from '@/components/LLMUsageCard.vue'
 import DeleteConfirmDialog from '@/components/DeleteConfirmDialog.vue'
 
 const authStore = useAuthStore()
@@ -211,6 +212,7 @@ onMounted(fetchProviders)
 <template>
 
     <div class="space-y-6">
+      <LLMUsageCard v-if="authStore.isAdmin" class="mb-6" />
       <div class="flex items-center justify-between">
         <div>
           <h2 class="text-2xl font-bold tracking-tight">LLM Providers</h2>

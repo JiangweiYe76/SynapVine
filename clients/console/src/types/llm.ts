@@ -11,6 +11,27 @@ export interface LLMProvider {
   updated_at: string
 }
 
+export interface LLMUsageProviderSummary {
+  provider_id: string
+  model: string
+  calls: number
+  prompt_tokens: number
+  completion_tokens: number
+  total_tokens: number
+}
+
+export interface LLMUsageDaySummary {
+  date: string
+  calls: number
+  total_tokens: number
+}
+
+export interface LLMUsageSummary {
+  totals: LLMUsageProviderSummary
+  by_provider: LLMUsageProviderSummary[]
+  by_day: LLMUsageDaySummary[]
+}
+
 export interface LLMProviderCreateRequest {
   name: string
   base_url: string

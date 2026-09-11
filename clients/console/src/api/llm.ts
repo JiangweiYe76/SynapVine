@@ -5,12 +5,20 @@ import type {
   LLMProviderUpdateRequest,
   LLMProviderListResponse,
   LLMTestResponse,
+  LLMUsageSummary,
 } from '../types/llm'
 
 export const llmAPI = {
   list: () => fetchAPI<LLMProviderListResponse>('/llm/providers'),
-
   get: (id: string) => fetchAPI<LLMProvider>(`/llm/providers/${id}`),
+
+  getUsageSummary: (from?: string, to?: string) => {
+    const params = new URLSearchParams()
+    if (from) params.set('from', from)
+    if (to) params.set('to', to)
+    const qs = params.toString()
+    return fetchAPI<LLMUsageSummary>(`/llm/usage/summary${qs ? `?${qs}` : ''}`)
+  },
 
   getDefault: () => fetchAPI<LLMProvider>('/llm/providers/default'),
 
