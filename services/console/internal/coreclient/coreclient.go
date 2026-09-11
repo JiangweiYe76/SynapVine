@@ -446,6 +446,27 @@ func (c *Client) GetLLMProvider(ctx context.Context, id string) (*model.LLMProvi
 	return &provider, nil
 }
 
+// GetLLMUsageSummary fetches the aggregated LLM token usage report
+// from core. from/to are optional YYYY-MM-DD bounds (to inclusive).
+func (c *Client) GetLLMUsageSummary(ctx context.Context, from, to string) (*model.LLMUsageSummary, error) {
+	params := url.Values{}
+	if from != "" {
+		params.Set("from", from)
+	}
+	if to != "" {
+		params.Set("to", to)
+	}
+	path := "/api/internal/llm/usage/summary"
+	if len(params) > 0 {
+		path += "?" + params.Encode()
+	}
+	var summary model.LLMUsageSummary
+	if err := c.doJSON(ctx, http.MethodGet, path, nil, &summary); err != nil {
+		return nil, err
+	}
+	return &summary, nil
+}
+
 // GetDefaultLLMProvider fetches the default LLM provider.
 // Returns (nil, nil) when core responds with 404.
 func (c *Client) GetDefaultLLMProvider(ctx context.Context) (*model.LLMProviderResponse, error) {

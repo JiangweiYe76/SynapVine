@@ -220,6 +220,9 @@ func main() {
 	adminOnly := handler.RequireRole(model.RoleAdmin)
 	api.Delete("/llm/providers/:id", adminOnly, llmHandler.Delete)
 
+	// LLM usage accounting (admin overview).
+	api.Get("/llm/usage/summary", adminOnly, llmHandler.UsageSummary)
+
 	// Embedding provider read (viewer+).
 	api.Get("/embedding/providers", embeddingHandler.List)
 	api.Get("/embedding/providers/default", embeddingHandler.GetDefault)

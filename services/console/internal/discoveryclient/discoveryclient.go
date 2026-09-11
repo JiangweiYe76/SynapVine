@@ -14,9 +14,9 @@ import (
 
 // Client is an HTTP client for the discovery service REST API.
 type Client struct {
-	baseURL     string
+	baseURL      string
 	serviceToken string
-	http        *http.Client
+	http         *http.Client
 }
 
 // New creates a new discovery client targeting the given base URL (e.g.
@@ -29,7 +29,7 @@ func New(baseURL, serviceToken string) *Client {
 		return nil
 	}
 	return &Client{
-		baseURL:     baseURL,
+		baseURL:      baseURL,
 		serviceToken: serviceToken,
 		http: &http.Client{
 			Timeout: 120 * time.Second, // LLM extraction can take a while
