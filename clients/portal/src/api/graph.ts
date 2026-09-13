@@ -12,6 +12,10 @@ import type {
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
 let token: string | null = null
+// In-flight /api/token request shared by concurrent callers. Without this,
+// the parallel requests fired by loadInitial each trigger their own token
+// fetch on a cold start.
+let tokenPromise: Promise<string> | null = null
 let _mockServer: ReturnType<typeof import('../mock/server').createMockServer> | null = null
 
 async function ensureMockServer() {
@@ -107,25 +111,38 @@ async function fetchAPI<T>(path: string, params?: Record<string, string>, retrie
   return response.json()
 }
 
-export async function getToken(): Promise<string> {
+export function getToken(): Promise<string> {
+  if (token) {
+    return Promise.resolve(token)
+  }
   if (USE_MOCK) {
-    const mock = await ensureMockServer()
-    token = mock.getToken()
-    return token
+    return ensureMockServer().then(mock => {
+      token = mock.getToken()
+      return token
+    })
   }
-  const response = await fetch('/api/token')
-  if (!response.ok) {
-    throw new Error('Failed to get token')
-  }
-  const data = await response.json()
-  // An empty or missing token must fail loudly: returning '' would make
-  // every subsequent request omit the Authorization header, loop back
-  // here on 401, and recurse indefinitely.
-  if (!data.token) {
-    throw new Error('Token endpoint returned an empty token')
-  }
-  token = data.token as string
-  return data.token as string
+  tokenPromise ??= fetch('/api/token')
+    .then(async response => {
+      if (!response.ok) {
+        throw new Error('Failed to get token')
+      }
+      const data = await response.json()
+      // An empty or missing token must fail loudly: returning '' would make
+      // every subsequent request omit the Authorization header, loop back
+      // here on 401, and recurse indefinitely.
+      if (!data.token) {
+        throw new Error('Token endpoint returned an empty token')
+      }
+      token = data.token as string
+      return token
+    })
+    // Clear the memo once settled: on success future calls short-circuit on
+    // `token`, on failure callers get a fresh retry instead of a cached
+    // rejected promise.
+    .finally(() => {
+      tokenPromise = null
+    })
+  return tokenPromise
 }
 
 export async function getSummary(): Promise<GraphSummary> {
