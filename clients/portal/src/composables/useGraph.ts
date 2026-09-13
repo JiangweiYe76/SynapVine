@@ -119,16 +119,19 @@ export function useGraph(): GraphComposable {
     loading.value = true
     error.value = null
     try {
-      const [summary, range] = await Promise.all([
+      // Summary, timeline range, and the first page of nodes are mutually
+      // independent; only the edge expansion below depends on the node IDs
+      // returned here. Batching all three saves one full round trip versus
+      // awaiting summary before fetching nodes.
+      const [summary, range, firstNodes] = await Promise.all([
         getSummary(),
         getTimelineRange(),
+        getNodes({ limit: 200 }),
       ])
       communities.value = summary.communities
       stats.value = summary.stats
       timelineRange.value = range
-
-      const allNodes = await getNodes({ limit: 200 })
-      nodes.value = allNodes.nodes
+      nodes.value = firstNodes.nodes
 
       if (nodes.value.length > 0) {
         const ids = nodes.value.map(n => n.id)

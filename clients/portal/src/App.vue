@@ -77,8 +77,16 @@ onUnmounted(() => {
   document.removeEventListener('keydown', handleKeydown)
 })
 
+// Monotonic sequence guard: a slow response for an older query must never
+// overwrite the results of a newer one (out-of-order arrival).
+let searchSeq = 0
+
 async function handleSearch(query: string) {
+  const seq = ++searchSeq
   const response = await searchNodes(query, 10)
+  if (seq !== searchSeq) {
+    return
+  }
   searchResults.value = response.results
 }
 
