@@ -25,6 +25,8 @@ type fakeCore struct {
 	providerErr bool
 	reviewErr   bool
 
+	chatCalls int // number of LLM chat completion requests served
+
 	statusLog []string // ordered UpdatePaperStatus payloads
 	review    []model.ReviewQueueItem
 	usage     []coreclient.UsageRecord
@@ -32,18 +34,27 @@ type fakeCore struct {
 
 const extractionJSON = `{"nodes":[{"name":"Attention","description":"Mechanism","relevance":9}],"edges":[]}`
 
+// paperText is long enough to pass the extractor's minimum-length guard.
+const paperText = "We introduce the Transformer, a network architecture based solely on attention mechanisms, " +
+	"dispensing with recurrence and convolutions entirely. Experiments on two machine translation tasks show " +
+	"these models to be superior in quality while being more parallelizable and requiring significantly less " +
+	"time to train. Our model achieves state-of-the-art results on the WMT 2014 English-to-German translation task."
+
 // newEnv builds a pipeline wired to a fake core; the fake also serves
 // the OpenAI-compatible chat completions endpoint the provider points at.
 func newEnv(t *testing.T) (*fakeCore, *Service) {
 	t.Helper()
 	fc := &fakeCore{
-		paper: model.Paper{ID: "p1", Title: "Attention", RawText: "text", Status: "uploaded"},
+		paper: model.Paper{ID: "p1", Title: "Attention", RawText: paperText, Status: "uploaded"},
 		provider: model.LLMProvider{
 			ID: "prov1", BaseURL: "placeholder", APIKey: "k", Model: "m",
 		},
 	}
 
 	chat := func(w http.ResponseWriter, _ *http.Request) {
+		fc.mu.Lock()
+		fc.chatCalls++
+		fc.mu.Unlock()
 		// The LLM returns the extraction result as a JSON string inside
 		// the message content field, matching the real client protocol.
 		content, _ := json.Marshal(extractionJSON)
@@ -186,9 +197,56 @@ func TestRunPaper_ProviderFailureRollsBackStatus(t *testing.T) {
 	}
 }
 
-// TestRunPaper_ExtractionFailureRollsBackStatus verifies the rollback
-// when the LLM call fails.
-func TestRunPaper_ExtractionFailureRollsBackStatus(t *testing.T) {
+// TestRunPaper_PlaceholderTextSkipsLLM verifies that a paper whose text
+// is a placeholder (failed PDF extraction upstream) never reaches the
+// LLM, is marked "failed", and produces no review item or usage record.
+func TestRunPaper_PlaceholderTextSkipsLLM(t *testing.T) {
+	fc, svc := newEnv(t)
+	fc.paper.RawText = "(PDF uploaded — text extraction pending)"
+
+	err := svc.RunPaper(context.Background(), "p1")
+	if !errors.Is(err, ErrExtraction) {
+		t.Fatalf("err = %v, want ErrExtraction", err)
+	}
+	if !errors.Is(err, extractor.ErrInputUnusable) {
+		t.Errorf("err = %v, want it to wrap extractor.ErrInputUnusable", err)
+	}
+	if got := fc.statuses(); len(got) != 2 || got[0] != "analyzing" || got[1] != "failed" {
+		t.Errorf("statuses = %v, want [analyzing failed]", got)
+	}
+	if fc.chatCalls != 0 {
+		t.Errorf("llm chat calls = %d, want 0 (no tokens spent)", fc.chatCalls)
+	}
+	if n := len(fc.reviews()); n != 0 {
+		t.Errorf("review submissions = %d, want 0 (no fabricated nodes)", n)
+	}
+	if n := len(fc.usages()); n != 0 {
+		t.Errorf("usage records = %d, want 0", n)
+	}
+}
+
+// TestRunPaper_ShortTextSkipsLLM verifies the minimum-length guard uses
+// the same terminal "failed" path as the placeholder guard.
+func TestRunPaper_ShortTextSkipsLLM(t *testing.T) {
+	fc, svc := newEnv(t)
+	fc.paper.RawText = "too short to analyze"
+
+	err := svc.RunPaper(context.Background(), "p1")
+	if !errors.Is(err, ErrExtraction) {
+		t.Fatalf("err = %v, want ErrExtraction", err)
+	}
+	if got := fc.statuses(); len(got) != 2 || got[1] != "failed" {
+		t.Errorf("statuses = %v, want rollback to failed", got)
+	}
+	if fc.chatCalls != 0 {
+		t.Errorf("llm chat calls = %d, want 0", fc.chatCalls)
+	}
+}
+
+// TestRunPaper_TransientFailureStillRollsBackToUploaded verifies that a
+// real LLM failure keeps the retryable "uploaded" status, distinct from
+// the terminal "failed" used for unusable input.
+func TestRunPaper_TransientFailureStillRollsBackToUploaded(t *testing.T) {
 	fc, svc := newEnv(t)
 	// Point the provider at a dead endpoint so the extraction call fails.
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -202,6 +260,9 @@ func TestRunPaper_ExtractionFailureRollsBackStatus(t *testing.T) {
 	err := svc.RunPaper(context.Background(), "p1")
 	if !errors.Is(err, ErrExtraction) {
 		t.Fatalf("err = %v, want ErrExtraction", err)
+	}
+	if errors.Is(err, extractor.ErrInputUnusable) {
+		t.Error("transient failure must not be classified as unusable input")
 	}
 	if got := fc.statuses(); len(got) != 2 || got[1] != "uploaded" {
 		t.Errorf("statuses = %v, want rollback to uploaded", got)

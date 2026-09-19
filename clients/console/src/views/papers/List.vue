@@ -48,6 +48,7 @@ const statusColors: Record<string, string> = {
   uploaded: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
   analyzing: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
   analyzed: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+  failed: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
   reviewing: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
   merged: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200',
 }
@@ -142,7 +143,11 @@ const columns = [
       const paper = info.row.original
       if (!authStore.isEditor) return null
       const isAnalyzing = analyzingPaperId.value === paper.id
-      const canAnalyze = paper.status === 'uploaded'
+      // "failed" papers are terminal (their stored text was unusable), but
+      // still offer a manual retry: it costs nothing when the input guard
+      // rejects the text again, and recovers the paper after the upstream
+      // text is fixed.
+      const canAnalyze = paper.status === 'uploaded' || paper.status === 'failed'
       return h('div', { class: 'flex items-center justify-end gap-1' }, [
         h(Button, {
           variant: 'ghost',

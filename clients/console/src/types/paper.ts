@@ -10,7 +10,7 @@ export interface Paper {
   updated_at: string
 }
 
-export type PaperStatus = 'uploaded' | 'analyzing' | 'analyzed' | 'reviewing' | 'merged'
+export type PaperStatus = 'uploaded' | 'analyzing' | 'analyzed' | 'failed' | 'reviewing' | 'merged'
 
 export interface PaperCreateRequest {
   title: string

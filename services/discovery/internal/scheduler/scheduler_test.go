@@ -22,14 +22,20 @@ const atomFeed = `<?xml version="1.0" encoding="UTF-8"?>
   <entry>
     <id>http://arxiv.org/abs/2609.00001v1</id>
     <title>Paper One</title>
-    <summary>First abstract.</summary>
+    <summary>We present a new method for training large language models on long documents. Our approach
+    combines sparse attention with a learned retrieval index, reducing the quadratic cost of full
+    attention to near-linear while preserving accuracy on downstream reasoning benchmarks. Experiments
+    across three model scales show consistent perplexity improvements and a fourfold speedup at inference.</summary>
     <published>2026-09-07T10:00:00Z</published>
     <author><name>A. Author</name></author>
   </entry>
   <entry>
     <id>http://arxiv.org/abs/2609.00002v1</id>
     <title>Paper Two</title>
-    <summary>Second abstract.</summary>
+    <summary>This paper studies knowledge graph completion under sparse supervision. We propose a
+    contrastive objective that aligns entity embeddings with textual descriptions harvested from the
+    web, and show that it substantially improves link prediction on standard benchmarks. Ablations
+    isolate the contribution of each component and confirm robustness to noisy descriptions.</summary>
     <published>2026-09-07T11:00:00Z</published>
     <author><name>B. Author</name></author>
   </entry>
@@ -80,7 +86,7 @@ func newCoreSim(t *testing.T) (*fakeCoreSim, *coreclient.Client) {
 		}
 		fc.nextID++
 		id := fmt.Sprintf("paper-%d", fc.nextID)
-		paper := &model.Paper{ID: id, Title: req.Title, Status: "uploaded"}
+		paper := &model.Paper{ID: id, Title: req.Title, RawText: req.RawText, Status: "uploaded"}
 		fc.papers[id] = paper
 		if req.ArxivID != "" {
 			fc.byArxiv[req.ArxivID] = id
