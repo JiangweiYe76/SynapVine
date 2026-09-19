@@ -72,8 +72,19 @@ func (s *Service) RunPaper(ctx context.Context, paperID string) error {
 	result, err := s.extractor.Extract(ctx, llmClient, paper)
 	if err != nil {
 		slog.Error("analyze_extraction_failed", slog.String("paper_id", paperID), slog.Any("error", err))
-		s.rollbackStatus(ctx, paperID, "uploaded")
-		return fmt.Errorf("%w: %v", ErrExtraction, err)
+		// Unusable input is terminal: the stored text will not improve on
+		// a retry, so mark the paper "failed" instead of "uploaded" to
+		// stop it from looking retryable. Transient failures (network,
+		// provider errors, malformed output) still roll back to
+		// "uploaded" so a retry can succeed.
+		if errors.Is(err, extractor.ErrInputUnusable) {
+			s.rollbackStatus(ctx, paperID, "failed")
+		} else {
+			s.rollbackStatus(ctx, paperID, "uploaded")
+		}
+		// Wrap both sentinels so callers can classify the stage
+		// (ErrExtraction) and the cause (ErrInputUnusable) independently.
+		return fmt.Errorf("%w: %w", ErrExtraction, err)
 	}
 
 	// 4b. Record token usage. Non-fatal: accounting failures must not

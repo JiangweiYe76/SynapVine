@@ -62,6 +62,12 @@ func NewClient(p *model.LLMProvider) *Client {
 	}
 }
 
+// MaxTokens returns the configured output token limit. Callers use it to
+// explain truncation errors to the operator.
+func (c *Client) MaxTokens() int {
+	return c.maxTokens
+}
+
 type wireFormat struct {
 	Model       string          `json:"model"`
 	Messages    []Message       `json:"messages"`
