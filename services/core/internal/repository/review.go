@@ -21,6 +21,7 @@ func NewReviewQueueRepository(db *sql.DB) *ReviewQueueRepository {
 	return &ReviewQueueRepository{db: db}
 }
 
+// ErrReviewItemNotFound is returned when a lookup matches no review queue row.
 var ErrReviewItemNotFound = errors.New("review item not found")
 
 // Create inserts a new review queue item.

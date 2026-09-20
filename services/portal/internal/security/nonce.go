@@ -6,38 +6,37 @@ import (
 	"time"
 )
 
-// NonceStore manages nonces to prevent replay attacks
+// NonceStore remembers recently seen nonces so that a replayed request can be
+// rejected. Entries are retained for 5 minutes, which comfortably exceeds the
+// 30-second signature window.
 type NonceStore struct {
-	mu     sync.Mutex           // Mutex for thread-safe access
-	nonces map[string]time.Time // Map of nonce to expiration time
+	mu     sync.Mutex
+	nonces map[string]time.Time // nonce -> expiry time
 }
 
-// NewNonceStore creates a new NonceStore instance
+// NewNonceStore creates an empty NonceStore.
 func NewNonceStore() *NonceStore {
 	return &NonceStore{
 		nonces: make(map[string]time.Time),
 	}
 }
 
-// Mark attempts to mark a nonce as used
-// Returns true if the nonce was successfully marked (first use)
-// Returns false if the nonce was already used (replay attack detected)
+// Mark records nonce as used and reports whether it was previously unseen.
+// A false result means the nonce was already present, i.e. a replay.
 func (ns *NonceStore) Mark(nonce string) bool {
 	ns.mu.Lock()
 	defer ns.mu.Unlock()
 
-	// Check if nonce already exists
 	if _, exists := ns.nonces[nonce]; exists {
 		slog.Warn("nonce_replay_rejected", slog.String("nonce", nonce))
 		return false
 	}
 
-	// Mark nonce with 5-minute expiration
 	ns.nonces[nonce] = time.Now().Add(5 * time.Minute)
 	return true
 }
 
-// CleanExpired removes all expired nonces from the store
+// CleanExpired drops every nonce whose expiry has passed.
 func (ns *NonceStore) CleanExpired() {
 	ns.mu.Lock()
 	defer ns.mu.Unlock()

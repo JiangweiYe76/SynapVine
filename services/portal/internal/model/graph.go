@@ -2,13 +2,13 @@ package model
 
 // Node represents a single node in the knowledge graph
 type Node struct {
-	ID             string   `json:"id"`              // Unique identifier for the node
-	Name           string   `json:"name"`            // Display name of the node
-	Description    string   `json:"description"`     // Brief description of the node
-	InfluenceScore float64  `json:"influence_score"` // Influence/popularity score (0-10)
-	CommunityID    int      `json:"community_id"`    // ID of the community this node belongs to
-	Degree         int      `json:"degree"`          // Number of connected edges
-	FirstAppeared  string   `json:"first_appeared"`  // Year and month first appeared (YYYY-MM)
+	ID             string   `json:"id"`                   // Unique identifier for the node
+	Name           string   `json:"name"`                 // Display name of the node
+	Description    string   `json:"description"`          // Brief description of the node
+	InfluenceScore float64  `json:"influence_score"`      // Influence/popularity score (0-10)
+	CommunityID    int      `json:"community_id"`         // ID of the community this node belongs to
+	Degree         int      `json:"degree"`               // Number of connected edges
+	FirstAppeared  string   `json:"first_appeared"`       // Year and month first appeared (YYYY-MM)
 	Milestones     []string `json:"milestones,omitempty"` // Key milestones
 }
 
@@ -37,13 +37,13 @@ type Community struct {
 
 // HierarchicalCommunity represents a community in a nested/hierarchical structure
 type HierarchicalCommunity struct {
-	ID        int                   `json:"id"`           // Unique community ID
-	ParentID  *int                  `json:"parent_id"`    // Parent community ID (null for root)
-	Name      string                `json:"name"`         // Community name
-	Color     string                `json:"color"`        // Display color (hex)
-	Level     int                   `json:"level"`        // Depth level in the hierarchy (0 for root)
-	NodeIDs   []string              `json:"node_ids"`     // List of node IDs in this community
-	NodeCount int                   `json:"node_count"`   // Number of nodes in this community
+	ID        int                     `json:"id"`                 // Unique community ID
+	ParentID  *int                    `json:"parent_id"`          // Parent community ID (null for root)
+	Name      string                  `json:"name"`               // Community name
+	Color     string                  `json:"color"`              // Display color (hex)
+	Level     int                     `json:"level"`              // Depth level in the hierarchy (0 for root)
+	NodeIDs   []string                `json:"node_ids"`           // List of node IDs in this community
+	NodeCount int                     `json:"node_count"`         // Number of nodes in this community
 	Children  []HierarchicalCommunity `json:"children,omitempty"` // Sub-communities
 }
 
@@ -107,10 +107,10 @@ type ExpandResponse struct {
 
 // SearchResult represents a single search result
 type SearchResult struct {
-	ID             string  `json:"id"`              // Node ID
-	Name           string  `json:"name"`            // Node name
-	CommunityID    int     `json:"community_id"`    // Community ID
-	InfluenceScore float64 `json:"influence_score"` // Influence score
+	ID             string  `json:"id"`                  // Node ID
+	Name           string  `json:"name"`                // Node name
+	CommunityID    int     `json:"community_id"`        // Community ID
+	InfluenceScore float64 `json:"influence_score"`     // Influence score
 	Highlight      string  `json:"highlight,omitempty"` // Highlighted text snippet
 }
 
