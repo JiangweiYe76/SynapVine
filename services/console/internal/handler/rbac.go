@@ -45,34 +45,3 @@ func RequireRole(allowed ...model.Role) fiber.Handler {
 		return c.Next()
 	}
 }
-
-// roleRank assigns a small numeric rank to each role so the middleware
-// can express "at least editor" style rules. Kept here rather than in
-// the model package to keep the model free of behaviour.
-func roleRank(r model.Role) int {
-	switch r {
-	case model.RoleAdmin:
-		return 3
-	case model.RoleEditor:
-		return 2
-	case model.RoleViewer:
-		return 1
-	}
-	return 0
-}
-
-// RequireMinRole is a convenience wrapper around RequireRole that allows
-// a role and any higher-ranked one. e.g. RequireMinRole(model.RoleEditor)
-// permits editor and admin.
-//
-// Currently unused but exported for future fine-grained route protection.
-func RequireMinRole(min model.Role) fiber.Handler {
-	all := []model.Role{model.RoleAdmin, model.RoleEditor, model.RoleViewer}
-	var allowed []model.Role
-	for _, r := range all {
-		if roleRank(r) >= roleRank(min) {
-			allowed = append(allowed, r)
-		}
-	}
-	return RequireRole(allowed...)
-}
