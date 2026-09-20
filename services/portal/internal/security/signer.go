@@ -9,18 +9,12 @@ import (
 	"time"
 )
 
-// VerifySignature verifies an HMAC signature for request integrity
-// Parameters:
-//   - path: The request path
-//   - token: The secret token
-//   - timestamp: Unix timestamp of the request
-//   - nonce: Unique nonce for this request
-//   - signature: The HMAC signature to verify
-//   - nonceStore: Store to track used nonces (prevents replay attacks)
-//
-// Returns true if the signature is valid and the request is not expired/replayed
+// VerifySignature reports whether an HMAC-SHA256 request signature is valid.
+// A request is rejected when its timestamp is malformed or more than 30
+// seconds old, when its nonce was already used (replay), or when the MAC does
+// not match.
 func VerifySignature(path, token, timestamp, nonce, signature string, nonceStore *NonceStore) bool {
-	// Parse and validate timestamp (must be within 30 seconds)
+	// The 30-second window bounds how long a captured request stays replayable.
 	if ts, err := strconv.ParseInt(timestamp, 10, 64); err != nil || time.Now().Unix()-ts > 30 {
 		slog.Warn("signature_timestamp_invalid",
 			slog.String("path", path),
@@ -30,7 +24,8 @@ func VerifySignature(path, token, timestamp, nonce, signature string, nonceStore
 		return false
 	}
 
-	// Check nonce to prevent replay attacks
+	// Mark consumes the nonce, so a second sighting of the same nonce is a
+	// replay rather than a legitimate retry.
 	if !nonceStore.Mark(nonce) {
 		slog.Warn("signature_replay_detected",
 			slog.String("path", path),
@@ -39,15 +34,15 @@ func VerifySignature(path, token, timestamp, nonce, signature string, nonceStore
 		return false
 	}
 
-	// Build the payload to sign: path:timestamp:nonce
+	// The client must build the identical path:timestamp:nonce string.
 	payload := path + ":" + timestamp + ":" + nonce
 
-	// Calculate expected HMAC-SHA256 signature
 	mac := hmac.New(sha256.New, []byte(token))
 	mac.Write([]byte(payload))
 	expected := hex.EncodeToString(mac.Sum(nil))
 
-	// Compare signatures using constant-time comparison
+	// hmac.Equal compares in constant time, so a near-miss signature does not
+	// leak the length of the matching prefix through timing.
 	if !hmac.Equal([]byte(signature), []byte(expected)) {
 		slog.Warn("signature_mismatch",
 			slog.String("path", path),

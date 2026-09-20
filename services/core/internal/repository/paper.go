@@ -20,6 +20,7 @@ func NewPaperRepository(db *sql.DB) *PaperRepository {
 	return &PaperRepository{db: db}
 }
 
+// ErrPaperNotFound is returned when a lookup matches no paper row.
 var ErrPaperNotFound = errors.New("paper not found")
 
 // Create inserts a new paper.

@@ -34,6 +34,9 @@ type communityCache struct {
 	fetchedAt time.Time
 }
 
+// metaCache holds the graph's last-mutated timestamp reported by core. It is
+// cached alongside the graph data so the status bar does not add a core
+// round-trip per request.
 type metaCache struct {
 	mu          sync.RWMutex
 	lastUpdated *string // nil when the graph has never been mutated

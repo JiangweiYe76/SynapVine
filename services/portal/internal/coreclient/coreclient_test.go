@@ -198,19 +198,19 @@ func TestFetchTimelineRange_ConnectionError(t *testing.T) {
 
 func TestServiceTokenHeader(t *testing.T) {
 	tests := []struct {
-		name        string
+		name         string
 		serviceToken string
-		wantHeader  string
+		wantHeader   string
 	}{
 		{
-			name:        "configured token is sent",
+			name:         "configured token is sent",
 			serviceToken: "portal-token",
-			wantHeader:  "portal-token",
+			wantHeader:   "portal-token",
 		},
 		{
-			name:        "empty token omits the header",
+			name:         "empty token omits the header",
 			serviceToken: "",
-			wantHeader:  "",
+			wantHeader:   "",
 		},
 	}
 
