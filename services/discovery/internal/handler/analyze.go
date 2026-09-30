@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log/slog"
 
+	"discovery/internal/extractor"
 	"discovery/internal/model"
 	"discovery/internal/pipeline"
 
@@ -68,7 +69,17 @@ func analyzeErrorResponse(c *fiber.Ctx, err error) error {
 			Message: "Failed to fetch LLM provider configuration",
 		})
 	case errors.Is(err, pipeline.ErrExtraction):
-		return c.Status(500).JSON(ErrorResponse{
+		// Unusable input is a property of the stored paper, not a fault
+		// in this service: the text will not improve on a retry, and the
+		// pipeline has already marked the paper "failed". Report it as
+		// 422 so callers and monitoring do not read it as a server error.
+		if errors.Is(err, extractor.ErrInputUnusable) {
+			return c.Status(422).JSON(ErrorResponse{
+				Error:   "paper_text_unusable",
+				Message: "Paper text is too short or unusable for extraction: " + err.Error(),
+			})
+		}
+		return c.Status(502).JSON(ErrorResponse{
 			Error:   "extraction_failed",
 			Message: "LLM extraction failed: " + err.Error(),
 		})

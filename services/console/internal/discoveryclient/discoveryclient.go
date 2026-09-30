@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 )
@@ -77,10 +78,37 @@ func (c *Client) TriggerAnalyze(ctx context.Context, paperID string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("discovery returned status %d", resp.StatusCode)
+		return newStatusError(resp.StatusCode, resp.Body)
 	}
 
 	return nil
+}
+
+// maxErrorBodyBytes caps how much of an error response is read back for
+// the error message.
+const maxErrorBodyBytes = 512
+
+// newStatusError builds an error for a non-2xx response. Discovery's
+// error responses carry a JSON {"error","message"} body; surfacing the
+// message keeps a 422 such as "paper_text_unusable" legible in the logs
+// instead of reducing it to a bare status code.
+func newStatusError(status int, body io.Reader) error {
+	raw, err := io.ReadAll(io.LimitReader(body, maxErrorBodyBytes))
+	if err != nil || len(bytes.TrimSpace(raw)) == 0 {
+		return fmt.Errorf("discovery returned status %d", status)
+	}
+
+	var payload struct {
+		Error   string `json:"error"`
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal(raw, &payload); err == nil && payload.Message != "" {
+		if payload.Error != "" {
+			return fmt.Errorf("discovery returned status %d (%s): %s", status, payload.Error, payload.Message)
+		}
+		return fmt.Errorf("discovery returned status %d: %s", status, payload.Message)
+	}
+	return fmt.Errorf("discovery returned status %d: %s", status, bytes.TrimSpace(raw))
 }
 
 // Health checks that the discovery service is reachable.

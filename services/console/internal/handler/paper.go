@@ -79,6 +79,10 @@ func (h *PaperHandler) Get(c *fiber.Ctx) error {
 //   - multipart/form-data: fields "title", "authors", "source_url", "raw_text",
 //     and an optional "pdf" file field. When "pdf" is provided, text is extracted
 //     from it and used as raw_text (overriding any raw_text form field).
+//
+// A PDF whose text layer cannot be decoded is rejected with 422
+// ("pdf_text_not_extractable") rather than stored with placeholder text.
+// Callers who hit that should resend the paper as JSON with raw_text.
 func (h *PaperHandler) Create(c *fiber.Ctx) error {
 	ct := string(c.Request().Header.ContentType())
 
@@ -126,27 +130,34 @@ func (h *PaperHandler) Create(c *fiber.Ctx) error {
 			}
 
 			// Extract real text from the PDF so the discovery service can
-			// feed genuine content to the LLM instead of a placeholder.
-			// The extracted text overrides any raw_text form field (see
-			// the Create doc comment). Fall back to a form-provided
-			// raw_text or a placeholder when extraction fails (e.g.
-			// scanned/image-only PDFs).
+			// feed genuine content to the LLM. The extracted text
+			// overrides any raw_text form field (see the Create doc
+			// comment).
+			//
+			// A failed extraction is not recoverable here: storing the
+			// fragment we did read would look like a successful upload
+			// while leaving the paper unanalyzable, and a partially
+			// decoded PDF that clears the length check would feed the LLM
+			// fragments and yield fabricated concepts. Reject the upload
+			// instead and let the caller supply raw_text directly, which
+			// the JSON path already supports.
 			extracted, extractErr := pdf.ExtractText(bytes.NewReader(pdfBytes))
 			if extractErr != nil {
 				slog.Warn("pdf_extract_failed",
 					slog.String("filename", fileHeader.Filename),
+					slog.Int("pdf_bytes", len(pdfBytes)),
 					slog.Any("error", extractErr),
 				)
-			} else {
-				req.RawText = extracted
-				slog.Info("pdf_extracted",
-					slog.String("filename", fileHeader.Filename),
-					slog.Int("text_length", len(extracted)),
-				)
+				return c.Status(422).JSON(model.ErrorResponse{
+					Error:   "pdf_text_not_extractable",
+					Message: "Could not extract a usable text layer from this PDF. It may be a scanned image, or use fonts that cannot be decoded. Upload the paper text directly instead.",
+				})
 			}
-			if req.RawText == "" {
-				req.RawText = "(PDF uploaded — text extraction pending)"
-			}
+			req.RawText = extracted
+			slog.Info("pdf_extracted",
+				slog.String("filename", fileHeader.Filename),
+				slog.Int("text_length", len(extracted)),
+			)
 
 			slog.Info("pdf_read",
 				slog.String("filename", fileHeader.Filename),
