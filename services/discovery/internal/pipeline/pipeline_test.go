@@ -197,8 +197,8 @@ func TestRunPaper_ProviderFailureRollsBackStatus(t *testing.T) {
 	}
 }
 
-// TestRunPaper_PlaceholderTextSkipsLLM verifies that a paper whose text
-// is a placeholder (failed PDF extraction upstream) never reaches the
+// TestRunPaper_PlaceholderTextSkipsLLM verifies that a paper whose text is
+// a placeholder (its PDF was never really extracted) never reaches the
 // LLM, is marked "failed", and produces no review item or usage record.
 func TestRunPaper_PlaceholderTextSkipsLLM(t *testing.T) {
 	fc, svc := newEnv(t)

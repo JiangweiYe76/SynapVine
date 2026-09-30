@@ -363,7 +363,7 @@ export function createMockServer() {
         name: data.name,
         base_url: data.base_url,
         model: data.model,
-        max_tokens: data.max_tokens || 4096,
+        max_tokens: data.max_tokens || 16384,
         temperature: data.temperature || 0.7,
         is_default: data.is_default || false,
         is_enabled: true,

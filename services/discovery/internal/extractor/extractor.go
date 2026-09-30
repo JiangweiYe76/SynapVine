@@ -25,20 +25,22 @@ var ErrInputUnusable = errors.New("paper text is not usable for extraction")
 // context windows are finite while the provider's max_tokens only caps
 // the *output*, so an unbounded PDF transcript would either be rejected
 // outright (context length exceeded) or crowd out the output budget.
-// Tuned conservatively so a 4096-token output still fits inside a 16k
-// context window.
-const maxInputChars = 24000
+// Input plus the output budget has to fit the window: 40000 characters
+// measure roughly 10k tokens, which alongside the 16384-token default
+// output budget stays inside the 32k-class windows that are the smallest
+// in common use.
+const maxInputChars = 40000
 
 // minimumTextLength is the smallest amount of text worth sending to the
 // LLM. Below this the model has nothing to ground its output on and
 // fabricates concepts instead of extracting them.
 const minimumTextLength = 200
 
-// knownPlaceholders are raw_text values written by upstream services when
-// real text extraction failed (e.g. scanned/image-only PDFs). They carry
-// no analysable content.
+// knownPlaceholders are markers of papers whose text was never really
+// extracted. The console rejects a PDF it cannot decode instead of storing
+// this marker, but stored papers may still carry it, so detection stays.
 var knownPlaceholders = []string{
-	"(pdf uploaded",           // services/console fallback for failed PDF extraction
+	"(pdf uploaded",           // console fallback for failed PDF extraction
 	"text extraction pending", // same fallback, matched on its distinctive fragment
 }
 

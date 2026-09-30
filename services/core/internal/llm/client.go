@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"time"
 
+	"core/internal/llmprovider"
 	"core/internal/model"
 )
 
@@ -104,7 +105,9 @@ func (c *Client) Complete(ctx context.Context, req CompletionRequest) (*Completi
 	if maxTokens == 0 {
 		maxTokens = c.maxTokens
 	}
-	body.MaxTokens = maxTokens
+	// Clamp the budget on the send path so a stored value outside the
+	// range degrades to a capped request instead of an unsendable one.
+	body.MaxTokens = llmprovider.ClampMaxTokens(maxTokens)
 
 	if req.JSONMode {
 		body.Format = &responseFormat{Type: "json_object"}
