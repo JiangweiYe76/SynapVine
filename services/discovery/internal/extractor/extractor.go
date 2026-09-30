@@ -25,10 +25,11 @@ var ErrInputUnusable = errors.New("paper text is not usable for extraction")
 // context windows are finite while the provider's max_tokens only caps
 // the *output*, so an unbounded PDF transcript would either be rejected
 // outright (context length exceeded) or crowd out the output budget.
-// Input plus the output budget has to fit the window: 24000 characters
-// measure roughly 6k tokens, which alongside the 4096-token output budget
-// stays inside the 16k-class windows that are the smallest in common use.
-const maxInputChars = 24000
+// Input plus the output budget has to fit the window: 40000 characters
+// measure roughly 10k tokens, which alongside the 16384-token default
+// output budget stays inside the 32k-class windows that are the smallest
+// in common use.
+const maxInputChars = 40000
 
 // minimumTextLength is the smallest amount of text worth sending to the
 // LLM. Below this the model has nothing to ground its output on and

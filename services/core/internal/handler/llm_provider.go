@@ -2,10 +2,12 @@ package handler
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
 	"time"
 
 	"core/internal/llm"
+	"core/internal/llmprovider"
 	"core/internal/model"
 	"core/internal/repository"
 
@@ -89,7 +91,13 @@ func (h *LLMProviderHandler) Create(c *fiber.Ctx) error {
 	}
 
 	if req.MaxTokens <= 0 {
-		req.MaxTokens = 4096
+		req.MaxTokens = llmprovider.DefaultMaxTokens
+	}
+	if req.MaxTokens > llmprovider.MaxTokensLimit {
+		return c.Status(400).JSON(model.ErrorResponse{
+			Error:   "invalid_max_tokens",
+			Message: fmt.Sprintf("max_tokens must not exceed %d", llmprovider.MaxTokensLimit),
+		})
 	}
 	if req.Temperature <= 0 {
 		req.Temperature = 0.7
@@ -162,6 +170,16 @@ func (h *LLMProviderHandler) Update(c *fiber.Ctx) error {
 				Message: "Failed to update default provider",
 			})
 		}
+	}
+
+	// The create path normalizes a missing budget to the default; an
+	// explicit update is validated instead so a misconfigured value is
+	// surfaced rather than stored.
+	if req.MaxTokens != nil && (*req.MaxTokens <= 0 || *req.MaxTokens > llmprovider.MaxTokensLimit) {
+		return c.Status(400).JSON(model.ErrorResponse{
+			Error:   "invalid_max_tokens",
+			Message: fmt.Sprintf("max_tokens must be between 1 and %d", llmprovider.MaxTokensLimit),
+		})
 	}
 
 	p, err := h.repo.Update(c.Context(), id, &req)

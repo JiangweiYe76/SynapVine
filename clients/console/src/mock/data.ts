@@ -1503,7 +1503,7 @@ export const mockLLMProviders: LLMProvider[] = [
     name: 'deepseek-chat',
     base_url: 'https://api.deepseek.com/v1',
     model: 'deepseek-chat',
-    max_tokens: 4096,
+    max_tokens: 16384,
     temperature: 0.7,
     is_default: true,
     is_enabled: true,

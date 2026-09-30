@@ -79,7 +79,7 @@ var mysqlMigrations = []mysqlMigration{
 			base_url    VARCHAR(500) NOT NULL,
 			api_key     VARCHAR(500) NOT NULL,
 			model       VARCHAR(100) NOT NULL,
-			max_tokens  INT          NOT NULL DEFAULT 4096,
+			max_tokens  INT          NOT NULL DEFAULT 16384,
 			temperature DOUBLE       NOT NULL DEFAULT 0.7,
 			is_default  BOOLEAN      NOT NULL DEFAULT FALSE,
 			is_enabled  BOOLEAN      NOT NULL DEFAULT TRUE,
@@ -145,6 +145,20 @@ var mysqlMigrations = []mysqlMigration{
 			KEY idx_llm_usage_provider_time (provider_id, created_at),
 			KEY idx_llm_usage_paper (paper_id)
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+	},
+	{
+		// LLM output-budget bounds: max_tokens is the per-request output
+		// budget, not the model's context window, so a value above the
+		// ceiling makes every request unsendable (input plus output must
+		// fit the window). Rows outside the range are repaired to the
+		// default. The statement is a plain
+		// UPDATE, so re-running it on startup is a no-op once every row
+		// is in range. The literals mirror DefaultMaxTokens and
+		// MaxTokensLimit in internal/llmprovider; they are inlined rather
+		// than referenced so the migration stays stable if the bounds
+		// ever change.
+		name: "normalize_llm_providers_max_tokens",
+		stmt: `UPDATE llm_providers SET max_tokens = 16384 WHERE max_tokens <= 0 OR max_tokens > 32768`,
 	},
 }
 

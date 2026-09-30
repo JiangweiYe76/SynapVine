@@ -30,12 +30,19 @@ const emit = defineEmits<{
 
 const isEdit = computed(() => !!props.provider)
 
+// Bounds for the per-request output budget. These mirror
+// DefaultMaxTokens and MaxTokensLimit in the core service's
+// internal/llmprovider package; the backend rejects anything outside
+// the range, so the form validates first to surface the error inline.
+const DEFAULT_MAX_TOKENS = 16384
+const MAX_TOKENS_LIMIT = 32768
+
 const form = ref({
   name: '',
   base_url: '',
   api_key: '',
   model: '',
-  max_tokens: 4096,
+  max_tokens: DEFAULT_MAX_TOKENS,
   temperature: 0.7,
   is_default: false,
 })
@@ -62,7 +69,7 @@ watch(() => props.open, (isOpen) => {
         base_url: '',
         api_key: '',
         model: '',
-        max_tokens: 4096,
+        max_tokens: DEFAULT_MAX_TOKENS,
         temperature: 0.7,
         is_default: false,
       }
@@ -85,6 +92,14 @@ async function handleSave() {
   }
   if (!form.value.model.trim()) {
     saveError.value = 'Model is required'
+    return
+  }
+  if (
+    !Number.isInteger(form.value.max_tokens) ||
+    form.value.max_tokens < 1 ||
+    form.value.max_tokens > MAX_TOKENS_LIMIT
+  ) {
+    saveError.value = `Max output tokens must be between 1 and ${MAX_TOKENS_LIMIT}`
     return
   }
 
@@ -180,14 +195,18 @@ async function handleSave() {
 
         <div class="grid grid-cols-2 gap-4">
           <div class="space-y-2">
-            <Label for="provider-tokens">Max Tokens</Label>
+            <Label for="provider-tokens">Max Output Tokens</Label>
             <Input
               id="provider-tokens"
               v-model.number="form.max_tokens"
               type="number"
               min="1"
-              max="128000"
+              :max="MAX_TOKENS_LIMIT"
             />
+            <p class="text-xs text-muted-foreground">
+              Per-request output budget, not the model context window. Input text plus this
+              budget must fit the window.
+            </p>
           </div>
           <div class="space-y-2">
             <Label for="provider-temp">Temperature</Label>

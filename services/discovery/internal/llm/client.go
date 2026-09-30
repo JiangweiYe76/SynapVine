@@ -62,10 +62,36 @@ func NewClient(p *model.LLMProvider) *Client {
 	}
 }
 
-// MaxTokens returns the configured output token limit. Callers use it to
-// explain truncation errors to the operator.
+// DefaultMaxTokens is the output budget used when a provider does not
+// specify one. This mirrors DefaultMaxTokens in the core service's
+// internal/llmprovider package, which owns the rationale; the value is
+// duplicated here because discovery is a separate Go module and cannot
+// import core's internals. Keep the two in sync.
+const DefaultMaxTokens = 16384
+
+// MaxTokensLimit is the largest output budget ever sent to a provider.
+// Mirrors MaxTokensLimit in core's internal/llmprovider package; see
+// there for the rationale. Keep the two in sync.
+const MaxTokensLimit = 32768
+
+// clampMaxTokens forces a stored max_tokens value inside
+// [1, MaxTokensLimit], falling back to DefaultMaxTokens for non-positive
+// input. A stored value outside the range degrades to a capped request
+// instead of an unsendable one.
+func clampMaxTokens(n int) int {
+	if n <= 0 {
+		return DefaultMaxTokens
+	}
+	if n > MaxTokensLimit {
+		return MaxTokensLimit
+	}
+	return n
+}
+
+// MaxTokens returns the effective output token limit after clamping, so
+// the reported value always matches what was actually sent.
 func (c *Client) MaxTokens() int {
-	return c.maxTokens
+	return clampMaxTokens(c.maxTokens)
 }
 
 type wireFormat struct {
@@ -111,7 +137,9 @@ func (c *Client) Complete(ctx context.Context, req CompletionRequest) (*Completi
 	if maxTokens == 0 {
 		maxTokens = c.maxTokens
 	}
-	body.MaxTokens = maxTokens
+	// Clamp the budget on the send path so a stored value outside the
+	// range degrades to a capped request instead of an unsendable one.
+	body.MaxTokens = clampMaxTokens(maxTokens)
 
 	if req.JSONMode {
 		body.Format = &responseFormat{Type: "json_object"}
