@@ -24,7 +24,7 @@ type Config struct {
 // fail fast at startup. CORE_URL is required because the core service is
 // the authoritative source of node data and statistics. MYSQL_DSN is
 // required because the console persists users, refresh tokens, and audit
-// events in MySQL; we no longer keep an in-memory user map.
+// events in MySQL.
 //
 // JWT_SECRET also has no default in production-style runs. The dev script
 // (scripts/dev-up.sh) sets a known value so developers can log in

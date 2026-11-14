@@ -7,8 +7,7 @@ import type { User, LoginRequest, LogoutRequest, SessionResponse } from '../type
 // reload avoids a flash of unauthenticated UI. The access token lives
 // in memory only (Pinia state, never localStorage) and the refresh
 // token lives in an httpOnly cookie the browser manages — JS cannot
-// read either token from storage, eliminating the localStorage XSS
-// surface that previously exposed a 7-day refresh token.
+// read either token from storage.
 const STORAGE_USER = 'user'
 
 // Pre-emptively refresh this many milliseconds before the access token
