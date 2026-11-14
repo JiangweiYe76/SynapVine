@@ -194,6 +194,14 @@ All development artifacts must be written in English:
 
 ## Code Conventions
 
+### Comments
+
+- All comments in English
+- Go: `//` doc comment directly above the declaration; inline `//` for explanations inside a function
+- Vue / TS: `/** */` above the declaration it documents; `//` for inline explanations
+- Avoid obvious comments — let the code speak for itself
+- Comments explain what the code does and why; never decision history, dates, or roadmap ("reserved for future...", "the plan was...")
+
 ### Go (Backend)
 
 - Use `log/slog` with structured logging. Prefer `slog.Info("event_name", slog.String("key", val))` over `fmt.Printf`.
@@ -202,7 +210,6 @@ All development artifacts must be written in English:
 - Layered architecture: `handler` (HTTP) -> `service` (business logic) -> `coreclient`/`db` (data).
 - Error responses follow the JSON shape: `{"error": "error_code", "message": "human readable"}`.
 - All `slog` messages and attribute values must be in English.
-- All doc comments on exported identifiers must be in English.
 
 ### Vue / TypeScript (Frontend)
 
@@ -213,7 +220,6 @@ All development artifacts must be written in English:
 - API calls are centralized in `api/graph.ts` (Portal) or `api/auth.ts` (Console). Do not call `fetch` directly from components.
 - Components use PascalCase file names (e.g., `GraphCanvas.vue`).
 - Use Tailwind CSS for styling. CSS variables for theme colors (e.g., `--color-bg-primary`). Scoped `<style>` blocks are reserved for transitions/animations only.
-- All code comments, JSDoc, and inline annotations must be in English.
 
 ### Internationalization (i18n)
 
