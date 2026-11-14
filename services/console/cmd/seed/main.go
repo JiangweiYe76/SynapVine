@@ -2,9 +2,7 @@
 // database. It runs idempotently: if any user already exists, it is a
 // no-op. The username and password are taken from the ADMIN_USERNAME
 // and ADMIN_PASSWORD environment variables. Running this command is the
-// only supported way to bootstrap the console auth database; the
-// in-memory admin that previously lived in NewAuthHandler has been
-// removed.
+// only supported way to bootstrap the console auth database.
 package main
 
 import (

@@ -426,9 +426,8 @@ func (h *AuthHandler) clearRefreshCookie(c *fiber.Ctx) {
 // uses crypto/rand internally, so the value is cryptographically
 // random.
 //
-// The (string, error) signature is kept for forward compatibility: the
-// underlying uuid.New() can in theory fail if the system RNG fails,
-// and a future revision may want to surface that.
+// The (string, error) signature mirrors uuid.New, which returns an error
+// when the system RNG fails. uuid.NewString never returns an error.
 func newRefreshID() (string, error) {
 	return uuid.NewString(), nil
 }

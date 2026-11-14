@@ -169,7 +169,6 @@ func (h *ReviewQueueHandler) Approve(c *fiber.Ctx) error {
 		return c.Status(500).JSON(errorResponse("internal_error", "Failed to approve review item"))
 	}
 
-	// Update paper status to "merged".
 	paperStatus := "merged"
 	h.paperRepo.Update(c.Context(), item.PaperID, &model.PaperUpdateRequest{Status: &paperStatus})
 

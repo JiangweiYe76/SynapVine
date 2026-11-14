@@ -1,7 +1,5 @@
 // Package store provides database-backed persistence for users, refresh
-// tokens, and audit events. The console service used to keep users in
-// an in-memory map seeded with a hard-coded admin; this package is the
-// replacement that closes that gap.
+// tokens, and audit events.
 package store
 
 import (
