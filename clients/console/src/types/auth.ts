@@ -12,17 +12,21 @@ export interface LoginRequest {
   password: string
 }
 
-// /api/auth/logout body. Only the all_devices flag is sent; the refresh
-// token itself is read from the httpOnly cookie by the backend.
+/**
+ * /api/auth/logout body. Only the all_devices flag is sent; the refresh
+ * token itself is read from the httpOnly cookie by the backend.
+ */
 export interface LogoutRequest {
   all_devices?: boolean
 }
 
-// Backend /api/auth/login and /api/auth/refresh return the same shape.
-// The refresh token is delivered via an HttpOnly Set-Cookie header and
-// is intentionally absent from the JSON body, so client-side JS can
-// never read it. /refresh omits the user field in practice; consumers
-// should fall back to the previously stored user.
+/**
+ * Backend /api/auth/login and /api/auth/refresh return the same shape.
+ * The refresh token is delivered via an HttpOnly Set-Cookie header and
+ * is intentionally absent from the JSON body, so client-side JS can
+ * never read it. /refresh omits the user field in practice; consumers
+ * should fall back to the previously stored user.
+ */
 export interface SessionResponse {
   token: string
   expires_at: string
